@@ -3578,6 +3578,16 @@ def main():
             
             t.destroy()
             logging.info("Program Exit.")
+    def _report_callback_exception(exc, val, tb):
+        # Tk 回调里未捕获的异常默认只打到 stdout；打包成 exe / 用 pythonw 启动时
+        # stdout 根本不存在，用户看到的就只是"按钮点了没反应"。
+        logging.error('Unhandled Tk callback exception', exc_info=(exc, val, tb))
+        tk.messagebox.showerror(
+            'Internal error',
+            '%s: %s\n\nThe details were written to my.log' % (exc.__name__, val),
+        )
+
+    t.report_callback_exception = _report_callback_exception
     t.protocol("WM_DELETE_WINDOW", on_closing)     
     t.mainloop()
     
