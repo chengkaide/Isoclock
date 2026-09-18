@@ -11,3 +11,6 @@ bcg_inf.txt
 Mean_Cps.csv
 result_all.csv
 cal_age_result_*.xls
+
+# 数值语义探针的临时输出
+webgui/_probe/
