@@ -9,32 +9,22 @@ Created on Sun Jul 19 18:20:11 2020
 #from IOLITE_to_Agilent import Olitetoagilent
 import tkinter as tk
 from tkinter import *
-from tkinter import ttk
 import tkinter.messagebox
 import tkinter.simpledialog
 from tkinter.filedialog import askdirectory
 import matplotlib.pyplot as plt
-import warnings
 from PIL import Image,ImageTk
 import logging
 #import wmi
-import base64
-from pyDes import *
-import sys
-import re
 import csv
 import os
 import os.path
-import json
-import math
 from math import *
 import time
 import pandas as pd
 import numpy as np
 import xlwt,xlrd
 from scipy.optimize import curve_fit
-from openpyxl import load_workbook
-from datetime import datetime
 #warnings.filterwarnings('ignore')
 
 

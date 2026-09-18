@@ -9,5 +9,3 @@ numpy
 xlwt
 xlrd
 scipy
-openpyxl
-pyDes
