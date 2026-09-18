@@ -232,7 +232,7 @@ def loaddata(name, isoname):
             y1 = cols[1] if cols[1] is not None else x * 0
             return x, y1, cols[2], cols[3], cols[4], cols[5], cols[6], cols[7]
         except Exception as e:
-            logging.error('Unknown erro:%s', str(e))
+            logging.exception('Unknown erro:%s', str(e))
             print(str(e))
 
 
@@ -292,7 +292,7 @@ def Age_Calculate_average():
                     coefficient_Th=0
                     coefficient_Pb=0                
             except Exception as e:
-                logging.error('Unknown erro:%s',str(e))
+                logging.exception('Unknown erro:%s',str(e))
                 print(str(e))
                 coefficient_U=0
                 coefficient_Th=0
@@ -697,7 +697,7 @@ def Age_Calculate_average():
     
     
         except Exception as e:
-            logging.error('Unknown erro:%s',str(e))
+            logging.exception('Unknown erro:%s',str(e))
             print(str(e))
             tk.messagebox.showinfo(title='Information！', message='Standard Name not set or“result_all”file error！')
             print('Unknown erro！')
@@ -832,14 +832,14 @@ def Age_Calculate_average():
     except ValueError:
         tk.messagebox.showinfo(title='Information！', message='“result_all.csv"file not found or  the format is incorrect！')
         print('未找到“result_all.csv"文件 或数据格式不正确！请先完成<Pb校正计算>!')
-        logging.critical('“result_all.csv" were not found or the format is incorrect.')    
+        logging.critical('“result_all.csv" were not found or the format is incorrect.', exc_info=True)    
     #except NameError:
         #tk.messagebox.showinfo(title='Information！', message='Output directory or standard setting error！')
         #print('文件输出目录或标样未设置！')
         #logging.error('The output directory is not set.') 
     except OSError:
         tk.messagebox.showinfo(title='Information！', message='"result_all.csv" not found！')
-        logging.error('"result_all.csv" not found')
+        logging.exception('"result_all.csv" not found')
         print('"result_all.csv" not found')
     
     tk.messagebox.showinfo(title='Congratulations！', message='The age calculation was successful！')
@@ -934,7 +934,7 @@ def Age_Calculate():
                     coefficient_Th=0
                     coefficient_Pb=0 
             except Exception as e:
-                logging.error('Unknown erro:%s',str(e))
+                logging.exception('Unknown erro:%s',str(e))
                 print(str(e))
                 coefficient_U=0
                 coefficient_Th=0
@@ -1144,7 +1144,7 @@ def Age_Calculate():
         
         except Exception as e:
             print(str(e))
-            logging.error('Unknown erro:%s',str(e))
+            logging.exception('Unknown erro:%s',str(e))
             tk.messagebox.showinfo(title='information！', message='Standard not set or “result_all”file is incorrect！')
  
                 
@@ -1279,14 +1279,14 @@ def Age_Calculate():
     except ValueError:
         #print('未找到“result_all.csv"文件 或数据格式不正确！请先完成<Pb校正计算>!')
         tk.messagebox.showinfo(title='Information！', message='result_all.csv"file not found or  the format is incorrect！')
-        logging.critical('“result_all.csv" were not found or the format is incorrect.')  
+        logging.critical('“result_all.csv" were not found or the format is incorrect.', exc_info=True)  
     except NameError:
         #print('文件输出目录或标样未设置！')
         tk.messagebox.showinfo(title='Information！', message='Output directory or standard setting error！')
-        logging.error('The output directory is not set.') 
+        logging.exception('The output directory is not set.') 
     except OSError:
         tk.messagebox.showinfo(title='Information！', message='"result_all.csv" not found！')
-        logging.error('"result_all.csv" not found')
+        logging.exception('"result_all.csv" not found')
         print('"result_all.csv" not found')
         
     tk.messagebox.showinfo(title='Congratulations！', message='The age calculation was successful！')
@@ -2002,10 +2002,10 @@ def instructure0():
                     theLB.selection_clear(std)
             except KeyError:
                 print('Standard is not defined!')
-                logging.error('Standard is not defined!')
+                logging.exception('Standard is not defined!')
             except NameError:
                 print('Standard is not defined!')
-                logging.error('Standard is not defined!')
+                logging.exception('Standard is not defined!')
     def del_active():
         
         index = theLB.curselection()       
@@ -2027,13 +2027,13 @@ def instructure0():
                     theLB.selection_clear(std)
             except KeyError:
                 print('Standard is not defined!')
-                logging.error('Standard is not defined!')
+                logging.exception('Standard is not defined!')
             except NameError:
                 print('Standard is not defined!！')
-                logging.error('Standard is not defined!')
+                logging.exception('Standard is not defined!')
             except Exception as e:
                 print(str(e))
-                logging.error('Unknown erro:%s',str(e))
+                logging.exception('Unknown erro:%s',str(e))
         
    
     theButton = Button(frmLB,text='Delete',\
@@ -2094,7 +2094,7 @@ def instructure1():
     except Exception as e:
         print(str(e))
         tk.messagebox.showinfo(title='Information！', message='Please check LIST file！')
-        logging.error("Error file：%s ",str(e))
+        logging.exception("Error file：%s ",str(e))
     Sampleslist1={}
 
    
@@ -2287,10 +2287,10 @@ def instructure1():
                     theLB.selection_clear(std)
             except KeyError:
                 print('Standard is not defined!')
-                logging.error('Standard is not defined!')
+                logging.exception('Standard is not defined!')
             except NameError:
                 print('Standard is not defined!')
-                logging.error('Standard is not defined!')
+                logging.exception('Standard is not defined!')
     def del_active():
         
         index = theLB.curselection()       
@@ -2312,13 +2312,13 @@ def instructure1():
                     theLB.selection_clear(std)
             except KeyError:
                 print('Standard is not defined!')
-                logging.error('Standard is not defined!')
+                logging.exception('Standard is not defined!')
             except NameError:
                 print('Standard is not defined!！')
-                logging.error('Standard is not defined!')
+                logging.exception('Standard is not defined!')
             except Exception as e:
                 print(str(e))
-                logging.error('Unknown erro:%s',str(e))
+                logging.exception('Unknown erro:%s',str(e))
         
    
     theButton = Button(frmLB,text='Delete',\
@@ -2391,7 +2391,7 @@ def instructure2():
     except Exception as e:
         print(str(e))
         tk.messagebox.showinfo(title='Information！', message='Please check LIST file！')
-        logging.error("Error file：%s ",str(e))
+        logging.exception("Error file：%s ",str(e))
     Sampleslist1={}
     
 
@@ -2602,10 +2602,10 @@ def instructure2():
                     theLB.selection_clear(std)
             except KeyError:
                 print('Standard is not defined!')
-                logging.error('Standard is not defined!')
+                logging.exception('Standard is not defined!')
             except NameError:
                 print('Standard is not defined!')
-                logging.error('Standard is not defined!')
+                logging.exception('Standard is not defined!')
     def del_active():
         
         index = theLB.curselection()       
@@ -2627,13 +2627,13 @@ def instructure2():
                     theLB.selection_clear(std)
             except KeyError:
                 print('Standard is not defined!')
-                logging.error('Standard is not defined!')
+                logging.exception('Standard is not defined!')
             except NameError:
                 print('Standard is not defined!！')
-                logging.error('Standard is not defined!')
+                logging.exception('Standard is not defined!')
             except Exception as e:
                 print(str(e))
-                logging.error('Unknown erro:%s',str(e))
+                logging.exception('Unknown erro:%s',str(e))
         
    
     theButton = Button(frmLB,text='Delete',\
