@@ -37,3 +37,31 @@ https://1drv.ms/v/s!AjpkANeM2uTjmhahbMfLjdQhGS_U?e=WcoUTD
 Download exe package for Windows:
 https://onedrive.live.com/?authkey=%21AFzznagJI7etH5k&cid=E3E4DA8CD700643A&id=E3E4DA8CD700643A%213298&parId=root&o=OneUp
 
+
+
+II. Known issues
+
+The following problems are known and have not been fixed yet. They are
+listed here so that results can be read with the necessary care.
+
+1. 207Pb/206Pb age inversion (Age76Pb in Isoclock2.0.py).
+   The convergence test is evaluated against a value computed before the
+   loop and never updated, so the loop always runs a fixed 10 iterations.
+   Compared with a high-precision solution the results are exact below
+   about 600 Ma, but the deviation grows to roughly +35 Ma (1.7%) near
+   2.1 Ga. Ages in the 1.5-2.2 Ga range should be treated with caution.
+
+2. ZeroDivisionError in the 204Pb correction path.
+   When the 204Pb method is selected and the net count rate of mass 204 is
+   zero, the calculation stops with a ZeroDivisionError.
+
+3. No Hg correction applied to mass 204.
+   The term intended to remove the 204Hg contribution evaluates to zero
+   (np.average(x) - np.average(x)) and its result is never used. This is
+   harmless if the raw files have already been corrected for Hg by the
+   instrument software; otherwise it biases the 204Pb correction methods
+   and the 208Pb/204Pb column. Please check how your data were exported.
+
+Corrections and bug reports are welcome.
+
+
