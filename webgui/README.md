@@ -182,11 +182,11 @@ Known issues 中向使用者公开：
 1. **数据导入** —— 原 `loaddata()` 的三种仪器分支（Thermo / Agilent / Element）。
    Thermo 与 Agilent 走 CSV，可在浏览器里直接解析；Element 的 `.fin`/`.fin2`
    需要先确认格式（可能是专有二进制），必要时降级为"先用桌面端转换"。
-2. **标样校正与年龄层** —— 原 `Age_Calculate_average`（606 行）+ `Age_Calculate`（445 行）。
+3. **标样校正与年龄层** —— 原 `Age_Calculate_average`（606 行）+ `Age_Calculate`（445 行）。
    这两千行里混着 GUI 与真正的数值，包含示踪元素系数、分馏因子、
    Sample-Standard-Bracketing 与漂移回归 `regression()`（用 `scipy.curve_fit`，
    属于优化器，按**相对容差 1e-9** 验收而非逐位）。**这是剩余工作量的主体。**
-3. **界面** —— 单文件 HTML：数据粘贴/拖入、样品列表、信号图与积分窗口、
+4. **界面** —— 单文件 HTML：数据粘贴/拖入、样品列表、信号图与积分窗口、
    结果表、导出（CSV / XLSX / JSON）。信号图用自绘 canvas，不引外部图表库。
 
 ## 交付检查清单（当前状态）
