@@ -18,20 +18,20 @@ The following steps 1.1.1-1.1.5 is run before Isoclock runs for the first time.
 
  cd path/to/folder/ Isoclock
 
-1.1.4 Instal python libraries required for Isoclock.
+1.1.4 Install python libraries required for Isoclock.
 
 	pip install -r requirements.txt
 
 1.1.5 Run Isoclock from python.
 
-	python Isoclock.py
+	python Isoclock2.0.py
 
 If everything is already installed, follow only steps1.1.5. If you are Windows user, you can also run the Isoclock.exe directly.
 
 Instruction video:
 https://www.youtube.com/watch?v=-MocFvCSmBc
 
-Download usermaual video:
+Download user manual video:
 https://1drv.ms/v/s!AjpkANeM2uTjmhahbMfLjdQhGS_U?e=WcoUTD
 
 Download exe package for Windows:

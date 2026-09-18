@@ -1,16 +1,13 @@
-tkinter
+# tkinter / csv / json / logging / warnings are part of the Python standard
+# library. Listing them here makes `pip install -r requirements.txt` fail with
+# "No matching distribution found". The image library is called Pillow, not PIL.
+
 matplotlib
-warnings
-PIL
-logging
-csv
-json
+Pillow
 pandas
 numpy
 xlwt
 xlrd
 scipy
 openpyxl
-pyDes 
-
-
+pyDes

@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+*.orig
+*.rej
+
+# runtime artefacts written into the working directory
+my.log
+Time_setting.npy
+Coments.npy
+bcg_inf.txt
+Mean_Cps.csv
+result_all.csv
+cal_age_result_*.xls
