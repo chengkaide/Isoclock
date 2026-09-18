@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+message: "If you use Isoclock in your research, please cite it as below."
+title: "Isoclock"
+abstract: >-
+  Offline software for the reduction of LA-ICP-MS U-Th-Pb data of minerals
+  carrying variable common Pb. Isoclock performs data import, background
+  correction and outlier filtering, common-Pb correction on the reference
+  material, downhole fractionation calibration and Sample-Standard-Bracketing
+  age calculation. It reads raw files from Thermo, Agilent and Element
+  instruments and runs either from the command line or through a GUI.
+type: software
+authors:
+  - family-names: "Liu"
+    given-names: "Guoqi"
+    email: "sndjgm@foxmail.com"
+    affiliation: "East China University of Technology"
+version: "2.0"
+license: Apache-2.0
+repository-code: "https://github.com/sndjgm/Isoclock"
+keywords:
+  - "LA-ICP-MS"
+  - "U-Pb geochronology"
+  - "U-Th-Pb dating"
+  - "common Pb correction"
+  - "accessory minerals"
+  - "hydrothermal minerals"
+  - "data reduction"
