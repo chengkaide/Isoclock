@@ -76,7 +76,7 @@ def built_LIST(sample_Name,machine_Name,FileName,seq):
         worksheet.write(x,2,sample_Name.pop())
         worksheet.write(x,3,machine_Name.pop())
         worksheet.write(x,1,FileName.pop())
-        worksheet.write(x,0,eval(seq.pop()))
+        worksheet.write(x,0,int(float(seq.pop())))
     os.chdir(output_dir)
     
     
