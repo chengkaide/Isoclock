@@ -1,0 +1,22 @@
+meta line 0
+meta line 1
+meta line 2
+meta line 3
+meta line 4
+meta line 5
+meta line 6
+meta line 7
+meta line 8
+meta line 9
+meta line 10
+meta line 11
+meta line 12
+Time,202Hg,204Pb,206Pb,207Pb,208Pb,232Th,238U,extra
+sec,cps,cps,cps,cps,cps,cps,cps,cps
+0.000,100,101,102,103,104,105,106,107
+0.020,101,102,103,104,105,106,107,108
+0.040,102,103,104,105,106,107,108,109
+# this is a comment inside data
+0.060,103,104,105,106,107,108,109,110
+0.080,104,105,106,107,108,109,110,111
+0.100,105,106,107,108,109,110,111,112
