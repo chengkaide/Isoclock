@@ -70,6 +70,11 @@ def Age76Pb(Rap76):
         Age76Pb = 0
     return Age76Pb
 
+# 说明：regression() 实现了 4 种漂移校正回归模型（线性 / 对数 / 开方 / 幂），
+# 模型编号由全局变量 regression_method 选择。但它目前**没有接到界面上**：
+# regression_method 只在 main() 里被赋成 1，没有任何控件可以修改它，
+# 因此这条路径实际上不会被执行。保留原样以便将来接线 ——
+# 既不要以为它已经在生效，也不要当成死代码删掉。
 def regression(xv,num206):
     def func(xv, a, b,c):    
         if regression_method==0: 
@@ -830,9 +835,9 @@ def Age_Calculate_average():
         print('The calculation was successful.The file saved in：',outputpath)
         logging.info('The calculation was successful.The file saved in:%s',outputpath)
     except ValueError:
-        tk.messagebox.showinfo(title='Information！', message='“result_all.csv"file not found or  the format is incorrect！')
-        print('未找到“result_all.csv"文件 或数据格式不正确！请先完成<Pb校正计算>!')
-        logging.critical('“result_all.csv" were not found or the format is incorrect.', exc_info=True)    
+        tk.messagebox.showinfo(title='Information！', message='"result_all.csv"file not found or  the format is incorrect！')
+        print('未找到"result_all.csv"文件 或数据格式不正确！请先完成<Pb校正计算>!')
+        logging.critical('"result_all.csv" were not found or the format is incorrect.', exc_info=True)    
     #except NameError:
         #tk.messagebox.showinfo(title='Information！', message='Output directory or standard setting error！')
         #print('文件输出目录或标样未设置！')
@@ -1277,9 +1282,9 @@ def Age_Calculate():
         logging.info('The calculation was successful.The file saved in:%s',outputpath)
         #print('年龄计算完成！文件保存目录为：',outputpath)
     except ValueError:
-        #print('未找到“result_all.csv"文件 或数据格式不正确！请先完成<Pb校正计算>!')
+        #print('未找到"result_all.csv"文件 或数据格式不正确！请先完成<Pb校正计算>!')
         tk.messagebox.showinfo(title='Information！', message='result_all.csv"file not found or  the format is incorrect！')
-        logging.critical('“result_all.csv" were not found or the format is incorrect.', exc_info=True)  
+        logging.critical('"result_all.csv" were not found or the format is incorrect.', exc_info=True)  
     except NameError:
         #print('文件输出目录或标样未设置！')
         tk.messagebox.showinfo(title='Information！', message='Output directory or standard setting error！')
