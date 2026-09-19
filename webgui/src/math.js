@@ -147,6 +147,18 @@ function nnanstd(a) {
   return Math.sqrt(nsum(d) / cnt);
 }
 
+/* --------------------------------------------------------------------------
+ *  Python 的 int 与 float 在输出上不同：str(1) == '1'，str(1.0) == '1.0'。
+ *  JS 只有一种 number，没法从值本身区分，所以对"确实是 Python int"的值加一个
+ *  显式标记。目前只用在会进入输出的整数上（result_all.csv 的 No. 列）。
+ *
+ *  **不要用「值是不是整数」去猜** —— 浮点列里完全可能出现 3000.0 这种值，
+ *  Python 会照旧打印 '3000.0'，猜法会把它错印成 '3000'。
+ * ------------------------------------------------------------------------ */
+function tagInt(n) { return { __pyInt: n }; }
+function isTaggedInt(v) { return v !== null && typeof v === 'object' && v.__pyInt !== undefined; }
+function untagInt(v) { return isTaggedInt(v) ? v.__pyInt : v; }
+
 /** 对应 np.where(cond, x, nan)。 */
 function whereNan(cond, x) {
   const n = x.length;
@@ -518,7 +530,8 @@ function reduceSample(name, sig, method, ctx, opts) {
 
   let no;
   if (opts.eleIndex === 0) {
-    no = parseInt(name.split('_').pop().split('.')[0], 10);
+    // Python 里这是 int，输出为 '1' 而不是 '1.0'，所以要打标记
+    no = tagInt(parseInt(name.split('_').pop().split('.')[0], 10));
   } else {
     no = name;
   }
@@ -541,6 +554,7 @@ function reduceSample(name, sig, method, ctx, opts) {
 const DS = {
   PW_BLOCKSIZE, pwSum, nsum, nmean, nstd, nnanmean, nnanstd, countNan, whereNan,
   sk2model, age76Pb, rap76, ageFromRatio, LAM238, LAM235, LAM232,
+  tagInt, isTaggedInt, untagInt,
   filter2s, mean2sem, netSignal, subMean, totalMeans, divArr, divScalar,
   ratiosSample, ratiosStd207, ratiosStdCal204, ratiosStd204, ratiosStd208,
   reduceSample, METHODS, TOTAL_KEYS, CHANNELS, RATIOS,

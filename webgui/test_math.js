@@ -36,6 +36,15 @@ const DS = sandbox.window.DS;
 const REF = JSON.parse(fs.readFileSync(path.join(SRC, 'reference.json'), 'utf8'));
 
 /* ---------- 比较工具 ---------- */
+/**
+ * reduceSample 的 No. 列（eleIndex==0 时）是**标记过的 Python int**，
+ * 因为 Python 的 str(1) 是 '1' 而不是 '1.0'。比较前要拆掉标记。
+ */
+function unwrap(v) {
+  if (v !== null && typeof v === 'object' && v.__pyInt !== undefined) return v.__pyInt;
+  return v;
+}
+
 function same(a, b) {
   if (typeof a === 'string' || typeof b === 'string') return a === b;
   const an = Number.isNaN(a), bn = Number.isNaN(b);
@@ -200,8 +209,9 @@ function testReduction() {
         const w = want[i] === 'NaN' ? NaN
           : (want[i] === 'Infinity' ? Infinity
             : (want[i] === '-Infinity' ? -Infinity : want[i]));
-        const r = rel(got[i], w);
-        if (same(got[i], w)) exactCount++;
+        const g = unwrap(got[i]);
+        const r = rel(g, w);
+        if (same(g, w)) exactCount++;
         else { worst = Math.max(worst, r); badCols.push(i); }
       }
       const exactExpected = EXACT_METHODS.indexOf(method) >= 0;
