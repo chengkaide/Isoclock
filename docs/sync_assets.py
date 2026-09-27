@@ -102,6 +102,19 @@ def sync_app(check):
 
 # ---------------------------------------------------------------- 2. 图解教程
 
+def _guide_expected(src):
+    """算出 guide.html 应该长什么样：原文 + 注入的返回首页链接。
+    写入与检查两条路径共用它，否则 --check 永远报"需要同步"（曾经如此）。"""
+    html = Path(src).read_text(encoding="utf-8")
+    if "</body>" not in html:
+        return None
+    # 幂等：先抹掉上一次注入的痕迹，免得叠加
+    html = re.sub(r'\n<a id="fork-back".*?</style>\n', "\n", html, flags=re.S)
+    if 'id="fork-back"' in html:
+        html = re.sub(r'<a id="fork-back".*</a>', "", html, flags=re.S)
+    return html.replace("</body>", BACKLINK + "</body>", 1)
+
+
 def sync_guide(src, check):
     dst = HERE / "guide.html"
     if src is None or not Path(src).exists():
@@ -111,19 +124,18 @@ def sync_guide(src, check):
             return True
         print("  !! 上游缺失且 docs/guide.html 也不存在 —— 站点会缺一个页面")
         return False
-    if check:
-        print("  %-26s 源存在，需要重新注入" % "图解教程 guide.html")
-        return True
 
-    html = Path(src).read_text(encoding="utf-8")
-    if "</body>" not in html:
+    want = _guide_expected(src)
+    if want is None:
         print("  !! 上游文件里没有 </body>，拒绝注入")
         return False
-    # 幂等：先抹掉上一次注入的痕迹
-    html = re.sub(r'\n<a id="fork-back".*?</style>\n', "\n", html, flags=re.S)
-    if 'id="fork-back"' in html:
-        html = re.sub(r'<a id="fork-back".*</a>', "", html, flags=re.S)
-    dst.write_text(html.replace("</body>", BACKLINK + "</body>", 1), encoding="utf-8")
+
+    if check:
+        same = dst.exists() and dst.read_text(encoding="utf-8") == want
+        print("  %-26s %s" % ("图解教程 guide.html", "已是最新" if same else "**需要同步**"))
+        return True
+
+    dst.write_text(want, encoding="utf-8")
     _report("图解教程 guide.html", dst, "  (注入了返回首页链接)")
     return True
 

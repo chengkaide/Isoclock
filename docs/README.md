@@ -10,7 +10,7 @@
 | `index.html` | 落地页。手写，中英双语，内联 CSS，零 JS、零外链（除 7 个 GitHub/邮箱链接） | 手写，直接编辑 |
 | `guide.html` | 《原理与代码解读》图解版：8 章、56 张内联 SVG | 由 docbuild/ 流水线产出，**不要手改** |
 | `app/isoclock.html` | 网页版应用本体（单文件、离线可用） | `webgui/build_ui.py` 的产物，**不要手改** |
-| `assets/*.png` | 页面里引用的 5 张界面截图 | 无头 Edge 实拍 |
+| `assets/*.png` | 页面里引用的 5 张界面截图 + 1 张社交分享预览 `og.png` | 无头 Edge 实拍 |
 | `sync_assets.py` | 把上面三样从未提交/别处的地方同步进来 | — |
 | `.nojekyll` | 关掉 GitHub Pages 的 Jekyll 处理（本站全是静态文件，不需要） | `sync_assets.py` |
 
