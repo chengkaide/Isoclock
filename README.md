@@ -18,6 +18,25 @@ Agilent and Element instruments, and can be extended with further export formats
 
 ---
 
+## No Python? Use the browser version
+
+There is a **single-file, zero-dependency web version** of the whole reduction chain
+under [`webgui/`](webgui/) — no install, no server, works offline. Same numbers as the
+desktop program, verified **bit-for-bit** (314 automated comparisons + 37 in-page checks).
+Open it online at <https://chengkaide.github.io/Isoclock/app/isoclock.html>,
+download [`webgui/isoclock.html`](webgui/isoclock.html) and double-click it, or read
+[`webgui/README.md`](webgui/README.md) for how it was verified and what it does **not** do.
+
+It adds two things the desktop program does not have: a **batch quality report**
+(standard QC / sample summary / anomaly list / documented thresholds, exported as one
+HTML file) and a **compatibility reader** for real-world Thermo exports whose headers
+differ from the manual.
+
+📖 **中文项目站点：<https://chengkaide.github.io/Isoclock/>** — 包括一份 8 章 56 图的
+《原理与代码解读》图解教程，用中文把 U–Pb 定年、普通铅校正和这套软件每一步讲清楚。
+
+---
+
 ## Quick start
 
 ```bash

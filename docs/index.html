@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Isoclock (fork) — LA-ICP-MS U–Th–Pb 定年数据归算 · 网页版 · 原理详解</title>
+<meta name="description" content="Isoclock 的维护分支：上游 sndjgm/Isoclock 的工程修复 + 一个纯浏览器单文件网页版 + 一套讲透原理的中文图解教程。面向含可变普通铅的矿物（磷灰石、榍石、白钨矿等）的 LA-ICP-MS U-Th-Pb 定年数据归算。">
+<meta name="color-scheme" content="light dark">
+<meta property="og:title" content="Isoclock (fork) — 网页版 + 原理详解">
+<meta property="og:description" content="上游 sndjgm/Isoclock 的维护分支：零依赖单文件网页版（与桌面版逐位相同）+ 讲透 U-Pb 定年原理的中文图解教程。">
+<meta property="og:type" content="website">
+<style>
+:root{
+  --bg:#FFFFFF; --panel:#F7F6F3; --panel2:#EFEEE9; --ink:#2C2C2A; --ink2:#5F5E5A; --ink3:#888780;
+  --line:#D3D1C7; --line2:#E7E5DE;
+  --pur:#534AB7; --purbg:#EEEDFE; --purln:#AFA9EC;
+  --tea:#0F6E56; --teabg:#E1F5EE; --tealn:#9FE1CB;
+  --amb:#854F0B; --ambbg:#FAEEDA; --ambln:#FAC775;
+  --red:#A32D2D; --redbg:#FDF6F6; --redln:#E8A9A9;
+  --code:#F1F0EB;
+  --shadow:0 1px 2px rgba(0,0,0,.05),0 6px 20px -8px rgba(0,0,0,.14);
+  --mono:ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#191917; --panel:#212120; --panel2:#2A2A28; --ink:#EAE9E4; --ink2:#B4B2AB; --ink3:#8A8880;
+    --line:#3B3B37; --line2:#303030;
+    --pur:#B5AEF5; --purbg:#2A2750; --purln:#4B4590;
+    --tea:#7FD8BC; --teabg:#16332B; --tealn:#2E6B58;
+    --amb:#F0C176; --ambbg:#3A2E14; --ambln:#7A5C22;
+    --red:#F19A96; --redbg:#3A2220; --redln:#7A3B38;
+    --code:#2B2B29;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 20px -8px rgba(0,0,0,.6);
+  }
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:76px}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei","PingFang SC","Hiragino Sans GB",system-ui,sans-serif;
+  font-size:15.5px;line-height:1.78;-webkit-font-smoothing:antialiased}
+a{color:var(--pur);text-decoration:none}
+a:hover{text-decoration:underline}
+code,kbd,pre{font-family:var(--mono)}
+code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.9em}
+pre{background:var(--code);padding:14px 16px;border-radius:8px;overflow:auto;font-size:13px;line-height:1.65;
+  border:1px solid var(--line2)}
+pre code{background:none;padding:0;font-size:inherit}
+.wrap{max-width:1020px;margin:0 auto;padding:0 26px}
+
+/* ---------- nav ---------- */
+.nav{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--bg) 88%,transparent);
+  backdrop-filter:blur(10px);border-bottom:1px solid var(--line2)}
+.nav .wrap{display:flex;align-items:center;gap:18px;height:56px;flex-wrap:wrap}
+.nav .brand{font-weight:700;letter-spacing:-.01em;font-size:15px;white-space:nowrap}
+.nav .brand span{color:var(--ink3);font-weight:400}
+.nav nav{display:flex;gap:16px;font-size:13.5px;flex-wrap:wrap;margin-left:auto}
+.nav nav a{color:var(--ink2)}
+.nav nav a:hover{color:var(--pur)}
+
+/* ---------- hero ---------- */
+.hero{padding:60px 0 8px}
+.hero h1{font-size:clamp(26px,4.2vw,40px);line-height:1.25;font-weight:700;letter-spacing:-.02em;margin:0 0 14px}
+.hero h1 em{font-style:normal;color:var(--pur)}
+.hero .lede{font-size:17px;color:var(--ink2);max-width:62ch;margin:0 0 6px}
+.hero .lede-en{font-size:13.5px;color:var(--ink3);max-width:70ch;margin:0 0 22px;line-height:1.7}
+.badges{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 26px}
+.b{font-size:12px;padding:3px 10px;border-radius:999px;border:1px solid var(--line);
+  background:var(--panel);color:var(--ink2);white-space:nowrap}
+.b.ok{border-color:var(--tealn);background:var(--teabg);color:var(--tea)}
+.b.pu{border-color:var(--purln);background:var(--purbg);color:var(--pur)}
+.cta{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:8px}
+.btn{display:inline-block;padding:10px 18px;border-radius:9px;font-size:14.5px;font-weight:600;
+  border:1px solid var(--line);background:var(--panel);color:var(--ink);transition:.15s}
+.btn:hover{text-decoration:none;transform:translateY(-1px);box-shadow:var(--shadow)}
+.btn.primary{background:var(--pur);border-color:var(--pur);color:#fff}
+@media (prefers-color-scheme:dark){.btn.primary{color:#141414}}
+.btn .en{font-weight:400;opacity:.62;font-size:12.5px;margin-left:6px}
+
+/* ---------- hero figure ---------- */
+.herofig{margin:34px 0 0;padding:18px 20px 12px;border:1px solid var(--line2);border-radius:14px;
+  background:var(--panel);display:flex;gap:26px;align-items:center;flex-wrap:wrap}
+.herofig svg{flex:0 0 auto;max-width:100%}
+.herofig .cap{flex:1 1 260px;min-width:230px;font-size:13px;color:var(--ink2);line-height:1.7}
+.herofig .cap b{color:var(--ink)}
+
+/* ---------- sections ---------- */
+section{padding:52px 0 0}
+h2{font-size:clamp(20px,2.6vw,25px);font-weight:700;letter-spacing:-.015em;margin:0 0 6px;
+  padding-top:26px;border-top:1px solid var(--line2)}
+h2 .en{display:block;font-size:12.5px;font-weight:400;color:var(--ink3);
+  letter-spacing:.06em;text-transform:uppercase;margin-top:5px}
+h3{font-size:16.5px;font-weight:650;margin:30px 0 8px}
+h4{font-size:14.5px;font-weight:650;margin:18px 0 6px;color:var(--ink)}
+p{margin:10px 0}
+ul,ol{margin:10px 0;padding-left:22px}
+li{margin:5px 0}
+small,.muted{color:var(--ink3)}
+.lead{font-size:16px;color:var(--ink2)}
+
+.grid{display:grid;gap:14px;margin:20px 0}
+.g2{grid-template-columns:repeat(auto-fit,minmax(268px,1fr))}
+.g3{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.card{border:1px solid var(--line2);border-radius:12px;background:var(--panel);padding:16px 18px}
+.card h4{margin:0 0 6px}
+.card p{margin:6px 0;font-size:13.5px;color:var(--ink2)}
+.card .tag{font-size:11.5px;color:var(--ink3);font-family:var(--mono)}
+
+table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13.5px;
+  border:1px solid var(--line2);border-radius:10px;overflow:hidden}
+th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line2);vertical-align:top}
+th{background:var(--panel2);font-weight:650;font-size:12.5px;letter-spacing:.02em}
+tr:last-child td{border-bottom:none}
+tbody tr:hover{background:var(--panel)}
+td.k{white-space:nowrap;font-weight:600}
+.yes{color:var(--tea);font-weight:600}
+.no{color:var(--red);font-weight:600}
+
+.callout{border-left:3px solid var(--purln);background:var(--purbg);border-radius:0 10px 10px 0;
+  padding:13px 18px;margin:18px 0;font-size:14px}
+.callout.warn{border-left-color:var(--ambln);background:var(--ambbg)}
+.callout.bad{border-left-color:var(--redln);background:var(--redbg)}
+.callout.ok{border-left-color:var(--tealn);background:var(--teabg)}
+.callout p{margin:6px 0}
+.callout .t{font-weight:700;font-size:13px;letter-spacing:.02em;text-transform:uppercase;opacity:.85}
+
+figure{margin:20px 0}
+figure a{display:block}
+figure img{width:100%;border:1px solid var(--line2);border-radius:10px;display:block;cursor:zoom-in}
+figure a:hover img{border-color:var(--purln);box-shadow:var(--shadow)}
+/* 报告那张截图很长（1:2）。裁出顶部一段当预览，想看全就点开原图。 */
+figure.tall img{max-height:720px;object-fit:cover;object-position:top center;cursor:zoom-in}
+figcaption{font-size:12.5px;color:var(--ink3);margin-top:8px;line-height:1.6}
+.two{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.two figure{margin:0}
+
+.steps{counter-reset:s;list-style:none;padding:0;margin:20px 0}
+.steps li{counter-increment:s;position:relative;padding:0 0 0 42px;margin:0 0 16px}
+.steps li::before{content:counter(s);position:absolute;left:0;top:1px;width:26px;height:26px;
+  border-radius:50%;background:var(--pur);color:#fff;font-size:13px;font-weight:700;
+  display:flex;align-items:center;justify-content:center}
+@media (prefers-color-scheme:dark){.steps li::before{color:#141414}}
+/* 只让每步的"标题"那个 <b> 独占一行；正文里的 <b> 必须保持行内，
+   否则会被断成独立一段（曾经踩过：③那步的引语被挤出换行）。 */
+.steps li > b:first-of-type{display:block;margin-bottom:2px}
+
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:13.5px;margin:14px 0}
+.kv dt{font-weight:650;color:var(--ink2);white-space:nowrap}
+.kv dd{margin:0}
+
+footer{margin-top:64px;padding:28px 0 48px;border-top:1px solid var(--line2);
+  font-size:13px;color:var(--ink3)}
+footer .wrap{display:flex;gap:22px;flex-wrap:wrap;align-items:baseline}
+@media print{.nav{display:none}.btn{display:none}section{padding-top:22px;break-inside:avoid}
+  .herofig{break-inside:avoid}a{color:inherit;text-decoration:none}}
+@media (max-width:640px){
+  .herofig{padding:14px}.herofig svg{width:100%;height:auto}
+  table{font-size:12.5px}th,td{padding:7px 8px}
+}
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap">
+    <div class="brand">Isoclock <span>· fork</span></div>
+    <nav>
+      <a href="#what">它在做什么</a>
+      <a href="#fork">这个分支改了什么</a>
+      <a href="#web">网页版</a>
+      <a href="#learn">讲原理</a>
+      <a href="#verify">验证与边界</a>
+      <a href="app/isoclock.html">直接打开 →</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+<!-- ==================== HERO ==================== -->
+<section class="hero">
+  <h1>不做锆石的<em>那一半</em> U–Pb 定年，<br>现在可以在浏览器里跑</h1>
+  <p class="lede">
+    Isoclock 是一个离线的 LA-ICP-MS U–Th–Pb 数据归算程序，专为
+    <b>含可变普通铅</b>的矿物（磷灰石、榍石、白钨矿、独居石等热液与副矿物）设计。
+    这个仓库是它的一个维护分支：科学逻辑一行未改，修的是工程问题，
+    另外补了一个<b>零依赖、可离线、能直接发给同行</b>的单文件网页版。
+  </p>
+  <p class="lede-en">
+    Isoclock is offline data reduction software for LA-ICP-MS U–Th–Pb dating of minerals
+    carrying <b>variable common Pb</b> — apatite, titanite, wolframite and other hydrothermal
+    or accessory phases. This repository is a maintained fork: the scientific method is
+    untouched, the engineering problems are fixed, and a zero-dependency single-file
+    browser version has been added.
+  </p>
+
+  <div class="badges">
+    <span class="b ok">314 项数值比对全绿</span>
+    <span class="b ok">与桌面版逐位相同</span>
+    <span class="b pu">单文件 · 289 KB · 离线</span>
+    <span class="b">Thermo + Agilent</span>
+    <span class="b">Apache-2.0</span>
+  </div>
+
+  <div class="cta">
+    <a class="btn primary" href="app/isoclock.html">打开网页版 <span class="en">Open the app</span></a>
+    <a class="btn" href="guide.html">读原理图解 <span class="en">56 figures</span></a>
+    <a class="btn" href="https://github.com/chengkaide/Isoclock">源代码 <span class="en">GitHub</span></a>
+  </div>
+
+  <div class="herofig">
+    <svg width="420" height="260" viewBox="0 0 420 260" role="img"
+         aria-label="Wetherill 谐和图：横轴 207Pb/235U，纵轴 206Pb/238U，谐和线从左下向右上、斜率由陡变缓">
+      <rect x="0" y="0" width="420" height="260" fill="none"/>
+      <!-- 网格 -->
+      <g stroke="currentColor" stroke-opacity=".12" stroke-width="1" fill="none">
+        <line x1="44" y1="228" x2="402" y2="228"/>
+        <line x1="44" y1="18" x2="402" y2="18"/>
+        <line x1="44" y1="18" x2="44" y2="228"/>
+        <line x1="402" y1="18" x2="402" y2="228"/>
+        <line x1="173.3" y1="83.3" x2="173.3" y2="228" stroke-dasharray="2 3"/>
+        <line x1="44" y1="83.3" x2="173.3" y2="83.3" stroke-dasharray="2 3"/>
+      </g>
+      <!-- 谐和线：t = 0 … 4000 Ma，斜率由陡变缓（凹） -->
+      <polyline fill="none" stroke="#534AB7" stroke-width="2.2"
+        points="44.0,228.0 44.1,227.6 44.2,226.9 44.4,225.7 44.6,224.6 44.9,223.0 45.2,221.5 45.5,219.9
+                46.0,218.3 46.5,216.0 47.1,213.6 47.7,211.2 48.4,208.7 49.2,205.8 50.1,202.9 51.1,200.0
+                52.4,196.2 53.8,192.3 55.5,187.9 57.5,183.5 60.1,178.0 63.5,171.6 68.0,164.0 74.1,155.3
+                82.1,145.3 92.5,134.5 104.0,124.4 117.0,114.5 132.6,104.4 152.2,93.4 173.3,83.3 199.7,72.3
+                231.3,60.9 269.0,49.3 314.0,37.3 367.8,25.0 402.0,18.0"/>
+      <!-- 数据点：落在谐和线下方（这类矿物的常态） -->
+      <g fill="#0F6E56">
+        <circle cx="150" cy="103" r="4"/><circle cx="176" cy="92" r="4"/>
+        <circle cx="204" cy="86" r="4"/><circle cx="232" cy="72" r="4"/>
+      </g>
+      <!-- 刻度 -->
+      <g font-size="10.5" fill="currentColor" fill-opacity=".62" text-anchor="middle">
+        <text x="44" y="245">0</text><text x="173.3" y="245">3000</text><text x="402" y="245">4000</text>
+        <text x="210" y="259" font-size="11" fill-opacity=".8">²⁰⁷Pb / ²³⁵U</text>
+      </g>
+      <g font-size="10.5" fill="currentColor" fill-opacity=".62" text-anchor="end">
+        <text x="38" y="231">0</text><text x="38" y="86">0.5</text><text x="38" y="21">0.86</text>
+      </g>
+      <text x="12" y="128" font-size="11" fill="currentColor" fill-opacity=".8"
+            text-anchor="middle" transform="rotate(-90 12 128)">²⁰⁶Pb / ²³⁸U</text>
+      <text x="356" y="34" font-size="11" fill="#534AB7" text-anchor="end">谐和线 Concordia</text>
+      <text x="243" y="60" font-size="10.5" fill="#0F6E56" text-anchor="start">样品点</text>
+    </svg>
+    <div class="cap">
+      <b>Wetherill 谐和图</b>——这套软件最后要交代的就是这张图。横轴 ²⁰⁷Pb/²³⁵U、
+      纵轴 ²⁰⁶Pb/²³⁸U，曲线上每个点对应一个"两个计时器互相自洽"的年龄。
+      <br><br>
+      锆石的数据一般贴着曲线走；<b>换成磷灰石、白钨矿这类普通铅含量高的矿物，
+      数据点会成片落到曲线下方</b>——这正是 Isoclock 存在的理由，也是它和
+      主流锆石软件（如 Iolite、IsoplotR 的锆石流程）最大的分歧点。
+      <br><br>
+      <small>图按 λ₂₃₈=1.55125e-10 / λ₂₃₅=9.8485e-10 / ²³⁸U:²³⁵U=137.818 现算，
+      见 <a href="guide.html#sec2">图解第 1 章</a>。</small>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== WHAT ==================== -->
+<section id="what">
+  <h2>它在做什么<span class="en">What the software does</span></h2>
+
+  <p class="lead">
+    激光剥蚀进样 → 质谱测计数率 → 一条完整的归算链 → 每个点的年龄 + 不确定度。
+    中间那一步"归算"就是 Isoclock 干的活。
+  </p>
+
+  <ol class="steps">
+    <li><b>导入原始信号</b>
+      直接读仪器导出的原始文件：Thermo（<code>.csv</code>）、Agilent（<code>.csv</code> + 可选样品名清单）、
+      Element（<code>.fin</code> 专有二进制，需要先用桌面版转换）。
+      一次可以丢进一整批，程序按文件名/清单分配样品名。</li>
+    <li><b>背景校正与离群剔除</b>
+      自动或手工识别每段信号的背景窗与积分窗，扣背景、算净计数率，
+      按 2σ 剔除离群测量。</li>
+    <li><b>标样普通铅校正</b>
+      用已知年龄的标样反推<b>普通铅的同位素组成</b>，四条路径可选
+      （²⁰⁴Pb / ²⁰⁷Pb / ²⁰⁸Pb / Cal 204Pb）——这一步是这个软件的看家本领，
+      见 <a href="guide.html#sec13">图解第 3 章</a>。</li>
+    <li><b>下向分馏标定</b>
+      激光剥蚀时不同质量数的离子行为不同，比值会随剥蚀深度漂移；
+      用标样拟合出漂移规律再套到样品上（<code>Age76Pb</code>）。</li>
+    <li><b>Sample–Standard Bracketing 年龄</b>
+      用前后夹着的标样做外标，把样品比值换成年龄，输出四个体系
+      （²⁰⁶Pb/²³⁸U、²⁰⁷Pb/²³⁵U、²⁰⁸Pb/²³²Th、²⁰⁷Pb/²⁰⁶Pb）的年龄表。</li>
+  </ol>
+
+  <h3>输出什么</h3>
+  <div class="grid g3">
+    <div class="card">
+      <h4>Mean_Cps.csv</h4>
+      <p>每个积分窗口的平均计数率与标准误。想自己复算或画图，从这里接。</p>
+      <p class="tag">mean count rates + 1σ</p>
+    </div>
+    <div class="card">
+      <h4>result_all.csv</h4>
+      <p>逐点的比值、相关系数 <code>rho</code>、误差传递后的完整结果。</p>
+      <p class="tag">per-spot ratios &amp; errors</p>
+    </div>
+    <div class="card">
+      <h4>年龄表（51 列）</h4>
+      <p>四个体系的年龄与 2σ，分校正前/校正后。可在界面里直接看、导出 CSV。</p>
+      <p class="tag">ages, uncorrected &amp; corrected</p>
+    </div>
+  </div>
+
+  <div class="callout">
+    <p class="t">一句话定位</p>
+    <p>Isoclock 不是"又一个锆石软件"。它面对的是<b>普通铅含量不可忽略、且各点还不一样</b>的矿物。
+    这类样品里，普通铅处理得好不好，直接决定年龄可用不可用——所以它的核心是四条普通铅校正路径，
+    而不是锆石流程里的那些常规步骤。<a href="guide.html#sec7">图解第 2 章</a>用误差传递把这件事量化了。</p>
+  </div>
+
+  <figure>
+    <a href="assets/ui-signal.png" target="_blank" rel="noopener" title="点开看原图">
+      <img src="assets/ui-signal.png" alt="Isoclock 网页版的信号图界面：七个质量通道叠在一张对数坐标图上，背景窗与信号窗用底色标出">
+    </a>
+    <figcaption>网页版的信号图：七个质量通道叠在一张对数纵轴图上，背景窗与积分窗用底色画出。
+      先用肉眼确认窗口取得对不对，再往下算——这一步能挡掉大部分"结果很怪"的情况。</figcaption>
+  </figure>
+</section>
+
+<!-- ==================== FORK ==================== -->
+<section id="fork">
+  <h2>这个分支改了什么<span class="en">Changes in this fork</span></h2>
+
+  <div class="callout ok">
+    <p class="t">先说清楚归属</p>
+    <p>软件与科学方法<b>都是 Guoqi Liu 的</b>（East China University of Technology，
+    <a href="mailto:sndjgm@foxmail.com">sndjgm@foxmail.com</a>），上游仓库
+    <a href="https://github.com/sndjgm/Isoclock">sndjgm/Isoclock</a>，Apache-2.0。
+    这里是一个 fork，<b>没有改动任何一条科学逻辑</b>。
+    如果你要引用方法或结果，请引用原作者与他的软件。</p>
+  </div>
+
+  <h3>A. 对上游 Python 程序的工程修复</h3>
+  <p>这些改动已经在上游之上提交，每一条都做了逐位/逐字节对照，
+  唯一目的是让它装得上、跑得动、出错时说得清——<b>输出数值一个都没动</b>。</p>
+
+  <table>
+    <thead><tr><th>改动</th><th>为什么</th></tr></thead>
+    <tbody>
+      <tr><td>5 个重复的还原函数合并成一个共享骨架（净减约 500 行）</td>
+          <td>行为逐位相同：6 样品 × 5 路径 × 23 列 = <b>690 个输出格全部一致</b></td></tr>
+      <tr><td><code>loaddata</code> 只按 <code>float</code> 读取需要的 8 列</td>
+          <td>39.0 → 9.5 ms/样品（<b>4.1×</b>）。原实现先把每一列都当文本解析一遍</td></tr>
+      <tr><td><code>requirements.txt</code> 修正</td>
+          <td>原文件列了 5 个 PyPI 上根本不存在的包（<code>tkinter</code>、<code>csv</code> 等标准库成员），
+              <b>任何人首次安装都会失败</b></td></tr>
+      <tr><td><code>LISENSE</code> → <code>LICENSE</code>，补全 Apache 2.0 全文</td>
+          <td>文件名拼错导致 GitHub 与 Zenodo 识别不出许可证</td></tr>
+      <tr><td>转换脚本里的 <code>eval(seq.pop())</code> 换成 <code>int(float(...))</code></td>
+          <td>把取自 CSV 文件名的字符串拿去执行，是任意代码执行漏洞</td></tr>
+      <tr><td><code>except</code> 块补上 traceback；接管 Tk 回调异常（27 + 1 处）</td>
+          <td>错误原本会静默消失，打包成 <code>.exe</code> 后尤其明显</td></tr>
+      <tr><td>删除 10 个未使用的 import</td>
+          <td>为了没用的东西拉进了 <code>pyDes</code>、<code>openpyxl</code>、<code>base64</code></td></tr>
+      <tr><td>重写 README + 新增 <code>CITATION.cff</code></td>
+          <td>原快速开始里有三条走不通的步骤（命令格式错、文件名不存在、包里不存在），
+              并补上说明书里有、README 里没有的关键前提</td></tr>
+    </tbody>
+  </table>
+  <p><small><code>Isoclock2.0.py</code> 从 4099 行降到 <b>3602 行</b>（−12.1%）。</small></p>
+
+  <h3>B. 新增：一个纯浏览器的单文件网页版</h3>
+  <p>把数值内核移植成 JavaScript，打包成一个 HTML 文件。没有后端、没有依赖、
+  不需要装 Python——<b>双击就能用，可以直接当附件发给同行</b>。</p>
+
+  <table>
+    <thead><tr><th>能力</th><th>状态</th></tr></thead>
+    <tbody>
+      <tr><td class="k">数值内核（成对求和、nanmean/SK2model、15 条还原路径、年龄层）</td>
+          <td class="yes">与桌面版逐位相同</td></tr>
+      <tr><td class="k">Thermo 读取</td>
+          <td class="yes">严格匹配 + 兼容匹配两条路径</td></tr>
+      <tr><td class="k">Agilent 读取 + 端到端链路</td>
+          <td class="yes">已修好并加了反向哨兵</td></tr>
+      <tr><td class="k">积分窗口自动识别</td>
+          <td class="yes">与桌面版一致</td></tr>
+      <tr><td class="k">两个 CSV 的输出排版</td>
+          <td class="yes">逐字节相同</td></tr>
+      <tr><td class="k">批次质量报告（新功能）</td>
+          <td class="yes">单文件 HTML，七节，见下</td></tr>
+      <tr><td class="k">Element <code>.fin</code></td>
+          <td class="no">不支持（专有二进制，请用桌面版转换）</td></tr>
+      <tr><td class="k">标样漂移回归 <code>regression()</code></td>
+          <td class="no">仍未接线（上游本来就没有控件能触发它）</td></tr>
+    </tbody>
+  </table>
+
+  <h3>新增的「批次质量报告」</h3>
+  <p>跑完一批数据之后，最要紧的问题不是"年龄是多少"，而是"这批数据能不能用"。
+  桌面版只输出逐点年龄、从不做归组统计，所以这一步补在网页版里：
+  点一下按钮，导出一份独立 HTML，把这些事一次说清。</p>
+
+  <div class="grid g2">
+    <div class="card">
+      <h4>标样 QC</h4>
+      <p>每个标样测出年龄与真值偏差百分之几、内部一致性 MSWD 是多少、
+      哪几个点被判为离群。<b>判定一定跟着理由</b>——"偏差 0.0000% 但内部 MSWD 高达 325"
+      这种情况只印一个黄灯，读的人会以为没问题。</p>
+    </div>
+    <div class="card">
+      <h4>样品结果汇总</h4>
+      <p>按样品名归组，给出加权平均年龄 ± 误差、MSWD、参与点数，
+      配一张手绘的内联 SVG 误差棒图（标样蓝色、样品青色、真值红色虚线）。</p>
+    </div>
+    <div class="card">
+      <h4>参数与判据都列清楚</h4>
+      <p>报告里列全 16 个参数：是什么、在原程序里叫什么、本次取值、默认值与<b>出处</b>。
+      没有可靠出处的那两个默认值会<b>直接写出来</b>，不假装有依据。</p>
+    </div>
+    <div class="card">
+      <h4>四个判据阈值可改</h4>
+      <p>标样偏差 ≤2%、MSWD ≤ 1+2√(2/(n−1))、单点 2s 相对 ≤10%、离群 |z| ≤3。
+      界面里可改，报告会标出「已改」。</p>
+    </div>
+  </div>
+
+  <div class="callout warn">
+    <p class="t">必须说清楚的一条</p>
+    <p>加权平均、MSWD、以及上面四个阈值，<b>都是网页版新增的，不是原程序的输出</b>。
+    报告里每一节都重复声明了这一点。统计量按 Wendt &amp; Carl (1991) / Isoplot 的定义手算，
+    检验用的判据是在测试里按定义另写一遍的独立值，不是拿自己的实现比回去。</p>
+  </div>
+
+  <figure>
+    <a href="assets/ui-report-panel.png" target="_blank" rel="noopener" title="点开看原图">
+      <img src="assets/ui-report-panel.png" alt="网页版左侧的参数面板：统计用年龄选择、校正后年龄开关、以及可折叠的判据阈值设置">
+    </a>
+    <figcaption>左侧新增的「质量报告」参数格：选统计用哪个年龄体系、是否用校正后年龄，
+      展开可以改四个判据阈值，每一项都带「为什么」和「出处」。</figcaption>
+  </figure>
+
+  <figure class="tall">
+    <a href="assets/ui-report.png" target="_blank" rel="noopener" title="点开看报告完整原图">
+      <img src="assets/ui-report.png" alt="导出的质量报告节选：结论横幅、参数表、标样 QC 表">
+    </a>
+    <figcaption>导出的报告顶部（<b>点图看完整版</b>）。单文件、内联样式与内联 SVG、零外链，
+      <code>Ctrl+P</code> 能直接存成 PDF。注意最上面那句话：加权平均 / MSWD / 阈值都是网页版新增的，
+      不是原程序的结论。</figcaption>
+  </figure>
+
+  <figure>
+    <a href="assets/ui-compat.png" target="_blank" rel="noopener" title="点开看原图">
+      <img src="assets/ui-compat.png" alt="文件列表里，走兼容读取路径的文件被打上「兼容」标记，悬停显示具体差异">
+    </a>
+    <figcaption>Thermo 兼容读取：真实仪器软件的导出格式常常和手册里不一样（表头行位置、
+      列名大小写与后缀）。走兼容路径的文件在列表里打「兼容」标记，悬停能看到具体差异是什么。
+      <b>标准格式的文件走的仍是原来那条严格路径，一行没动。</b></figcaption>
+  </figure>
+</section>
+
+<!-- ==================== WEB ==================== -->
+<section id="web">
+  <h2>网页版怎么用<span class="en">Using the browser version</span></h2>
+
+  <p class="lead">不需要安装任何东西。打开页面，左边填参数，右边看结果。</p>
+
+  <div class="cta" style="margin:18px 0 8px">
+    <a class="btn primary" href="app/isoclock.html">打开网页版 <span class="en">Open the app</span></a>
+  </div>
+
+  <ol class="steps">
+    <li><b>左侧 ① 数据</b>把一整批原始文件拖进去（或点选）。文件列表会逐个显示解析状态。</li>
+    <li><b>左侧 ② 标样</b>填标样名称与它的真值年龄——<b>标样年龄是后面所有普通铅参数的来源</b>，
+      填错会一路错到底。</li>
+    <li><b>左侧 ③ 仪器与积分窗口</b>选 Thermo 或 Agilent。窗口可以自动识别，也可以手填。</li>
+    <li><b>左侧 ④ 普通铅校正</b>选校正方式。想要看校正前的原始比值就选"不校正"。</li>
+    <li><b>左侧 ⑤ 年龄层</b>选年龄计算方法、外挂误差 Ɛ、算法（平均法/线性法）。</li>
+    <li><b>右侧点「开始计算」</b>。之后在五个标签页里看信号图 / Mean_Cps / result_all / 年龄表 / 日志，
+      或者点工具栏的<b>质量报告</b>导出那份 HTML。</li>
+  </ol>
+
+  <div class="callout">
+    <p class="t">不确定就用内置示例</p>
+    <p>点「载入示例数据」会连参数一起配好——先看一遍完整的输出长什么样，再拿自己的数据进来。
+    示例是合成数据，<b>它自己不满足 U-Pb 体系关系</b>，所以出报告时顶部会有一块声明告诉你
+    那批判定只演示版面、不能当结果引用。</p>
+  </div>
+
+  <figure>
+    <a href="assets/ui-ages.png" target="_blank" rel="noopener" title="点开看原图">
+      <img src="assets/ui-ages.png" alt="网页版的年龄表：51 列，四个体系的年龄与 2σ，分校正前与校正后">
+    </a>
+    <figcaption>年龄表：51 列，四个体系（²⁰⁶Pb/²³⁸U、²⁰⁷Pb/²³⁵U、²⁰⁸Pb/²³²Th、²⁰⁷Pb/²⁰⁶Pb）
+      的年龄与 2σ，分校正前 / 校正后。<b>校正后的列号按校正方式分派</b>——
+      这是个容易踩的坑，所以表格帮助文字里写明了每一列到底是什么。</figcaption>
+  </figure>
+
+  <h3>为什么是单文件，而不是"网页部署 + 后端"</h3>
+  <p>因为这个软件的使用场景是：一台装了仪器的电脑、一个不能上网的实验室、
+  一份要发给合作者的数据。<b>要求使用者去装 Python、再起一个服务，是把人挡在门外。</b>
+  一个 HTML 文件可以走邮件、走 U 盘、走任何一台电脑的浏览器，十年后还能打开。</p>
+  <p>代价是全部计算跑在浏览器里，几十个文件没问题，上千个文件会慢。
+  真要跑大批量，用桌面版。</p>
+
+  <table>
+    <thead><tr><th>项</th><th>桌面版（上游）</th><th>网页版（本分支）</th></tr></thead>
+    <tbody>
+      <tr><td class="k">安装</td><td>Python 3.9 + 依赖 + Tk</td><td class="yes">不用装，双击 HTML</td></tr>
+      <tr><td class="k">仪器支持</td><td>Thermo / Agilent / Element</td><td>Thermo + Agilent（Element 请用桌面版转换）</td></tr>
+      <tr><td class="k">数值结果</td><td colspan="2" class="yes">逐位相同（唯一残留：exp/log 列 ≤8.6e-11 的相对偏差）</td></tr>
+      <tr><td class="k">Agilent 样品名</td><td>弹窗选 Excel 清单（xlrd）</td><td>选两列 CSV/TSV；不选则取文件名第一个点之前</td></tr>
+      <tr><td class="k">批次质量报告</td><td class="no">无</td><td class="yes">新增，独立 HTML</td></tr>
+      <tr><td class="k">批量性能</td><td class="yes">好</td><td>几十个文件没问题，上千个会慢</td></tr>
+      <tr><td class="k">文件状态</td><td>每批跑完要重启程序</td><td>刷新页面即可</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ==================== LEARN ==================== -->
+<section id="learn">
+  <h2>把原理讲清楚<span class="en">Understanding the method</span></h2>
+
+  <p class="lead">
+    这个仓库里还有一份中文图解教程：<b>8 章、56 张手绘 SVG 图</b>，
+    从"U-Pb 定年的三条腿"讲到代码地图。它假设你完全不懂，
+    并且明确写出哪些地方是猜测、哪些地方有更好的做法。
+  </p>
+
+  <div class="cta" style="margin:18px 0 4px">
+    <a class="btn primary" href="guide.html">读图解教程 <span class="en">Read the guide</span></a>
+  </div>
+
+  <div class="grid g2">
+    <div class="card">
+      <h4>第 1 章 · 三个计时器</h4>
+      <p>²³⁸U→²⁰⁶Pb、²³⁵U→²⁰⁷Pb、²³²Th→²⁰⁸Pb 三条独立的钟。
+      年龄公式为什么长成 <code>ln(r+1)/λ</code>，为什么单次测量能出四个年龄，
+      ²⁰⁷Pb/²⁰⁶Pb 年龄为什么特殊。</p>
+    </div>
+    <div class="card">
+      <h4>第 2 章 · 分水岭</h4>
+      <p>锆石结晶时把铅几乎全部排出，所以一条谐和线就够用；
+      磷灰石、白钨矿这些矿物会把普通铅包进去。<b>图解用误差传递把"难多少"算成了数字</b>，
+      而不是只给一句定性的说法。</p>
+    </div>
+    <div class="card">
+      <h4>第 3 章 · 普通铅说透</h4>
+      <p>普通铅到底是什么、²⁰⁴Pb 为什么是它的指纹、为什么偏偏它最难测、
+      四条校正路径各拿什么当"比例尺"、Stacey–Kramers 两阶段模型怎么来的、
+      那些默认值凭什么这么设。</p>
+    </div>
+    <div class="card">
+      <h4>第 4–8 章 · 流程、说服力、局限、代码地图</h4>
+      <p>从原始文件到年龄每一步在干什么；怎么让别人接受你的结果；
+      哪些地方承认是猜的、可以怎么改进；以及代码里哪个函数对应哪一步。</p>
+    </div>
+  </div>
+
+  <h3>常被问到的两件事</h3>
+
+  <h4>「外挂误差 Ɛ」到底是什么？</h4>
+  <p>界面上的 <code>Ɛ(%)</code>（代码里叫 <code>excess_V</code>，默认 <b>3%</b>）是
+  <b>计数统计之外的额外相对分散</b>：剥蚀效率波动、气溶胶传输损失、基体效应、
+  标样与被测样品不匹配、软件拟合残差——这些都没有体现在 2σ 里，用一个常数顶上。
+  它以<b>平方和</b>并进相对误差（<code>sqrt((比值2s/比值)² + Ɛ²)</code>再乘到年龄误差上），
+  <b>不改变年龄值</b>。</p>
+  <div class="callout warn">
+    <p class="t">三处口径不齐（原实现如此，这里照抄但说明）</p>
+    <p>① 内部相对误差用的是比值的 <b>2s（2σ）</b>，而 Ɛ 直接与它平方相加——严格说混了置信水平；
+    ② ²⁰⁷Pb/²⁰⁶Pb 年龄的误差<b>不含</b> Ɛ，同一行四个年龄口径不一致；
+    ③ <b>把 Ɛ 调大会让 MSWD 变小</b>，所以不能用它去"改善"一致性。</p>
+  </div>
+
+  <h4>「MSWD 超过多少算不合格？」</h4>
+  <p>报告里的默认判据是 <code>1 + 2√(2/(n−1))</code>：χ²/(n−1) 的取样标准差近似 √(2/(n−1))，
+  超过"1 + 2 倍取样标准差"就值得看一眼。注意它是<b>点位级</b>的一致性指标，
+  与"这批年龄跟真值差多少"是两回事——两个都要看，见上面标样 QC 那张卡。</p>
+</section>
+
+<!-- ==================== VERIFY ==================== -->
+<section id="verify">
+  <h2>验证到什么程度，以及它的边界<span class="en">Verification &amp; honest limits</span></h2>
+
+  <p class="lead">这一节比上面都重要。一个定年工具最该交代的不是功能列表，而是
+  <b>它凭什么值得信、它在哪儿不能信</b>。</p>
+
+  <h3>凭什么是逐位相同</h3>
+  <p>参考值不是"把算法再抄一遍"，而是用 <code>importlib</code> 加载<b>真实的
+  <code>Isoclock2.0.py</code></b>（stub 顶掉 tkinter）算出来的。否则就成了
+  "拿我的实现验证我的实现"。</p>
+
+  <table>
+    <thead><tr><th>测试对象</th><th>覆盖规模</th><th>结果</th></tr></thead>
+    <tbody>
+      <tr><td>成对求和 / nanmean / nanstd</td><td>NumPy 语义逐个复刻</td><td class="yes">逐位相等</td></tr>
+      <tr><td>数值内核（3 样品 × 5 路径 × 23 列）</td><td>345 个输出数值</td><td class="yes">逐位相等</td></tr>
+      <tr><td>5 个还原函数</td><td>690 个输出格</td><td class="yes">0 处不一致</td></tr>
+      <tr><td>Thermo / Agilent 解析</td><td>1400 个数值</td><td class="yes">全部相等</td></tr>
+      <tr><td>积分窗口识别</td><td>17 项</td><td class="yes">全部通过</td></tr>
+      <tr><td><code>dataprocess</code> 端到端（4 路径 × 2 态）</td><td>两份 CSV</td><td class="yes">逐字节相同</td></tr>
+      <tr><td>年龄层（19 组参数 × 51 列）</td><td>—</td><td class="yes">全部相等</td></tr>
+      <tr><td>Agilent 端到端</td><td>20 项，含反向哨兵</td><td class="yes">全部通过</td></tr>
+      <tr><td>网页版统计（QC）</td><td>63 项，判据按定义另算</td><td class="yes">全部通过</td></tr>
+      <tr><td>报告生成</td><td>50 项，含恶意输入转义</td><td class="yes">全部通过</td></tr>
+      <tr><td colspan="2"><b>合计</b></td>
+          <td class="yes"><b>314 项（12 套）+ 37 项页面内自检</b></td></tr>
+    </tbody>
+  </table>
+
+  <h3>必须说出来的局限</h3>
+
+  <div class="callout bad">
+    <p class="t">最要紧的一条</p>
+    <p><b>到目前为止所有逐位比对用的都是合成数据。</b>
+    拿真实的 Thermo / Agilent 导出去跑一遍<b>仍是待办</b>。
+    兼容读取那条路径是按"真实导出可能长什么样"设计的，判据是合成变体——
+    真文件还没试过。<b>请把你遇到的读不进去的文件发出来</b>，这是眼下最有用的贡献。</p>
+  </div>
+
+  <ul>
+    <li><b>三项科学逻辑问题</b>（改了会变数值，所以一律没动，只写进 Known issues）：
+      <ul>
+        <li><code>Age76Pb</code> 固定的 10 次迭代，会让 <b>1.5–2.2 Ga</b> 区间偏高最多 <b>+34.9 Ma</b>；
+          比值恰在起点附近时甚至会返回 0 或负年龄。</li>
+        <li><code>PbCorrS == 3</code> 这条路径存在<b>除零</b>。</li>
+        <li>Hg 对质量 204 的校正<b>恒为 0</b>。</li>
+      </ul>
+    </li>
+    <li><b>网页版把 <code>Age76Pb</code> 做成了可切换的收敛修正</b>，默认<b>勾上</b>
+      （按判据正常迭代）；取消勾选则逐位回到桌面版数值。
+      这是本分支<b>唯一可能让同一批数据给出不同数字</b>的地方，
+      两个口径都随时可复现——分别对应"要正确"和"要和已发表结果对上"两个用途。</li>
+    <li><b>内置示例数据是合成的</b>，不满足 U-Pb 体系关系，只能用来熟悉界面。</li>
+    <li><b>普通铅模型是"平均猜测"</b>：Stacey–Kramers 是个全球平均模型，
+      具体样品未必服从。<a href="guide.html#sec29">图解 3.8 节</a>专门承认了这件事。</li>
+  </ul>
+
+  <h3>已知的上游问题（本分支未动）</h3>
+  <ul>
+    <li>状态文件 <code>Time_setting.npy</code> / <code>Coments.npy</code> 用的是 CWD 相对路径 +
+      <code>allow_pickle=True</code>。原作者<b>可能是有意</b>让每批数据各带一份积分窗口设置，
+      改成全局目录反而会破坏这个功能，所以保持现状。</li>
+    <li>输入目录与输出目录必须不同；每批数据跑完需要重启程序（网页版刷新即可）。</li>
+    <li>标样漂移回归 <code>regression()</code> 写了但没接线——上游没有界面控件能触发它。</li>
+  </ul>
+</section>
+
+<!-- ==================== CITE ==================== -->
+<section id="cite">
+  <h2>引用、许可、联系<span class="en">Citation, licence, contact</span></h2>
+
+  <div class="grid g2">
+    <div class="card">
+      <h4>引用软件</h4>
+      <p>方法、软件、实现都归属于 <b>Guoqi Liu</b>（East China University of Technology）。
+      引用请用上游仓库与随附的 <code>CITATION.cff</code>：</p>
+      <p class="tag"><a href="https://github.com/sndjgm/Isoclock">github.com/sndjgm/Isoclock</a><br>
+      联系方式 sndjgm@foxmail.com</p>
+      <p><small>这个 fork 只是工程实现上的维护，<b>不构成一个新的软件</b>，不建议单独引用。</small></p>
+    </div>
+    <div class="card">
+      <h4>方法学参考文献</h4>
+      <p>Chew, D.M., Petrus, J.A., Kamber, B.S. (2014). U–Pb LA–ICPMS dating using accessory
+      mineral standards with variable common Pb. <i>Chemical Geology</i> 363, 185–199.</p>
+      <p>Stacey, J.S., Kramers, J.D. (1975). Approximation of terrestrial lead isotope
+      evolution by a two-stage model. <i>EPSL</i> 26, 207–221.</p>
+      <p>Wendt, I., Carl, C. (1991). The statistical distribution of the mean squared
+      weighted deviation. <i>Chemical Geology</i> 86, 275–285.</p>
+      <p><small>²⁰⁸Pb 校正路径遵循 Zack et al. (2011)。</small></p>
+    </div>
+  </div>
+
+  <h3>许可</h3>
+  <p><b>Apache License 2.0</b>，与上游一致。可以自由使用、修改、再分发，
+  请保留版权与许可声明。</p>
+
+  <h3>想帮忙 / 有问题</h3>
+  <ul>
+    <li><b>读不进去的原始文件</b>——最有价值的反馈。请开 <a href="https://github.com/chengkaide/Isoclock/issues">issue</a>
+      并附上文件开头 30 行（可以把计数率列抹掉，只要表头结构）。</li>
+    <li><b>数值对不上</b>——请附上参数、输入文件特征和期望值。</li>
+    <li><b>学理上的疑问</b>——<a href="guide.html">图解教程</a>里没讲清的地方，欢迎指出。</li>
+  </ul>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <div>Isoclock · 维护分支 —— 科学方法与实现归 <b>Guoqi Liu</b>；本仓库的工程改动与网页版由
+      <a href="https://github.com/chengkaide">chengkaide</a> 维护。</div>
+    <div><a href="https://github.com/chengkaide/Isoclock">仓库</a> ·
+      <a href="https://github.com/sndjgm/Isoclock">上游</a> ·
+      <a href="guide.html">图解教程</a> ·
+      <a href="app/isoclock.html">网页版</a> ·
+      Apache-2.0</div>
+  </div>
+</footer>
+
+</body>
+</html>
