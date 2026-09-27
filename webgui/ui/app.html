@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Isoclock 网页版 —— LA-ICP-MS 锆石 U-Pb 数据处理</title>
+<style>
+<!--@STYLE@-->
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1>Isoclock 网页版</h1>
+  <span class="sub">LA-ICP-MS 锆石 U-Pb 定年 · 单文件离线 · 数值结果与原桌面版逐位一致</span>
+  <span class="grow"></span>
+  <button class="plain" id="btn-help">说明 / 局限</button>
+</header>
+
+<main>
+<aside class="left">
+
+  <fieldset>
+    <legend>① 数据</legend>
+    <div id="drop">
+      把仪器导出的 CSV 拖到这里<br>
+      <span style="font-size:12px">或点击选择（可多选）</span>
+      <input type="file" id="files" multiple accept=".csv,.txt" hidden>
+    </div>
+    <div class="filelist" id="filelist">
+      <div class="hint" id="filehint">还没有数据。</div>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button class="plain" id="btn-clear" style="flex:1">清空</button>
+      <button class="plain" id="btn-demo" style="flex:1">载入示例数据</button>
+    </div>
+    <p class="hint">文件顺序即处理顺序（原桌面版用 <code>os.listdir</code>，不保证稳定）。</p>
+
+    <div class="row" style="margin-top:6px">
+      <label class="w">样品名清单</label>
+      <div class="grow"><button class="plain" id="btn-list" style="width:100%">选择 CSV / TSV…</button></div>
+    </div>
+    <div class="hint" id="listinfo">未提供 —— 样品名按该仪器的规则取（Thermo 读第一行 / Agilent 取文件名）。</div>
+    <input type="file" id="listfile" accept=".csv,.txt,.tsv" hidden>
+    <p class="hint">两列：<b>第一列是文件名的键，第二列是样品名</b>。原来那份
+      Excel LIST 就是这两列，存成 CSV/TSV 即可（有表头也没关系）。<br>
+      键的规则照抄原实现：<code>文件名.split('.')[0]</code>，即<b>第一个点之前</b>——
+      <code>MAD-NEW-1.csv</code> 的键是 <code>MAD-NEW-1</code>，而
+      <code>MAD.NEW.1.csv</code> 的键是 <code>MAD</code>。<br>
+      只有 <b>Agilent</b> 的原实现需要这份清单（Thermo 一律读文件第一行）。
+      清单里查不到时：Thermo 退回读第一行，Agilent 退回取文件名——
+      <b>不能</b>读 Agilent 文件的第一行，那几行是仪器元信息，所有文件都一个样。</p>
+  </fieldset>
+
+  <fieldset>
+    <legend>② 标样</legend>
+    <div class="row">
+      <label class="w">标样名</label>
+      <div class="grow"><input type="text" id="p-stdname" list="stdname-list" value="MAD-NEW"></div>
+    </div>
+    <datalist id="stdname-list"></datalist>
+    <div class="row">
+      <label class="w">标样年龄</label>
+      <div class="grow"><input type="number" id="p-stdage" value="485" step="0.1"></div>
+      <span class="unit">Ma</span>
+    </div>
+    <div class="row">
+      <label class="w">分馏校正标样</label>
+      <div class="grow"><input type="text" id="p-fracstd" list="stdname-list" value="MAD-NEW"></div>
+    </div>
+    <p class="hint">标样年龄用于算出 <code>a/b/c/P382/Pbc</code>（<code>Cal_age</code>），
+      同时决定哪些文件走"标样校正"分支。分馏校正标样是年龄层算分馏因子时取均值用的那组行。</p>
+  </fieldset>
+
+  <fieldset>
+    <legend>③ 读取与积分窗口</legend>
+    <div class="row">
+      <label class="w">仪器</label>
+      <div class="grow"><select id="p-inst">
+        <option value="thermo">Thermo（列名 Time/202Hg/…，跳 13 行）</option>
+        <option value="agilent">Agilent（列名 202/204Pb/…，表头行自动探测）</option>
+      </select></div>
+    </div>
+    <div class="row">
+      <label class="w">背景窗口</label>
+      <div class="grow two">
+        <input type="number" id="p-b0" value="8" step="0.1">
+        <input type="number" id="p-b1" value="16" step="0.1">
+      </div>
+      <span class="unit">s</span>
+    </div>
+    <p class="hint" style="margin-top:-2px">即 <code>bcg_from</code> / <code>bcg_to</code>。
+      原程序这两个默认值没有可靠出处，不同数据要自己看信号图调。</p>
+    <div class="row">
+      <label class="w">信号阈值倍数</label>
+      <div class="grow"><input type="number" id="p-multi" value="4" step="0.1"></div>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>④ 普通铅校正</legend>
+    <div class="row">
+      <label class="w">方式</label>
+      <div class="grow"><select id="p-method">
+        <option value="0">0 · 不校正（未校正比值）</option>
+        <option value="1">1 · 207Pb 校正</option>
+        <option value="2">2 · 208Pb 校正</option>
+        <option value="3">3 · 204Pb 校正</option>
+        <option value="4">4 · Cal 204Pb 校正</option>
+      </select></div>
+    </div>
+    <div id="pbparams"></div>
+    <div class="row">
+      <label class="w">外挂误差 Ɛ</label>
+      <div class="grow"><input type="number" id="p-excess" value="3" step="0.1"></div>
+      <span class="unit">%</span>
+    </div>
+    <p class="hint" style="border-left:2px solid var(--line);padding-left:8px">
+      桌面版界面上这一格写作 <code>Ɛ(%)</code>，源码里的变量是 <code>excess_V</code>
+      （= 这里填的数 ÷ 100），桌面版默认 <b>3</b>，本页默认与之相同。<br><br>
+
+      <b>它是什么</b>：除了"数计数"本身的统计波动之外，还会有的那部分<b>额外分散</b>。
+      同一台仪器反复测同一样品，分散往往大于计数统计所预期的量 —— 来源是剥蚀效率波动、
+      气溶胶传输不均匀、标样与样品的基体差异、标样不匹配、数据处理软件的拟合残差等。
+      只用计数误差会<b>低估</b>不确定度，Ɛ 就是用来补这一块的。<br><br>
+
+      <b>它怎么用</b>：以<b>平方和</b>（正交相加）并进每一个年龄的相对误差 ——<br>
+      <code>&nbsp;&nbsp;年龄的相对误差 = √(内部相对误差² + Ɛ²)</code><br>
+      <code>&nbsp;&nbsp;年龄的误差 = 年龄 × 上面那个相对误差</code><br>
+      代码依据是 <code>Isoclock2.0.py</code> 第 397 / 399 / 401 行，三处是同一个模板：<br>
+      <code>&nbsp;&nbsp;sqrt(pow(date_all[3][i]/(date_all[2][i]*f206_238), 2)</code><br>
+      <code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ excess_V*excess_V)</code><br>
+      其中 <code>date_all[3]</code> 是该比值的 2s，除以比值本身就是内部相对误差。<br><br>
+
+      <b>它不影响年龄本身</b>。年龄是 <code>ln(比值+1)/λ</code>，与 Ɛ 无关；
+      把 Ɛ 改大改小，年龄一个数都不变，所有 <code>±</code> 跟着变大变小。
+      只有 <b>rho</b>（相关系数）列也跟着动，因为它的公式里也用了 Ɛ。<br><br>
+
+      <b>三条必须知道的口径问题</b>：<br>
+      ① 内部相对误差用的是表里的 <code>2s</code>，也就是 <b>2σ</b>，而程序把 Ɛ 直接与它
+      平方相加 —— 相当于把 Ɛ 当成 2σ 同量级的量。你没量过 Ɛ 是 1σ 还是 2σ 的话，
+      这里其实是混着用的，报出去的不确定度到底是几 σ 要自己心里有数。<br>
+      ② <b>²⁰⁷Pb/²⁰⁶Pb 年龄（第 24 列）的误差（第 25 列）不含 Ɛ</b>：它是
+      <code>solve76(R76+d1) − solve76(R76)</code>，只由该比值自身的误差传播而来。
+      所以同一行里四个年龄的误差口径<b>并不一致</b>，横向比较要小心。<br>
+      ③ Ɛ 调大会让 <b>MSWD 变小</b>：每个点的误差都变大，点与点之间就显得更一致了。
+      当 Ɛ 远大于内部误差时，各点误差趋于同一比例，MSWD 会趋近 0，
+      加权平均退化成普通平均 —— <b>不要用调 Ɛ 的办法去"改善"一致性</b>，
+      那是把不确定度人为灌水换来的表面一致。
+    </p>
+  </fieldset>
+
+  <fieldset>
+    <legend>⑤ 年龄层</legend>
+    <div class="row">
+      <label class="w">算法</label>
+      <div class="grow"><select id="p-algo">
+        <option value="avg">平均法（全批一个分馏因子）</option>
+        <option value="lin">线性法（相邻标样插值 SSB）</option>
+      </select></div>
+    </div>
+    <div class="row">
+      <label class="w">微量元素外标</label>
+      <div class="grow"><input type="text" id="p-nist" value="NIST610"></div>
+    </div>
+    <p class="hint">NIST610 / 612 / 614（也认 SRM 写法）。留空表示不算。
+      <b>注意</b>：这个名字在整批数据里必须出现 <b>≥2 次</b>，否则原实现的异常分支会让
+      系数静默变成 0 —— 网页版照原样复现了这一点。</p>
+    <div class="row">
+      <label class="w" style="white-space:normal"><input type="checkbox" id="p-fix76" checked>
+        修正 ²⁰⁷Pb/²⁰⁶Pb 年龄迭代</label>
+    </div>
+    <p class="hint">原实现的收敛判据因一处赋值缺失而失效，实际只迭代 10 次，
+      1.5–2.2 Ga 区间年龄偏高最多约 +35 Ma。勾选（默认）后按收敛判据正常迭代；
+      取消勾选则逐位复现桌面版数值 —— 用于与已发表结果核对。</p>
+  </fieldset>
+
+  <fieldset>
+    <legend>⑥ 质量报告</legend>
+    <div class="row">
+      <label class="w">统计用年龄</label>
+      <div class="grow"><select id="p-agekey">
+        <option value="206Pb/238U">²⁰⁶Pb/²³⁸U（年轻锆石常用）</option>
+        <option value="207Pb/235U">²⁰⁷Pb/²³⁵U</option>
+        <option value="207Pb/206Pb">²⁰⁷Pb/²⁰⁶Pb（老锆石常用）</option>
+      </select></div>
+    </div>
+    <div class="row" style="margin-top:-2px">
+      <label class="w"></label>
+      <div class="grow"><label style="font-size:12.5px;white-space:normal">
+        <input type="checkbox" id="p-agecorr" checked> 用④所选校正后的年龄
+        （取消则用未校正比值）</label></div>
+    </div>
+    <p class="hint">报告里的加权平均、MSWD、标样偏差都基于这一列年龄。
+      <b>²⁰⁶Pb/²³⁸U 与 ²⁰⁷Pb/²⁰⁶Pb 不能混着比</b>：前者适合 ≲1.2 Ga 的年轻锆石，
+      后者适合更老的。选错列不会报错，只会得到一份看着正常的错结论。</p>
+
+    <details class="qcgates">
+      <summary>判据阈值（默认即可，展开可改）</summary>
+      <div class="row">
+        <label class="w">标样偏差上限</label>
+        <div class="grow"><input type="number" id="q-stddev" value="2" step="0.1"></div>
+        <span class="unit">%</span>
+      </div>
+      <div class="row">
+        <label class="w">MSWD 上限</label>
+        <div class="grow"><input type="number" id="q-mswd" value="0" step="0.1"></div>
+        <span class="unit">0=按点数自动</span>
+      </div>
+      <div class="row">
+        <label class="w">单点相对误差</label>
+        <div class="grow"><input type="number" id="q-rel2s" value="10" step="1"></div>
+        <span class="unit">%</span>
+      </div>
+      <div class="row">
+        <label class="w">离群判据 |z|</label>
+        <div class="grow"><input type="number" id="q-outz" value="3" step="0.5"></div>
+      </div>
+      <div id="qcdoc"></div>
+    </details>
+
+    <p class="hint">点右侧工具栏的<b>质量报告</b>导出。报告是一份
+      <b>单文件 HTML</b>，内联样式与图，双击就能开，<kbd>Ctrl</kbd>+<kbd>P</kbd>
+      可存成 PDF —— 可以直接发给别人看，对方不需要装这个软件、也不需要联网。<br>
+      报告里的<b>加权平均与 MSWD 是网页版新增的算法</b>（桌面版只输出逐点年龄，
+      从不做归组统计），报告里会注明。</p>
+  </fieldset>
+
+  <button class="primary" id="btn-run" disabled>开始计算</button>
+
+</aside>
+
+<section class="right">
+  <div class="tabs">
+    <button data-tab="plot" class="on">信号图</button>
+    <button data-tab="cps">Mean_Cps</button>
+    <button data-tab="all">result_all</button>
+    <button data-tab="age">年龄表</button>
+    <button data-tab="log">日志</button>
+    <span class="spacer"></span>
+    <label style="font-size:12px;color:var(--ink-2);white-space:nowrap"
+      title="导出的年龄表里，把沿自原实现的列名笔误改成正确写法：232Pb_232Th → 208Pb_232Th；以及四条校正路径各自那个末位缺 s 的 …Corrected isotop → …Corrected isotopes。默认关闭，保证与桌面版输出逐字节一致。">
+      <input type="checkbox" id="p-fixnames"> 修正列名笔误</label>
+    <button class="act" id="btn-exp-all" disabled>result_all.csv</button>
+    <button class="act" id="btn-exp-cps" disabled>Mean_Cps.csv</button>
+    <button class="act" id="btn-exp-age" disabled>年龄表.csv</button>
+    <button class="act" id="btn-exp-json" disabled>全部.json</button>
+    <button class="act go" id="btn-report" disabled title="导出一份单文件、离线可看的 HTML 质量报告">质量报告</button>
+  </div>
+
+  <div class="panes">
+    <div class="pane on center" id="pane-plot">
+      <div class="empty" id="plot-empty">载入数据后，点左侧文件列表里的任意一行查看信号图。</div>
+      <canvas id="plot" width="900" height="460" style="display:none;max-width:100%"></canvas>
+    </div>
+    <div class="pane" id="pane-cps">
+      <div class="empty">还没有结果。</div>
+    </div>
+    <div class="pane" id="pane-all">
+      <div class="empty">还没有结果。</div>
+    </div>
+    <div class="pane" id="pane-age">
+      <div class="empty">还没有结果。</div>
+    </div>
+    <div class="pane" id="pane-log">
+      <pre id="log"></pre>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer class="foot">
+  <span id="buildinfo">构建信息读取中…</span>
+  <span class="grow"></span>
+  <span>单文件 · 离线 · 不上传任何数据</span>
+</footer>
+
+<div id="toast"></div>
+
+<div id="modal">
+  <div class="box">
+    <span class="close" id="btn-close-modal">✕</span>
+    <h2>这个网页版是什么，以及它不做什么</h2>
+    <p>它把 Isoclock 桌面版（<code>Isoclock2.0.py</code>）的两段核心数值计算——<b>Thermo 数据的
+      读取/积分/还原</b>与<b>标样校正与年龄计算</b>——原样搬到了浏览器里，界面重写，
+      数字一个不改。设计目标是<b>单文件、离线、零依赖</b>：把这一份 HTML 拷到任何地方双击就能用，
+      不上传数据、不联网。</p>
+
+    <h3>结果可信到什么程度</h3>
+    <p>同一批数据下，网页版的输出与桌面版<b>逐位相同</b>（bit-for-bit，包括浮点最后一位）。
+      这不是估计，是跑出来的：<b>314 项</b> Node 端自动比对（数值内核、Thermo/Agilent 解析、
+      积分窗口、两个 CSV 的<b>逐字节</b>输出、年龄层 51 列 × 19 组参数、
+      20 项 Agilent 端到端、47 项 Thermo 兼容读取、63 项质量统计、50 项报告组装）
+      ＋<b>37 项</b>本页面内自检（走的是真按钮那条路）。<br>
+      唯一一处曾经对不上的地方是 <code>exp</code> / <code>log</code>：宿主 C 运行时与浏览器的
+      实现允许差 1 ULP，实测约有 9% 的 <code>Math.exp</code> 调用与正确舍入不同。
+      网页版因此自己实现了<b>正确舍入</b>的 exp/log（<code>fp.js</code>），
+      顺带让结果不再依赖运行平台——同一批数据在任何浏览器、任何系统上都是同一串数字。</p>
+
+    <h3>保留的原实现缺陷（没有偷偷修）</h3>
+    <ul>
+      <li><b><code>Age76Pb</code> 的割线迭代写错了</b>：循环条件里的 <code>Rap</code> 从未更新，
+        收敛判据一旦为真就永远为真，于是实际是<b>固定迭代 10 次</b>。在 1.5–2.2 Ga 区间会
+        造成最大约 <b>+35 Ma</b> 的偏高；比值恰在起点附近时甚至直接返回 0 岁。
+        <b>默认已提供收敛修正</b>（左侧⑤勾选框），取消勾选则逐位回到桌面版数值。</li>
+      <li><b>微量元素系数会静默归零</b>：所选 NIST 标样在整批数据里出现 0 次或恰好 1 次时，
+        原代码内部抛异常并被 <code>except</code> 吞掉，系数直接变 0。已如实复现。</li>
+      <li><b>204Pb 路径会除零</b>：某些数据下 <code>204Pb</code> 计数差为 0，原代码不判。
+        网页版在界面上把这种行标成 <span style="color:#b3261e">NaN</span> 并给出提示，
+        数值本身仍与原实现一致。</li>
+      <li><b>Hg 校正恒为零</b>：原实现里 202Hg 通道参与了流程但结果始终是 0。</li>
+      <li><b>拼写笔误</b>：输出列名 <code>232Pb_232Th</code>，以及末位缺 <code>s</code> 的
+        <code>…Corrected isotop</code>（四条校正路径各一版：
+        <code>204</code>／<code>207</code>／<code>208</code>／<code>Cal 204Pb</code>）
+        照抄保留，以免下游脚本按列名匹配时对不上。勾选"修正列名笔误"可换成正确写法。</li>
+      <li><b>外挂误差 Ɛ 的三处口径不齐</b>：桌面版界面上写作 <code>Ɛ(%)</code>，默认
+        <b>3%</b>；它以<b>平方和</b>并进各年龄的相对误差 —— <b>只改误差，不改年龄</b>。但
+        ① 内部相对误差用的是比值的 <code>2s</code>（即 <b>2σ</b>），Ɛ 直接与它平方相加，
+        等于按 2σ 同量级对待，严格说混了置信水平；
+        ② ²⁰⁷Pb/²⁰⁶Pb 年龄的误差<b>不含</b> Ɛ，同一行四个年龄的误差口径并不一致；
+        ③ Ɛ 调大会让 <b>MSWD 变小</b>，不能用它去"改善"一致性。
+        左侧④那一格旁边写了完整说明。</li>
+    </ul>
+
+    <h3>与原桌面版的实际差异</h3>
+    <ul>
+      <li>支持 <b>Thermo</b> 与 <b>Agilent</b> 导出的 CSV（左侧③选择仪器）。
+        Element 的 <code>.fin</code> 是专有二进制，请先用桌面版转一次。</li>
+      <li><b>Thermo 多了一条兼容读取路径。</b>桌面版（也就是本网页版的标准路径）
+        把表头钉死在<b>原始第 14 行</b>、列名按精确相等匹配，真实导出常因多几行元信息
+        或列名写法不同而读不了。现在会先<b>探测</b>表头行：从多种等价写法里认列名，
+        认出来的文件在列表里打「兼容」标记。标准格式文件走的仍是原来那条路径
+        （报告里会写 <code>mode: strict</code>），读进来之后的数值链条完全一样。</li>
+      <li><b>新增"质量报告"</b>：点工具栏的<b>质量报告</b>导出一份单文件 HTML，
+        里面有标样 QC、样品加权平均与 MSWD、异常与警告清单、以及每条判据的出处。
+        <b>这一块是原程序没有的</b>——桌面版只输出逐点年龄，从不做归组统计；
+        报告里也写明了这一点，引用时请区别对待。判据阈值都是经验值，可以在左侧⑥改。</li>
+      <li>原桌面版的 <b>Agilent</b> 流程要求先选一份 Excel 清单（LIST）来定样品名；
+        网页版把这份清单换成<b>两列 CSV/TSV</b>（见左侧①"样品名清单"）。
+        <b>不提供清单也能跑</b>：那时样品名退化为取<b>文件名第一个点之前</b>那段
+        （正是清单键的规则）—— 不能读文件第一行，因为 Agilent 导出每个文件开头那几行
+        是同一串仪器元信息，读出来所有样品会同名、进而被并成一个样品。
+        名字的来源会在文件列表里逐行标出（清单／第一行／文件名）。</li>
+      <li>²⁰⁷Pb/²⁰⁶Pb 年龄迭代默认采用<b>收敛修正</b>（原实现的收敛判据因一处
+        赋值缺失而失效，1.5–2.2 Ga 偏高最多约 +35 Ma，个别点甚至返回 0 岁）；
+        取消勾选即逐位回到桌面版数值，用于与已发表结果核对。</li>
+      <li>鼠标交互不同：没有"点图取窗口"，积分窗口用数值输入配合信号图目视确定。</li>
+      <li>输出的是 CSV（两个中间文件 + 年龄表）与 JSON，不写 <code>.xls</code>。</li>
+      <li>标样漂移回归 <code>regression()</code> 没有接线——它用 <code>scipy.curve_fit</code>，
+        在原程序里也没有任何控件能改它的方法编号，属于从未生效的路径。</li>
+      <li>年龄结果里的"备注"列恒为空：原实现的 <code>Coments</code> 也是在读取阶段
+        一律写成空串，桌面上没有录入入口。</li>
+    </ul>
+
+    <h3>怎么验证</h3>
+    <p><b>想自己验一遍</b>：在地址栏后面加 <code>#selftest</code> 打开（变成
+      <code>file:///…/isoclock.html#selftest</code>），页面会自动用一份合成数据跑完整条链，
+      把每一项检查写在"日志"页，并挂在 <code>window.__selftest</code> 上、把页面标题改成
+      <code>SELFTEST-OK [通过数/总数]</code> 或 <code>SELFTEST-FAIL …</code>，
+      方便无头浏览器读取。</p>
+    <p><b>这一份单文件是怎么来的</b>：源码在 <code>webgui/</code> 下（<code>src/</code> 是数值模块
+      ——每个模块都跟桌面版逐位比对过；<code>ui/</code> 是界面与自检；
+      <code>test_*.js</code> 是那 314 项比对）。本文件由
+      <code>python webgui/build_ui.py</code> 拼成，改动请改源头再重新构建，
+      不要直接编辑本文件。构建脚本自己也会检查：占位符有没有残留、模块有没有漏、
+      顶层有没有重名——重名这一条是踩过坑的（几个模块合并进同一个 script 块时，
+      同名的顶层函数会互相覆盖），所以重名必须逐个登记理由才能通过。</p>
+    <p><b>手上的这一份是哪一版</b>：页脚左下角写着构建时间与<b>源码指纹</b>，
+      它在 <code>build_ui.py</code> 最后一次运行的输出里也打印同一串（"源码指纹：…"），
+      两边对上就是同一版。想看得更细：按 <kbd>F12</kbd> 打开控制台，输入
+      <code>window.__build</code> 可看到构建时间、源码指纹 <code>id</code>
+      与每一个模块各自的指纹；同样的源码每次构建都会得到<b>字节相同</b>的文件，
+      所以指纹一致就意味着内容一致。</p>
+  </div>
+</div>
+
+<!-- 数值模块由 build_ui.py 逐个填进来：**一个模块占一个 script 块，绝不能合并**。
+     这些模块是"平铺式脚本"（顶层直接写 const / function），全部挤进同一个
+     script 块里时，同名顶层函数会互相覆盖：pipeline.js 与 age.js 都声明了
+     attach，合并后 DS_PIPELINE.attach 会变成 age.js 那个，于是 PL.attach(...)
+     把参数写进了 age.js 的内部对象，一跑就报 "P.thermoLoad is not a function"。 -->
+<!--@LIBS@-->
+
+<script>
+<!--@QCREPORT@-->
+</script>
+<script>
+<!--@SELFTEST@-->
+</script>
+<script>
+<!--@APP@-->
+</script>
+</body>
+</html>

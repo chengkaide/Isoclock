@@ -36,6 +36,114 @@ const CHANNEL_SUFFIX = [
   ['Pb208', 'y5'], ['Th232', 'y6'], ['U238', 'y7'],
 ];
 
+/* ==========================================================================
+ *  样品名
+ *
+ *  两套仪器在桌面版里取样品名的方式**不一样**：
+ *      Thermo（instructure0）：读文件**第一行**，取第 0 个字段、按 ':' 切开取前段。
+ *      Agilent（instructure1）：**不读文件**，拿"文件名去扩展名"去一份外部
+ *                                Excel 清单里查 —— 原实现是
+ *                                    sampleslist[name] = Sampleslist1[name.split('.')[0]]
+ *                                那份清单由用户在打开数据前用对话框选（askopenfilename）。
+ *
+ *  网页版没有那个 Excel，改成一份两列 CSV/TSV（parseSampleList）。清单里查不到的
+ *  文件要兜底，而两台仪器的兜底**不能共用一条规则**：
+ *      Thermo  的第一行本来就是样品名（"91500: note"），照读即可；
+ *      Agilent 的前几行是仪器元信息（"Agilent 7500  meta line 1"…），**每个文件都
+ *              一模一样**，拿它当样品名会把所有文件塌成同一个样品、年龄表悄悄并成一行。
+ *              所以 Agilent 退回用"文件名第一个点之前"——这也正是桌面版清单的键规则。
+ *  返回值里标出名字是从哪来的（'list' / 'head' / 'file'），好让界面提示。
+ * ========================================================================== */
+
+/**
+ * 清单查找用的键，对应 Python 的 `name.split('.')[0]`。
+ *
+ * **注意**这是"第一个点之前"，不是"去掉最后一个扩展名"：
+ * `MAD.NEW.1.csv` 的键是 `MAD`，不是 `MAD.NEW.1`。原实现如此，照抄 ——
+ * 清单第一列该填什么，以这个规则为准。
+ */
+function listKey(fileName) {
+  const i = fileName.indexOf('.');
+  return i >= 0 ? fileName.slice(0, i) : fileName;
+}
+
+/**
+ * 解析样品名清单：两列，第一列是 listKey（文件名 key），第二列是样品名。
+ *
+ * 分隔符在逗号与制表符之间自动选（看第一行哪个多），接受 UTF-8 BOM。
+ * **不跳过表头** —— 原实现是从第 0 行开始全表入映射；真带了表头也无害，
+ * 那两行的键匹配不到任何文件。
+ *
+ * @returns {Object<string,string>} {listKey: 样品名}
+ */
+function parseSampleList(text) {
+  const lines = String(text).replace(/^\uFEFF/, '').split(/\r?\n/);
+  const out = {};
+  // 分隔符判定：只看第一条非空行
+  let delim = ',';
+  for (const l of lines) {
+    if (!l.trim()) continue;
+    const c = (l.match(/,/g) || []).length;
+    const t = (l.match(/\t/g) || []).length;
+    delim = t > c ? '\t' : ',';
+    break;
+  }
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    const cells = splitDelimited(line, delim);
+    const key = (cells[0] || '').trim();
+    if (!key) continue;
+    out[key] = (cells[1] === undefined ? '' : cells[1]).trim();
+  }
+  return out;
+}
+
+/** 按分隔符切一行，处理双引号包裹（"a,b",c 这类）。 */
+function splitDelimited(line, delim) {
+  const cells = [];
+  let cur = '';
+  let quoted = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line.charAt(i);
+    if (quoted) {
+      if (ch === '"') {
+        if (line.charAt(i + 1) === '"') { cur += '"'; i++; } else { quoted = false; }
+      } else { cur += ch; }
+    } else if (ch === '"') {
+      quoted = true;
+    } else if (ch === delim) {
+      cells.push(cur); cur = '';
+    } else {
+      cur += ch;
+    }
+  }
+  cells.push(cur);
+  return cells;
+}
+
+/**
+ * 取一个文件的样品名。
+ *
+ * @param {string} fileName
+ * @param {string} text       文件原文（Thermo 读第一行用）
+ * @param {Object} sampleNames  清单映射，可为 null
+ * @param {string} [instrument] 'agilent' 时兜底取文件名，否则读第一行
+ * @returns {{name: string, from: 'list'|'head'|'file'}}
+ */
+function sampleNameFor(fileName, text, sampleNames, instrument) {
+  if (sampleNames) {
+    const k = listKey(fileName);
+    if (Object.prototype.hasOwnProperty.call(sampleNames, k)) {
+      return { name: sampleNames[k], from: 'list' };
+    }
+  }
+  // Agilent 的头部是仪器元信息，同名于所有文件，不能当样品名（见文件头注释）
+  if (instrument === 'agilent') {
+    return { name: listKey(fileName), from: 'file' };
+  }
+  return { name: P.thermoSampleName(text), from: 'head' };
+}
+
 /**
  * 第一步：把一批 Thermo CSV 读进来，并算出各自的积分窗口。
  *
@@ -49,8 +157,12 @@ function loadThermoFiles(files, opt) {
   const perFile = {};
   const order = [];
   const sampleslist = {};
+  const sampleFrom = {};                       // file -> 'list' | 'head' | 'file'
   for (const f of files) {
-    const ch = P.thermoLoad(f.text, isoname);          // {x,y1..y7}
+    // 仪器选择：默认 Thermo；opt.instrument === 'agilent' 走 Agilent 读取
+    // （isoname 也由调用方换成 Agilent 那套：['时间 [s]','202','204',…]）
+    const load = opt.instrument === 'agilent' ? P.agilentLoad : P.thermoLoad;
+    const ch = load(f.text, isoname);                  // {x,y1..y7}
     const n = ch.x.length;
     // Timeinternal 由数据本身推出：末点减首点再除以点数（与原实现一致）
     const timeinternal = (ch.x[n - 1] - ch.x[0]) / n;
@@ -59,14 +171,16 @@ function loadThermoFiles(files, opt) {
       n, channels, b0: opt.b0, b1: opt.b1,
       timeinternal, multi: opt.multi,
     });
+    const sn = sampleNameFor(f.file, f.text, opt.sampleNames, opt.instrument);
     perFile[f.file] = {
-      ch, channels, n, timeinternal, num: win.num,
-      sample: P.thermoSampleName(f.text),
+      ch, channels, n, timeinternal, num: win.num, sample: sn.name,
+      notes: ch.notes || [],
     };
     order.push(f.file);
-    sampleslist[f.file] = perFile[f.file].sample;
+    sampleslist[f.file] = sn.name;
+    sampleFrom[f.file] = sn.from;
   }
-  return { perFile, order, sampleslist };
+  return { perFile, order, sampleslist, sampleFrom };
 }
 
 /**
@@ -169,6 +283,7 @@ function run(cfg) {
 
   return {
     sampleslist,
+    sampleFrom: loaded.sampleFrom,
     num: (() => { const m = {}; for (const f of order) m[f] = perFile[f].num; return m; })(),
     meanCpsCsv: P.buildMeanCpsCsv(meanRows),
     resultAllCsv: P.buildResultAllCsv(all),
@@ -177,7 +292,8 @@ function run(cfg) {
 }
 
 const DS_PIPELINE = { attach, pySlice, pyInt, CHANNEL_SUFFIX, loadThermoFiles,
-  sliceChannels, meanCpsRow, run };
+  sliceChannels, meanCpsRow, run,
+  listKey, parseSampleList, sampleNameFor };
 if (typeof window !== 'undefined') {
   window.DS_PIPELINE = DS_PIPELINE;
   Object.assign(window.DS = window.DS || {}, DS_PIPELINE);

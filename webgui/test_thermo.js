@@ -42,7 +42,12 @@ function main() {
   for (const c of REF.cases) {
     let got = null, err = null;
     try {
-      got = DS.thermoLoad(c.csv, REF.meta.isoname);
+      //  **强制严格模式**（compat:false）。这套测试的判据是"与 Python 的
+      //  loaddata() 逐位一致、含报错行为"，而 Python 那份实现是硬编码表头行 +
+      //  精确列名匹配的。网页版默认多了一层"找不到表头就自适应探测"的兜底，
+      //  那是有意的增强，由 test_thermo_compat.js 单独覆盖 —— 这里必须走严格路径，
+      //  否则"表头被顶后一行"这类用例会被兜底救活，判据就失去意义了。
+      got = DS.thermoLoad(c.csv, REF.meta.isoname, { compat: false });
     } catch (e) {
       err = e;
     }

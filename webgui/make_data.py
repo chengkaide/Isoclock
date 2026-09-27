@@ -24,6 +24,8 @@ import types
 
 import numpy as np
 
+import pycr
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC_DIR = os.path.join(HERE, "src")
 LEGACY = os.path.join(os.path.dirname(HERE), "Isoclock2.0.py")
@@ -187,6 +189,10 @@ def primitive_references():
 
 
 def model_references(mod):
+    # SK2model / Age76Pb 内部用 exp，闭式换算式用 log。宿主 libm 之间允许差 1 ULP，
+    # 所以这里统一换成正确舍入版本（与网页版 fp.js 同一套定义），比对才能逐位做。
+    pycr.install(mod)
+
     ages = [0.0, 1.0, 100.0, 1062.0, 2000.0, 4560.0]
     sk = [{"age": a, "out": [float(v) for v in mod.SK2model(a)]} for a in ages]
 
@@ -200,15 +206,17 @@ def model_references(mod):
             v, err = None, type(e).__name__
         age76.append({"r": r, "age": v, "error": err})
 
-    # 从比值反解年龄的三条闭式公式（log1p 形式）
+    # 从比值反解年龄的三条闭式公式（log1p 形式）。
+    # 原程序这一处用的是 `log`（= math.log，见 `from math import *`），不是 np.log，
+    # 所以这里也用正确舍入的 cr_log，保持与网页版 dlog 同一套定义。
     lam = {"238": 1.55125e-10, "235": 9.8485e-10, "232": 4.9475e-11}
     conv = []
     for r in [0.01, 0.05, 0.1, 0.2, 0.5, 0.8, 0.95]:
         conv.append({
             "r": r,
-            "pb206_u238": float(np.log(r + 1) / lam["238"] / 1e6),
-            "pb207_u235": float(np.log(r + 1) / lam["235"] / 1e6),
-            "pb208_th232": float(np.log(r + 1) / lam["232"] / 1e6),
+            "pb206_u238": float(pycr.cr_log(r + 1) / lam["238"] / 1e6),
+            "pb207_u235": float(pycr.cr_log(r + 1) / lam["235"] / 1e6),
+            "pb208_th232": float(pycr.cr_log(r + 1) / lam["232"] / 1e6),
         })
     return {"sk2model": sk, "age76": age76, "ratio_to_age": conv}
 
@@ -257,7 +265,10 @@ def main():
 
     print("[2/4] 加载真实的 Isoclock2.0.py ...")
     mod = load_legacy()
-    print("      ->", os.path.basename(LEGACY), "已加载")
+    # 立刻换成正确舍入的 exp/log（与网页版 src/fp.js 同一套定义）。
+    # 这一步必须在算任何参考值之前做 —— SK2model / Age76Pb / 闭式换算都读这两个全局名。
+    pycr.install(mod)
+    print("      ->", os.path.basename(LEGACY), "已加载（exp/log 换成正确舍入版）")
 
     print("[3/4] 计算参考值 ...")
     ref = {
@@ -270,6 +281,7 @@ def main():
             "channels": list(CHANNELS),
             "samples": [list(s) for s in SAMPLES],
             "methods": METHODS,
+            "expLog": "correctly-rounded (pycr.py / src/fp.js)",
         },
         "primitives": primitive_references(),
         "models": model_references(mod),

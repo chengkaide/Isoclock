@@ -170,11 +170,13 @@ function whereNan(cond, x) {
 /* --------------------------------------------------------------------------
  * 二、基础数学
  *
- * 说明：Python 端 `from math import *`，所以用的是 C libm 的 exp/log/sqrt，
- * 不是 numpy 的向量版。JS 侧对应 Math.exp / Math.log / Math.sqrt。
- *   * Math.sqrt 由 IEEE-754 规定为正确舍入，与 libm 的 sqrt 逐位相同；
- *   * exp / log 各语言实现允许有 ~1 ULP 差异，这是移植中唯一无法消除的误差源，
- *     实测偏差记录在 test_math.js 的输出里。
+ * 说明：Python 端 `from math import *`，所以用的是 C 运行时的 exp/log/sqrt，
+ * 不是 numpy 的向量版。
+ *   * sqrt 由 IEEE-754 规定必须正确舍入，所以 Math.sqrt 与它逐位相同；
+ *   * **exp / log 不在这里用 Math.exp / Math.log**，而是用 fp.js 里正确舍入的
+ *     dexp / dlog。原因见 fp.js 顶部：宿主实现之间本就允许差 1 ULP，用它会让
+ *     同一批数据在不同浏览器/系统上给出末位不同的年龄。
+ *     测试里可用 DS_FP.usePlatformExpLog() 切回宿主实现，以复现桌面版的行为。
  *
  * pow(x, 2)：Python 的 pow(x, 2) 对整数指数 2 是正确舍入的，等于 x*x，
  * 所以这里直接写 x*x —— 这比 Math.pow 更可靠（V8 的 Math.pow 不保证正确舍入）。
@@ -182,15 +184,15 @@ function whereNan(cond, x) {
 
 /** SK2model()，Isoclock2.0.py:40。Stacey & Kramers (1975) 两阶段模式铅。 */
 function sk2model(age) {
-  const Pbc_64 = 11.152 + 9.74 * (Math.exp(0.155125 * 3.7) - Math.exp(0.155125 * age / 1000));
-  const Pbc_74 = 12.998 + (9.74 / 137.818) * (Math.exp(0.98485 * 3.7) - Math.exp(0.98485 * age / 1000));
-  const Pbc_84 = 31.23 + 36.84 * (Math.exp(0.049475 * 3.7) - Math.exp(0.049475 * age / 1000));
+  const Pbc_64 = 11.152 + 9.74 * (dexp(0.155125 * 3.7) - dexp(0.155125 * age / 1000));
+  const Pbc_74 = 12.998 + (9.74 / 137.818) * (dexp(0.98485 * 3.7) - dexp(0.98485 * age / 1000));
+  const Pbc_84 = 31.23 + 36.84 * (dexp(0.049475 * 3.7) - dexp(0.049475 * age / 1000));
   return [Pbc_64, Pbc_74, Pbc_84, Pbc_64 / Pbc_84, Pbc_74 / Pbc_84];
 }
 
 /** 207Pb/206Pb -> 年龄。Isoclock2.0.py:48。 */
 function rap76(t) {
-  return (Math.exp(0.00098485 * t) - 1) / (Math.exp(0.000155125 * t) - 1) / 137.818;
+  return (dexp(0.00098485 * t) - 1) / (dexp(0.000155125 * t) - 1) / 137.818;
 }
 
 /**
@@ -208,17 +210,44 @@ function age76Pb(Rap76) {
   let N = 0;
   if (Rap76 > 0.0460455) {
     let Tm = (Tmax + Tmin) / 2;
-    let Rap = (Math.exp(0.00098485 * Tm) - 1) / (Math.exp(0.000155125 * Tm) - 1) / 137.818;
+    let Rap = (dexp(0.00098485 * Tm) - 1) / (dexp(0.000155125 * Tm) - 1) / 137.818;
     while (Math.abs(Rap76 - Rap) > 0.00005 && N < 10) {
       if (Rap < Rap76) { Tmin = Tm; } else { Tmax = Tm; }
-      const Rapi = (Math.exp(0.00098485 * Tmin) - 1) / (Math.exp(0.000155125 * Tmin) - 1) / 137.818;
-      const Raps = (Math.exp(0.00098485 * Tmax) - 1) / (Math.exp(0.000155125 * Tmax) - 1) / 137.818;
+      const Rapi = (dexp(0.00098485 * Tmin) - 1) / (dexp(0.000155125 * Tmin) - 1) / 137.818;
+      const Raps = (dexp(0.00098485 * Tmax) - 1) / (dexp(0.000155125 * Tmax) - 1) / 137.818;
       Tm = Tmin + (Tmax - Tmin) * (Rap76 - Rapi) / (Raps - Rapi);
       Age = Tm;
       N = N + 1;
     }
   } else {
     Age = 0;
+  }
+  return Age;
+}
+
+/**
+ * Age76Pb 的修正版：循环体内把 Rap 更新到最新的 Tm，收敛判据 |Rap76-Rap|<=5e-5
+ * 真正生效，典型 2~4 轮收敛（仍保留 10 轮上限兜底）。
+ * 运算顺序与原版逐位对应，只是补上了缺失的赋值；配合正确舍入的 dexp/dlog，
+ * 与 Python 端同序实现逐位一致（见 age76_case.json）。
+ */
+function age76PbFixed(Rap76) {
+  let Age = 0;
+  let Tmin = 0.001;
+  let Tmax = 4556;
+  let N = 0;
+  if (Rap76 > 0.0460455) {
+    let Tm = (Tmax + Tmin) / 2;
+    let Rap = (dexp(0.00098485 * Tm) - 1) / (dexp(0.000155125 * Tm) - 1) / 137.818;
+    while (Math.abs(Rap76 - Rap) > 0.00005 && N < 10) {
+      if (Rap < Rap76) { Tmin = Tm; } else { Tmax = Tm; }
+      const Rapi = (dexp(0.00098485 * Tmin) - 1) / (dexp(0.000155125 * Tmin) - 1) / 137.818;
+      const Raps = (dexp(0.00098485 * Tmax) - 1) / (dexp(0.000155125 * Tmax) - 1) / 137.818;
+      Tm = Tmin + (Tmax - Tmin) * (Rap76 - Rapi) / (Raps - Rapi);
+      Rap = (dexp(0.00098485 * Tm) - 1) / (dexp(0.000155125 * Tm) - 1) / 137.818;
+      Age = Tm;
+      N = N + 1;
+    }
   }
   return Age;
 }
@@ -230,7 +259,7 @@ const LAM232 = 0.000000000049475;   // 4.9475e-11
 
 /** 由比值反解年龄（Ma）：t = ln(r+1)/λ/1e6。 */
 function ageFromRatio(r, lam) {
-  return Math.log(r + 1) / lam / 1e6;
+  return dlog(r + 1) / lam / 1e6;
 }
 
 /* --------------------------------------------------------------------------
@@ -553,7 +582,7 @@ function reduceSample(name, sig, method, ctx, opts) {
 /* 暴露给浏览器与 Node 测试 */
 const DS = {
   PW_BLOCKSIZE, pwSum, nsum, nmean, nstd, nnanmean, nnanstd, countNan, whereNan,
-  sk2model, age76Pb, rap76, ageFromRatio, LAM238, LAM235, LAM232,
+  sk2model, age76Pb, age76PbFixed, rap76, ageFromRatio, LAM238, LAM235, LAM232,
   tagInt, isTaggedInt, untagInt,
   filter2s, mean2sem, netSignal, subMean, totalMeans, divArr, divScalar,
   ratiosSample, ratiosStd207, ratiosStdCal204, ratiosStd204, ratiosStd208,

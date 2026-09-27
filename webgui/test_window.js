@@ -22,7 +22,7 @@ const SRC = path.join(__dirname, 'src');
 
 const sandbox = { window: {}, console };
 vm.createContext(sandbox);
-for (const f of ['math.js', 'window.js']) {
+for (const f of ['fp.js', 'math.js', 'window.js']) {
   vm.runInContext(fs.readFileSync(path.join(SRC, f), 'utf8'), sandbox, { filename: f });
 }
 const DS = sandbox.window.DS;                 // math.js：成对求和等

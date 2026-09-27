@@ -1,0 +1,305 @@
+/* ==========================================================================
+ *  Isoclock 网页版 —— 样式
+ *  单文件离线，不引任何外部字体/图标/框架。
+ * ========================================================================== */
+:root {
+  --bg: #f4f6f8;
+  --panel: #ffffff;
+  --line: #d7dee5;
+  --line-strong: #b6c2cd;
+  --ink: #1d2733;
+  --ink-2: #4a5a6a;
+  --ink-3: #7b8b9a;
+  --accent: #1f6feb;
+  --accent-2: #e8f1fe;
+  --ok: #1a7f4b;
+  --warn: #9a6700;
+  --err: #b3261e;
+  --err-bg: #fdecea;
+  --warn-bg: #fff8e5;
+  --mono: ui-monospace, "Cascadia Mono", Consolas, "Liberation Mono", monospace;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  font: 14px/1.55 "Segoe UI", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+}
+
+body { display: flex; flex-direction: column; }
+
+/* ---------- 顶栏 ---------- */
+header.top {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding: 10px 18px;
+  background: #fff;
+  border-bottom: 1px solid var(--line);
+}
+header.top h1 { margin: 0; font-size: 16px; font-weight: 600; letter-spacing: .2px; }
+header.top .sub { color: var(--ink-3); font-size: 12.5px; }
+header.top .grow { flex: 1 1 auto; }
+header.top button.plain {
+  background: none; border: 1px solid var(--line); border-radius: 6px;
+  color: var(--ink-2); padding: 4px 10px; cursor: pointer; font-size: 12.5px;
+}
+header.top button.plain:hover { border-color: var(--line-strong); color: var(--ink); }
+
+/* ---------- 布局 ---------- */
+main {
+  flex: 1 1 auto;
+  display: flex;
+  min-height: 0;
+  gap: 0;
+}
+aside.left {
+  flex: 0 0 372px;
+  min-width: 0;
+  overflow-y: auto;
+  background: #fff;
+  border-right: 1px solid var(--line);
+  padding: 12px 14px 40px;
+}
+section.right {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 16px 0;
+}
+
+/* ---------- 分组 ---------- */
+fieldset {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin: 0 0 12px;
+  padding: 10px 12px 12px;
+}
+legend {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+  padding: 0 6px;
+}
+.hint { color: var(--ink-3); font-size: 12px; margin: 4px 0 0; }
+.hint.err { color: var(--err); }
+
+/* ---------- 表单 ---------- */
+.row { display: flex; align-items: center; gap: 8px; margin: 7px 0; }
+.row > label { flex: 0 0 auto; color: var(--ink-2); font-size: 12.5px; }
+.row > label.w { flex: 0 0 108px; }
+.row .grow { flex: 1 1 auto; min-width: 0; }
+input[type=text], input[type=number], select, textarea {
+  width: 100%;
+  padding: 5px 7px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+}
+input[type=number] { font-family: var(--mono); }
+input:focus, select:focus, textarea:focus {
+  outline: 2px solid var(--accent-2);
+  border-color: var(--accent);
+}
+input[type=checkbox] { margin: 0 2px 0 0; }
+.two { display: flex; gap: 8px; }
+.two > * { flex: 1 1 0; min-width: 0; }
+.unit { color: var(--ink-3); font-size: 12px; flex: 0 0 auto; }
+
+button.primary {
+  width: 100%;
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 7px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+button.primary:hover { background: #1a5fd0; }
+button.primary:disabled { background: #b9c6d4; cursor: not-allowed; }
+
+/* ---------- 拖放区 ---------- */
+#drop {
+  border: 1.5px dashed var(--line-strong);
+  border-radius: 8px;
+  padding: 16px 12px;
+  text-align: center;
+  color: var(--ink-3);
+  font-size: 13px;
+  background: #fbfcfd;
+  cursor: pointer;
+}
+#drop.hot { border-color: var(--accent); background: var(--accent-2); color: var(--accent); }
+
+/* ---------- 文件列表 ---------- */
+.filelist { max-height: 210px; overflow-y: auto; margin-top: 8px; }
+.filelist table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.filelist th {
+  position: sticky; top: 0; background: #fff; text-align: left;
+  color: var(--ink-3); font-weight: 500; border-bottom: 1px solid var(--line);
+  padding: 3px 5px;
+}
+.filelist td { padding: 3px 5px; border-bottom: 1px solid #eef2f5; }
+.filelist tr.sel { background: var(--accent-2); }
+.filelist tr.pick { cursor: pointer; }
+.filelist td.n { text-align: right; font-family: var(--mono); }
+.badge {
+  display: inline-block; padding: 0 5px; border-radius: 4px; font-size: 11px;
+  background: #eef2f5; color: var(--ink-2);
+}
+.badge.std { background: #e6f4ea; color: var(--ok); }
+
+/* ---------- 右栏标签页 ---------- */
+.tabs {
+  flex: 0 0 auto; display: flex; gap: 2px; border-bottom: 1px solid var(--line);
+  /* 窗口窄的时候宁可横向滚动，也不要让"信号图"被拆成竖排的两三个字 */
+  overflow-x: auto; overflow-y: hidden; scrollbar-width: thin;
+}
+.tabs button {
+  background: none; border: 0; border-bottom: 2px solid transparent;
+  padding: 7px 12px; cursor: pointer; font: inherit; font-size: 13px;
+  color: var(--ink-2); white-space: nowrap; flex: 0 0 auto;
+}
+.tabs button.on { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+.tabs .spacer { flex: 1 1 auto; }
+.tabs .act {
+  align-self: center; margin-left: 8px; padding: 3px 9px; font-size: 12px;
+  border: 1px solid var(--line); border-radius: 6px; background: #fff;
+  color: var(--ink-2); cursor: pointer; white-space: nowrap; flex: 0 0 auto;
+}
+.tabs .act:hover { border-color: var(--line-strong); color: var(--ink); }
+.tabs .act:disabled { color: #b9c6d4; border-color: #e6ebef; cursor: not-allowed; }
+/* "质量报告"是这一版的主动作，给它一点强调色，与四个 CSV/JSON 导出区分开 */
+.tabs .act.go { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.tabs .act.go:hover:not(:disabled) { background: var(--accent); color: #fff; }
+
+/* 文件列表里的小标记（兼容读取、缺列补零这类提示） */
+table .tagwarn {
+  display: inline-block; padding: 0 5px; border-radius: 4px;
+  background: #fdf1dd; color: #9a5b00; font-size: 11px; line-height: 16px;
+}
+
+/* ⑥ 里可收起的判据设置：默认收起，不占左栏 */
+details.qcgates { margin: 7px 0 0; }
+details.qcgates > summary {
+  cursor: pointer; font-size: 12px; color: var(--ink-3); padding: 3px 0;
+  list-style: none; outline: none;
+}
+details.qcgates > summary::-webkit-details-marker { display: none; }
+details.qcgates > summary:before { content: "▸ "; }
+details.qcgates[open] > summary:before { content: "▾ "; }
+details.qcgates[open] > summary { color: var(--ink-2); }
+details.qcgates .row { margin-top: 5px; }
+#qcdoc .hint { margin-top: 4px; }
+
+.panes { flex: 1 1 auto; min-height: 0; position: relative; }
+.pane {
+  position: absolute; inset: 0; overflow: auto; padding: 10px 2px 24px;
+  display: none;
+}
+.pane.on { display: block; }
+.pane.center { display: none; }
+.pane.center.on { display: flex; align-items: center; justify-content: center; }
+
+.empty {
+  color: var(--ink-3); font-size: 13px; text-align: center;
+  border: 1px dashed var(--line); border-radius: 8px; padding: 28px 12px;
+}
+
+/* ---------- 结果表 ---------- */
+.tablewrap { overflow: auto; max-height: 100%; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+table.data { border-collapse: collapse; font-size: 12px; font-family: var(--mono); }
+table.data th, table.data td {
+  border: 1px solid #eaeff3; padding: 2px 6px; white-space: nowrap; text-align: right;
+}
+table.data th {
+  position: sticky; top: 0; z-index: 2;
+  background: #f7f9fb; color: var(--ink-2); font-weight: 600; text-align: center;
+}
+table.data td.s, table.data th.s { text-align: left; }
+table.data tbody tr:hover td { background: #f6faff; }
+table.data td.sep { color: var(--ink-3); text-align: center; }
+table.data td.na { color: var(--ink-3); }
+.colgroup-note { color: var(--ink-3); font-size: 12px; margin: 6px 0 0; }
+
+/* ---------- 日志 ---------- */
+#log {
+  font-family: var(--mono); font-size: 12px; white-space: pre-wrap;
+  background: #fff; border: 1px solid var(--line); border-radius: 8px;
+  padding: 10px 12px; margin: 0; min-height: 200px;
+}
+#log .e { color: var(--err); }
+#log .w { color: var(--warn); }
+#log .g { color: var(--ok); }
+
+/* ---------- 提示条 ---------- */
+#toast {
+  position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%);
+  background: #22303d; color: #fff; padding: 8px 16px; border-radius: 7px;
+  font-size: 13px; opacity: 0; pointer-events: none; transition: opacity .18s;
+  max-width: 70vw;
+}
+#toast.on { opacity: .96; }
+#toast.err { background: var(--err); }
+
+/* ---------- 参数摘要 ---------- */
+.kv { font-size: 12.5px; color: var(--ink-2); }
+.kv div { display: flex; gap: 8px; padding: 1px 0; }
+.kv span.k { flex: 0 0 132px; color: var(--ink-3); }
+.kv span.v { font-family: var(--mono); }
+
+/* ---------- 对话框 ---------- */
+#modal {
+  position: fixed; inset: 0; background: rgba(20, 28, 36, .45);
+  display: none; align-items: center; justify-content: center; z-index: 50;
+}
+#modal.on { display: flex; }
+#modal .box {
+  background: #fff; border-radius: 10px; max-width: 760px; max-height: 82vh;
+  overflow: auto; padding: 18px 22px; font-size: 13.5px; line-height: 1.7;
+}
+#modal h2 { margin: 0 0 8px; font-size: 15px; }
+#modal h3 { margin: 14px 0 4px; font-size: 13.5px; color: var(--ink-2); }
+#modal code { font-family: var(--mono); background: #f2f5f8; padding: 0 3px; border-radius: 3px; }
+#modal .close { float: right; cursor: pointer; color: var(--ink-3); }
+
+/* ---------- 页脚：构建信息 ---------- */
+footer.foot {
+  flex: 0 0 auto; display: flex; align-items: center; gap: 10px;
+  padding: 4px 14px; border-top: 1px solid var(--line);
+  background: #fafbfc; color: var(--ink-3);
+  font-size: 11.5px; font-family: var(--mono);
+  white-space: nowrap; overflow-x: auto;
+}
+footer.foot .grow { flex: 1 1 auto; }
+/* 窄窗口下把右侧那句先收起来，别把构建信息挤没 */
+@media (max-width: 860px) { footer.foot .grow + span { display: none; } }
+
+/* ---------- 窄窗口：工具栏换行 ----------
+   实测"标签 + 修正列名笔误 + 四个导出按钮 + 质量报告"这一行的自然宽度是
+   **876px**（这是加了"质量报告"按钮之后的数；之前没有它是 798px。
+   用 G:/_isohtml/mkinject.py 的 measure 用例重量：它把 .tabs 设成
+   width:max-content 再读实际宽度，与视口无关）。
+   右栏宽度 ≈ 视口 - 左栏(约 300px)。在 1284px 视口下实测只剩约 17px 余量，
+   太贴边了，所以断点取 1300px：视口 ≤1300 时让导出按钮整行换到第二行，
+   五个按钮全部可见；1300 以上单行放得下（1366px 视口约余 145px）。
+   仍留 overflow:auto 兜底，万一第二行还放不下也能横向滚。
+   改按钮文案或增删按钮后，务必用 measure 用例重量一次并更新这里。 */
+@media (max-width: 1300px) {
+  .tabs { flex-wrap: wrap; overflow: auto; row-gap: 0; }
+  .tabs .spacer { flex: 1 1 100%; height: 0; }
+  .tabs button { padding: 6px 10px; }
+  .tabs .act { margin: 2px 0 5px; }
+}

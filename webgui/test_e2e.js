@@ -24,7 +24,7 @@ const REF = JSON.parse(fs.readFileSync(path.join(SRC, 'e2e_case.json'), 'utf8'))
 /* ---------- 加载模块并接线 ---------- */
 const sandbox = { window: {}, console };
 vm.createContext(sandbox);
-for (const f of ['math.js', 'thermo.js', 'window.js', 'report.js', 'pipeline.js']) {
+for (const f of ['fp.js', 'math.js', 'thermo.js', 'window.js', 'report.js', 'pipeline.js']) {
   vm.runInContext(fs.readFileSync(path.join(SRC, f), 'utf8'), sandbox, { filename: f });
 }
 const DS = sandbox.window.DS;

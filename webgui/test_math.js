@@ -3,17 +3,18 @@
  *
  *  用法:  node webgui/test_math.js
  *
- *  判据分两档，按"是否触及超越函数"划分：
+ *  判据只有一档：**逐位相等（0 ULP）**。
  *
- *    精确档（要求逐位相等，0 ULP）
  *      sum / mean / std / average / nanmean / nanstd / filter2s / mean2sem
- *      以及只含四则运算与 sqrt 的还原路径（sample / std207 / std_cal204 / std204）
- *      —— 这些没有理由不一致，差一个末位就说明移植错了。
+ *      以及全部还原路径（sample / std207 / std_cal204 / std204 / std208）
  *
- *    相对容差档（1e-12）
- *      SK2model / Age76Pb / 208Pb 路径 —— 它们用到 exp，而 C libm 的 exp 与
- *      V8 的 Math.exp 允许有 ~1 ULP 的实现差异（IEEE-754 不规定 exp 必须正确舍入）。
- *      这是本移植唯一无法消除的误差源，实测值会打印出来，不做隐瞒。
+ *  曾经 SK2model / Age76Pb / 闭式换算只能走"相对容差 1e-12"，因为它们用到 exp/log，
+ *  而宿主 C 运行时的 exp/log 与 V8 的 Math.exp/Math.log 允许差 1 ULP（IEEE-754
+ *  不要求 exp 正确舍入）。现在两侧统一改用**正确舍入**的定义
+ *  （网页版 src/fp.js、参考值 pycr.py），差异来源被消除，于是这几项也升级为逐位比对。
+ *
+ *  顺带说明：sqrt 由 IEEE-754 规定必须正确舍入，所以 Math.sqrt 与 libm 的 sqrt
+ *  本来就逐位相同，从来不是误差来源。
  * ========================================================================== */
 'use strict';
 
@@ -26,7 +27,7 @@ const SRC = path.join(__dirname, 'src');
 /* ---------- 加载 ---------- */
 const sandbox = { window: {}, console };
 vm.createContext(sandbox);
-for (const f of ['data.js', 'math.js']) {
+for (const f of ['fp.js', 'data.js', 'math.js']) {
   vm.runInContext(fs.readFileSync(path.join(SRC, f), 'utf8'), sandbox, { filename: f });
 }
 // vm 里顶层 const 不会挂到 sandbox 上，要显式取
@@ -137,35 +138,47 @@ function testPrimitives() {
   }
 }
 
-/* ---------- 2. 模型函数：exp 相关，用相对容差 ---------- */
-const TOL_EXP = 1e-12;
-
+/* ---------- 2. 模型函数：exp/log 相关，逐位比对 ----------
+ *
+ *  这几项原本只能走"相对容差"档，因为 Python 侧是宿主 C 运行时的 exp/log、
+ *  JS 侧是 Math.exp/Math.log，两者允许差 1 ULP。
+ *  现在两侧都用**正确舍入**的定义（网页版 fp.js / 参考值 pycr.py），
+ *  差异来源被消掉了，于是可以要求逐位相等 —— 判据更强，也更说明问题。
+ */
 function testModels() {
   const M = REF.models;
 
-  let worstSk = 0, worstSkAt = null;
+  let badSk = 0, firstSk = null;
   for (const c of M.sk2model) {
     const got = DS.sk2model(c.age);
     for (let i = 0; i < 5; i++) {
-      const r = rel(got[i], c.out[i]);
-      if (r > worstSk) { worstSk = r; worstSkAt = c.age; }
+      if (!Object.is(got[i], c.out[i])) {
+        badSk++;
+        if (!firstSk) firstSk = `@age=${c.age} 第${i}项 js=${got[i]} py=${c.out[i]}`;
+      }
     }
   }
-  record('model', 'SK2model', worstSk <= TOL_EXP,
-    `最大相对差 ${worstSk.toExponential(3)} @age=${worstSkAt}（阈值 ${TOL_EXP.toExponential(0)}）`);
+  record('model', 'SK2model', badSk === 0,
+    badSk === 0 ? `${M.sk2model.length} × 5 项逐位相同`
+      : `${badSk} 项不同，首个 ${firstSk}`);
 
-  let worstA = 0, worstAAt = null, nA = 0;
+  let badA = 0, firstA = null, nA = 0;
   for (const c of M.age76) {
     const got = DS.age76Pb(c.r);
-    if (c.error) { record('model', `Age76Pb(${c.r})`, false, `Python 抛 ${c.error}，JS 返回 ${got}`); continue; }
+    if (c.error) {
+      record('model', `Age76Pb(${c.r})`, false, `Python 抛 ${c.error}，JS 返回 ${got}`);
+      continue;
+    }
     nA++;
-    const r = rel(got, c.age);
-    if (r > worstA) { worstA = r; worstAAt = c.r; }
+    if (!Object.is(got, c.age)) {
+      badA++;
+      if (!firstA) firstA = `@r=${c.r} js=${got} py=${c.age}`;
+    }
   }
-  record('model', `Age76Pb (${nA} 个输入)`, worstA <= TOL_EXP,
-    `最大相对差 ${worstA.toExponential(3)} @r=${worstAAt}（阈值 ${TOL_EXP.toExponential(0)}）`);
+  record('model', `Age76Pb (${nA} 个输入)`, badA === 0,
+    badA === 0 ? `${nA} 个输入逐位相同` : `${badA} 个不同，首个 ${firstA}`);
 
-  let worstC = 0, worstCAt = null;
+  let badC = 0, firstC = null;
   for (const c of M.ratio_to_age) {
     const trio = [
       DS.ageFromRatio(c.r, DS.LAM238),
@@ -174,17 +187,21 @@ function testModels() {
     ];
     const want = [c.pb206_u238, c.pb207_u235, c.pb208_th232];
     for (let i = 0; i < 3; i++) {
-      const r = rel(trio[i], want[i]);
-      if (r > worstC) { worstC = r; worstCAt = c.r; }
+      if (!Object.is(trio[i], want[i])) {
+        badC++;
+        if (!firstC) firstC = `@r=${c.r} 第${i}项 js=${trio[i]} py=${want[i]}`;
+      }
     }
   }
-  record('model', 'ln(1+r)/λ 年龄换算', worstC <= TOL_EXP,
-    `最大相对差 ${worstC.toExponential(3)} @r=${worstCAt}（含 Math.log vs math.log）`);
+  record('model', 'ln(1+r)/λ 年龄换算', badC === 0,
+    badC === 0 ? `${M.ratio_to_age.length} × 3 项逐位相同`
+      : `${badC} 项不同，首个 ${firstC}`);
 }
 
-/* ---------- 3. 还原：端到端 23 列 ---------- */
-// 纯四则运算的路径要求逐位相等；std208 含 exp，走容差档
-const EXACT_METHODS = ['sample', 'std207', 'std_cal204', 'std204'];
+/* ---------- 3. 还原：端到端 23 列 ----------
+ *  五条路径全部要求逐位相等。std208 那条会调 SK2model（含 exp），之所以也能逐位，
+ *  是因为参考值与网页版用的是同一个"正确舍入 exp"定义。
+ */
 
 function testReduction() {
   const R = REF.reduction;
@@ -214,17 +231,10 @@ function testReduction() {
         if (same(g, w)) exactCount++;
         else { worst = Math.max(worst, r); badCols.push(i); }
       }
-      const exactExpected = EXACT_METHODS.indexOf(method) >= 0;
-      const ok = exactExpected ? exactCount === want.length : worst <= TOL_EXP;
-      const tag = exactExpected ? '逐位' : '容差';
-      if (!ok || badCols.length) {
-        record('reduce', `${file} / ${method}`, ok,
-          `${exactCount}/${want.length} 逐位` +
-          (badCols.length ? `, 最大相对差 ${worst.toExponential(3)} @列${badCols.slice(0, 4).join(',')}` : ''));
-      } else {
-        record('reduce', `${file} / ${method}`, true,
-          `${exactCount}/${want.length} 逐位相等 [${tag}档]`);
-      }
+      const ok = exactCount === want.length;
+      record('reduce', `${file} / ${method}`, ok,
+        `${exactCount}/${want.length} 逐位相等` +
+        (badCols.length ? `，最大相对差 ${worst.toExponential(3)} @列${badCols.slice(0, 4).join(',')}` : ''));
     }
   }
 }
