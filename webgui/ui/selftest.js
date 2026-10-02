@@ -163,6 +163,13 @@
         + DR.stdMeasured.mean.toFixed(2) + ' ± ' + DR.stdMeasured.se2.toFixed(2) + ' Ma（'
         + DR.stdMeasured.sigma + '），' + DR.stdMeasured.n + ' 个点，MSWD '
         + DR.stdMeasured.mswd.toFixed(2)) : '没有 stdMeasured');
+    /*  左栏那句「真实锡石」说明里的文件个数**从产物读**，不是手写的 ——
+        手写的那份已经过期过一次（数据从 50 个改成 49 个时没人记得改）。
+        这条钉住"界面里那个数确实被填上了、而且填对了"。 */
+    t('左栏说明里的文件个数与内置数据一致',
+      !!(DR && $('demo-n') && $('demo-n').textContent === DR.files + ' 个'),
+      $('demo-n') ? ('界面上写着「' + $('demo-n').textContent + '」，产物里是 '
+        + (DR ? DR.files : '?') + ' 个') : '找不到 #demo-n');
 
     /* --- 0b. 单文件构建的结构自检（踩过的坑，留个哨兵）---
        src 下的模块是"平铺式脚本"：顶层直接写 const / function，靠 window.DS_* 交接。

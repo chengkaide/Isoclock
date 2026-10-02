@@ -72,7 +72,7 @@ SUITES = ['test_fp.js', 'test_math.js', 'test_thermo.js', 'test_agilent.js',
 
 # 页面内自检的项数。真源是产物页面在 #selftest 下自己报出来的那个数
 # （标题形如 `SELFTEST-OK [41/41]`）。有 Edge 时用 --selftest 现场核一遍。
-SELFTEST_ITEMS = 41
+SELFTEST_ITEMS = 42
 
 SUM_RE = re.compile(r'总计\s*(\d+)\s*项：通过\s*(\d+)，失败\s*(\d+)'
                     r'|结果：\s*(\d+)\s*通过\s*/\s*(\d+)\s*失败')
@@ -92,9 +92,18 @@ def find_node():
 
 
 def run_suites(node):
-    """真跑全部比对套件（SUITES 里有几套就跑几套），返回 (通过数, 套数)。
-    任何一套失败就报错退出 —— 别让"上一版是绿的"混进这一版的徽章里。"""
+    """真跑全部比对套件（SUITES 里有几套就跑几套）。
+
+    返回 (通过总数, 套数, 每套的通过数)。任何一套失败就报错退出 ——
+    别让"上一版是绿的"混进这一版的徽章里。
+
+    为什么要**每套**的数：`ui/app.html` 的说明里逐套列了项数
+    （"63 项质量统计"那种），那几行也是写死的、也会过期 ——
+    已经过期过一次（那套从 20 项加到 22 项之后，页面上还写着 20）。
+    逐套返回，`check_ui_claims()` 才能把那些数一起钉住。
+    """
     total_pass = 0
+    per = {}
     for f in SUITES:
         p = subprocess.run([node, f], cwd=WEBGUI, capture_output=True, text=True,
                            errors='replace', timeout=600)
@@ -113,7 +122,8 @@ def run_suites(node):
         if bad:
             raise SystemExit('!! %s 有 %d 项失败' % (f, bad))
         total_pass += ok
-    return total_pass, len(SUITES)
+        per[f] = ok
+    return total_pass, len(SUITES), per
 
 
 def selftest_items_from_browser():
@@ -160,7 +170,11 @@ def read_demo_facts():
     webgui/src/demo_real.js 里取（stdMeasured 本身也是 make_real_demo.py
     用真管线量出来的，不是设想的）。
 
-    读不到就少几个键，让 substitute() 因为换不掉 {{AY4}} 而报错 ——
+    可用的键：DEMOFILES（文件数）、GZIPKB（内嵌数据压缩后多少 KB）、
+    DEMONAN / DEMOWEAK / DEMOMIN（整行 NaN 的文件数 / 弱信号文件数 /
+    最弱那个的净 ²⁰⁶Pb）、AY4 / AY4SE / AY4MSWD（标样实测值，连 2σ 口径）。
+
+    读不到就少几个键，让 substitute() 因为换不掉标记而报错 ——
     宁可构建停下来，也不要印一个猜出来的标样年龄。
     """
     src = os.path.join(WEBGUI, 'src', 'demo_real.js')
@@ -168,9 +182,24 @@ def read_demo_facts():
         return {}
     txt = io.open(src, encoding='utf-8').read()
     f = {}
+    nf = re.search(r'\n\s*files:\s*(\d+)', txt)
+    if nf:
+        f['DEMOFILES'] = nf.group(1)
     gz = re.search(r'\bgzipBytes:\s*(\d+)', txt)
     if gz:
         f['GZIPKB'] = '%.0f' % (int(gz.group(1)) / 1024.0)
+    #  这批数据自己的毛病也进标记：正文里"有 N 个文件的积分窗口没定出来"
+    #  "最弱的只有 M cps"同样是换一批数据就会变成假话的话。
+    nan = re.search(r'nanRows:\s*\[([^\]]*)\]', txt)
+    if nan:
+        f['DEMONAN'] = str(nan.group(1).count('"file"'))
+    weak = re.search(r'weakFiles:\s*\[([^\]]*)\]', txt)
+    if weak:
+        #  weakFiles 由探针按净 ²⁰⁶Pb 升序排好，所以第一条就是全批最弱的那个
+        f['DEMOWEAK'] = str(weak.group(1).count('"file"'))
+        m0 = re.search(r'netPb":\s*(-?[\d.eE+]+)', weak.group(1))
+        if m0:
+            f['DEMOMIN'] = '%.0f' % float(m0.group(1))
     m = re.search(r'stdMeasured:\s*\{([^}]*)\}', txt)
     if m:
         blk = m.group(1)
@@ -236,14 +265,18 @@ def substitute(html, facts):
     return out
 
 
-def check_ui_claims(n_pass, n_suite, n_selftest):
-    """页面内「结果可信到什么程度」那段里的三个数，必须与实跑的相符。
+def check_ui_claims(n_pass, n_suite, n_selftest, per_suite=None):
+    """页面内「结果可信到什么程度」那段里的数，必须与实跑的相符。
 
-    那三个数（多少项比对 / 多少套 / 多少项自检）是给用户看的承诺，
+    那三个总数（多少项比对 / 多少套 / 多少项自检）是给用户看的承诺，
     但它们写在 HTML 里，**没法在页面里自己算出来**（要跑 Node 才知道）。
     所以退一步：数字仍然写死在 webgui/ui/app.html，由本函数在每次 CI 里
     跟实跑结果比一次 —— 对不上就红。不这么钉住的话，加一套测试就会让
     页面上的"314 项"悄悄变成假话（已经发生过一次）。
+
+    同一段话里还**逐套**列了项数（"63 项质量统计"这种），它们同样写死、
+    同样会过期（真发生过：那套从 20 项加到 22 项，页面上还写着 20）。
+    逐套的那些用 `data-count="suite:<文件名>"` 标记，一并在这里核。
     """
     p = os.path.join(WEBGUI, 'ui', 'app.html')
     if not os.path.isfile(p):
@@ -258,12 +291,28 @@ def check_ui_claims(n_pass, n_suite, n_selftest):
             bad.append('app.html 里找不到 data-count="%s" 的标记' % k)
         elif int(m.group(1)) != v:
             bad.append('app.html 说 %s = %s，实跑是 %d' % (k, m.group(1), v))
+    per = per_suite or {}
+    n_suite_marks = 0
+    for k in sorted(set(re.findall(r'data-count="suite:([\w.]+)"', txt))):
+        if k not in per:
+            bad.append('app.html 点名了 suite:%s，但 SUITES 里没有这一套' % k)
+            continue
+        m = re.search(r'data-count="suite:%s">\s*(\d+)\s*项' % re.escape(k), txt)
+        if not m:
+            bad.append('data-count="suite:%s" 后面读不到"N 项"' % k)
+        elif int(m.group(1)) != per[k]:
+            bad.append('app.html 说 %s = %s 项，实跑是 %d 项'
+                       % (k, m.group(1), per[k]))
+        else:
+            n_suite_marks += 1
     if bad:
         raise SystemExit('!! 帮助弹窗里的数字与实跑不符：\n       '
                          + '\n       '.join(bad)
                          + '\n       改 webgui/ui/app.html，然后重跑 webgui/build_ui.py')
-    print('  帮助弹窗里的三个数：%d 项比对 / %d 套 / %d 项自检 —— 与实跑一致'
-          % (n_pass, n_suite, n_selftest))
+    print('  帮助弹窗里的数：%d 项比对 / %d 套 / %d 项自检'
+          % (n_pass, n_suite, n_selftest)
+          + ('　＋　逐套的 %d 个也核过' % n_suite_marks if n_suite_marks else '')
+          + ' —— 与实跑一致')
 
 
 def comparable(html):
@@ -287,7 +336,7 @@ def build_badges():
     node = find_node()
     if not node:
         raise SystemExit('!! 找不到 node，无法重算比对项数（用 --no-tests 跳过）')
-    n_pass, n_suite = run_suites(node)
+    n_pass, n_suite, per_suite = run_suites(node)
 
     st = selftest_items_from_browser()
     if st is None:
@@ -335,7 +384,7 @@ def build_badges():
     facts = token_facts(page_bytes, guide_bytes,
                         os.path.getsize(exe) if os.path.isfile(exe) else None,
                         n_pass, n_suite, n_selftest)
-    check_ui_claims(n_pass, n_suite, n_selftest)
+    check_ui_claims(n_pass, n_suite, n_selftest, per_suite)
     return '\n'.join(lines), items, facts
 
 

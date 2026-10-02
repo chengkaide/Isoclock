@@ -11,10 +11,24 @@
 为什么要内嵌而不是让页面去读文件
 --------------------------------
 网页版承诺"双击一个文件、离线就能用"。而 `file://` 下 `fetch()` 会被浏览器
-拦掉（CORS），所以示例数据**必须**在文件里面。50 个文件原样嵌进去是 1.6 MB，
-单文件会涨到 1.9 MB；gzip 之后是 336 KB、base64 之后 448 KB ——
-页面从 284 KB 涨到约 750 KB，仍然是个能双击打开的小文件。
+拦掉（CORS），所以示例数据**必须**在文件里面。这一批明文 1.7 MB 上下，
+gzip 之后只剩两成多，base64 再涨三成 —— 页面因此比纯代码版大出那一段，
+但它仍然是个能双击打开的小文件（精确值每次生成都会打印，不写死在这里）。
 运行时用标准库 `DecompressionStream('gzip')` 解开，不引任何第三方库。
+
+先剔掉一个不属于这次会话的文件
+------------------------------
+源目录里有一个文件是**越界采集**：它是全批唯一采集日期不在主会话那天的，
+总行数也与全批差一个档（340 行 vs 352~354 行，即数据点 324 vs 336~338，
+驻留时间随之不同），净 ²⁰⁶Pb 只有 5 cps（全批最弱，中位数 3500 上下）。
+数据主人（用户）确认那是方法试验里打偏／误采的一次信号，要删掉。
+
+留着它不只是"多一个点"：它排在批次最前面**并且顶着标样名**，
+于是开头那一段标样夹逼会变成两个不同会话凑出来的假区间。
+
+剔除规则写在 `EXCLUDE_ORDER`（按采集顺序数，0 起），
+而 `drop_out_of_session()` 会用上面那几条**独立算出来的**特征去核 ——
+对不上就报错停下。宁可构建失败，也不要静默少一个文件。
 
 脱敏规则（数值一个字节都不动）
 ------------------------------
@@ -31,7 +45,7 @@
 ------------
 脚本写完会**自己再读一遍**（用真源码 src/*.js 在 node 里跑一遍），确认：
 
-  · 50 个文件仍然全部走严格路径、行数与原始一致；
+  · 全部文件仍然走严格路径、行数与原始一致；
   · 标样 AY-4 按**推荐参数**跑出来的年龄，落在两个公开发表的
     ID-TIMS 值的包络内（见 LITERATURE）；
   · 明文 JSON 的 sha256 与写进文件里的那个一致。
@@ -70,6 +84,12 @@ KEEP_NAMES = ['SRM 612', 'AY-4']
 #  第 1 行的形态：`<名字>:<月>/<日>/<年> <时>:<分>:<秒> <AM|PM>;`
 FIRST_LINE = re.compile(r'^([^:]*):(\d{2}/\d{2}/\d{4} \d{2}:\d{2}:\d{2} [AP]M);?$')
 ZERO_TIME = '01/01/2020 12:00:00 AM'
+
+#  要剔除的文件，按**采集顺序**（文件名尾号）数，0 起。
+#  为什么不写原文件名：脱敏的全部意义就是不把原代号带进仓库，
+#  而原文件名里带着批次代号。序号同样能唯一定位，且不泄露任何东西。
+#  为什么剔它：见上面「先剔掉一个不属于这次会话的文件」。
+EXCLUDE_ORDER = [0]
 
 # ------------------------------------------------------------------ 推荐参数
 #  界面与测试共用这一个真源。改这里必须重新生成，`--check` 会拦住没重生成的情况。
@@ -141,6 +161,49 @@ def read_source(src):
     return out
 
 
+def drop_out_of_session(files):
+    """按 EXCLUDE_ORDER 剔除不属于这次会话的采集，并**独立核一遍理由还成立**。
+
+    核的是两条与文件名无关的特征，任何一条对不上都直接报错、不落盘：
+      ① 被剔的正是"采集日期与主会话不同"的那几个，不多不少；
+      ② 被剔的总行数落在其余文件的行数区间**之外**（说明它确实是另一次设置下的采集）。
+    这样源目录哪天换了文件、多了少了，构建会当场停住，
+    而不是悄悄换一批示例数据出去 —— 那是最难发现的一类错。
+    """
+    days = []
+    for fname, text in files:
+        m = FIRST_LINE.match(text.split('\n')[0].rstrip('\r'))
+        if not m:
+            raise SystemExit('!! %s 第 1 行不是预期形态' % fname)
+        days.append(m.group(2).split()[0])
+    main_day = max(set(days), key=days.count)
+    stray = [i for i, d in enumerate(days) if d != main_day]
+    if stray != list(EXCLUDE_ORDER):
+        raise SystemExit(
+            '!! 要剔除的序号对不上：源里"采集日不属于主会话"的是 %s，'
+            'EXCLUDE_ORDER 写的是 %s。\n'
+            '   源目录内容变了、或规则该重定了 —— 人工确认后再改，别把构建放过去。'
+            % (stray, list(EXCLUDE_ORDER)))
+    if len(stray) >= len(files):
+        raise SystemExit('!! 剔完就没有文件了（源目录里全是越界采集？）')
+
+    rows = [len(t.split('\n')) for _, t in files]
+    keep = [i for i in range(len(files)) if i not in set(stray)]
+    lo, hi = min(rows[i] for i in keep), max(rows[i] for i in keep)
+    inside = [i for i in stray if lo <= rows[i] <= hi]
+    if inside:
+        raise SystemExit(
+            '!! 第 %s 个文件的总行数（%s）落在其余文件的行数区间 %d~%d 里 —— '
+            '它和会话内的文件看着是一类，剔除理由不成立，人工确认后再说'
+            % (inside, [rows[i] for i in inside], lo, hi))
+
+    for i in stray:
+        print('  剔除第 %d 个文件：全批 %d 个里唯一采集日期不在主会话那天的，'
+              '总行数 %d（其余 %d~%d）'
+              % (i, len(files), rows[i], lo, hi))
+    return [f for i, f in enumerate(files) if i not in set(stray)]
+
+
 def anonymize(files):
     """按规则脱敏，返回 (files_out, 统计, 原名→新名映射)。
 
@@ -194,13 +257,25 @@ vm.createContext(sb);
 for(const f of ['fp.js','math.js','thermo.js','window.js','report.js','pipeline.js',
                 'age.js','qc.js'])
   vm.runInContext(fs.readFileSync(path.join(SRC,f),'utf8'),sb,{filename:f});
-//  产物可能还不存在（首次生成）—— 不存在就走 argv[1]
+//  ⚠ `node -e CODE extra` 的 argv 是 [node, extra] —— 额外参数在 argv[1]，
+//    不是 argv[2]（argv[1] 只有在跑**脚本文件**时才是脚本路径）。
+//    这两个下标非常容易记反，实测过：`node -e "…" foo.json` → ["…node.exe","foo.json"]。
+const fromFile = process.argv.length < 2;
+
+//  ⚠ 产物**只有"从产物读"的那一趟**才该看。
+//    生成前那一趟源数据已经变了，拿旧产物里存的指纹去比必然不等 ——
+//    踩过：改完源数据重跑，直接判"指纹不一致"不落盘，于是这个脚本
+//    只有**第一次**能生成（`--check` 走另一条路，一直没暴露）。
+//    参数同理：生成前那一趟必须用调用方传进来的 PROBE_PARAMS，
+//    不能沿用旧产物里的 params，否则"量标样"量的是上一版参数的标样。
 let D=null;
-try{
-  vm.runInContext(fs.readFileSync(path.join(SRC,'demo_real.js'),'utf8'),sb,
-                  {filename:'demo_real.js'});
-  D=sb.window.DS_DEMO_REAL;
-}catch(e){ D=null; }
+if(fromFile){
+  try{
+    vm.runInContext(fs.readFileSync(path.join(SRC,'demo_real.js'),'utf8'),sb,
+                    {filename:'demo_real.js'});
+    D=sb.window.DS_DEMO_REAL;
+  }catch(e){ D=null; }
+}
 
 const W=sb.window, FP=W.DS_FP, M=W.DS, TH=W.DS_THERMO, RP=W.DS_REPORT,
       WIN=W.DS_WINDOW, PL=W.DS_PIPELINE, AGE=W.DS_AGE, QC=W.DS_QC;
@@ -216,11 +291,6 @@ AGE.attach({pwSum:M.pwSum, nnanmean:M.nnanmean, age76Pb:M.age76Pb,
 const ISONAME=['Time','202Hg','204Pb','206Pb','207Pb','208Pb','232Th','238U'];
 
 const OUT={};   // 要回传给 Python 的东西
-//  ⚠ `node -e CODE extra` 的 argv 是 [node, extra] —— 额外参数在 argv[1]，
-//    不是 argv[2]（argv[1] 只有在跑**脚本文件**时才是脚本路径）。
-//    这两个下标非常容易记反，实测过：`node -e "…" foo.json` → ["…node.exe","foo.json"]。
-const fromFile = process.argv.length < 2;
-
 const src = fromFile
   ? (D ? D.decode() : Promise.reject(new Error('src/demo_real.js 不存在或没有 DS_DEMO_REAL')))
   : Promise.resolve(JSON.parse(fs.readFileSync(process.argv[1],'utf8')));
@@ -251,7 +321,7 @@ src.then(function(files){
   if(D){ OUT.bytes.declaredLen=D.rawBytes; OUT.bytes.declaredSha=D.sha256; }
 
   // ---- ③ 按推荐参数跑完整管线，量标样 ----
-  const P=D?D.params:JSON.parse(process.env.PROBE_PARAMS);
+  const P=fromFile?D.params:JSON.parse(process.env.PROBE_PARAMS);
   const a=FP.dexp(0.000000000155125*P.stdAge*1000000)-1;
   const b=FP.dexp(0.00000000098485*P.stdAge*1000000)-1;
   const c=FP.dexp(0.000000000049475*P.stdAge*1000000)-1;
@@ -465,8 +535,10 @@ def build_js(records, stats, r, mean, se2, mswd, nstd, blob, gz, b64, parts, par
  *
  *  这个文件是**生成的**，别手改：webgui/make_real_demo.py
  *
- *  内容：%d 个真实的 Thermo / iCAP Qtegra 导出，按原始采集顺序排列。
- *        其中标样 %s，样品 %d 个。
+ *  内容：%d 个真实的 Thermo / iCAP Qtegra 导出，是**同一次连续会话**
+ *        （首尾各一个 SRM 612 把它夹住）。其中标样 %s，样品 %d 个。
+ *        源目录里另有一个不属于这次会话的越界采集，生成时已剔除 ——
+ *        为什么剔、拿什么核，见 webgui/make_real_demo.py。
  *
  *  脱敏：样品代号按出现顺序重编号成 S-01…，第 1 行的采集时间戳归零成
  *        %s，文件名改成 sample_NN.csv。12 行仪器元信息原样保留 ——
@@ -474,9 +546,9 @@ def build_js(records, stats, r, mean, se2, mswd, nstd, blob, gz, b64, parts, par
  *        找到表头"这件事的现场。
  *        **数值一个字节都没动** —— 动了就破坏"与桌面版逐位相同"这条对外承诺。
  *
- *  为什么是 gzip 而不是明文：明文 %d KB，gzip 后 %d KB，base64 后 %d KB。
- *        页面为此从 284 KB 涨到约 750 KB，仍然是个能双击打开的小文件。
- *        解压用浏览器标准库 DecompressionStream('gzip')，不引第三方库。
+ *  为什么是 gzip 而不是明文：明文 %d KB → gzip %d KB → base64 后 %d KB。
+ *        解压用浏览器标准库 DecompressionStream('gzip')，不引第三方库；
+ *        页面因此比纯代码版大出 base64 那一段（精确值由 docs/make_badges.py 实算）。
  *
  *  这套数据按下面 params 跑出来的结果（由生成脚本用真管线量出，不是手写的）：
  *        标样 %s：n=%d，加权平均 %s ± %s Ma（2σ），MSWD %s
@@ -601,9 +673,10 @@ def main():
         raise SystemExit('!! 目录不存在：%s' % src)
 
     files = read_source(src)
+    print('源：%s ｜ 读到 %d 个 csv' % (src, len(files)))
+    files = drop_out_of_session(files)
     records, stats, mapping = anonymize(files)
 
-    print('源：%s' % src)
     print('文件数 %d ｜ 保留原名的标样 %s ｜ 重编号的样品 %d 个（占 %d 个文件）'
           % (len(records),
              '、'.join('%s×%d' % (k, v) for k, v in sorted(stats['kept'].items())),

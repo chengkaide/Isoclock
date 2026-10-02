@@ -73,7 +73,7 @@ python -m http.server 8000 --directory docs
   缩略图看不清时可以开原图。
 - **改页面后重新拍一次截图**再提交，别只改文字不验版式：
   无头 Edge 的 `--window-size` 要开够高（首页约 13400 px），否则会截断。
-- **不要写没验证过的数字。** 页面上所有计数（336 项、756 KB、9.8 MB 等）
+- **不要写没验证过的数字。** 页面上所有计数（336 项、754 KB、9.8 MB 等）
   都来自已经跑过的实测记录；新增数字要有出处。
 - **首屏那排徽章不要手写** —— 它由 `python docs/make_badges.py` **算出来**再写进
   `index.html`（在 `index.src.html` 里改的是 `<!-- BADGES:BEGIN -->` / `<!-- BADGES:END -->`
@@ -95,10 +95,16 @@ python -m http.server 8000 --directory docs
   每行多一个字节，而徽章量的是工作区文件 —— 同一枚徽章在 Windows 和 CI（ubuntu）上
   会算出两个数，那种红只在别人机器上出现。写文件时显式给 `newline="\n"`
   （`Path.write_text()` 的默认值在 Windows 上就是 CRLF 的来源）。
-- **`webgui/ui/app.html` 里那三个数（多少项比对 / 多少套 / 多少项自检）**写在
-  帮助弹窗里，页面自己算不出来（要跑 Node 才知道），所以留在 HTML 里、
-  用 `data-count="tests|suites|selftest"` 标出来，由 `make_badges.py` 每次
-  跟实跑结果比一次，对不上就红。
+- **`webgui/ui/app.html` 里那些数**写在帮助弹窗里，页面自己算不出来（要跑 Node
+  才知道），所以留在 HTML 里用标记标出来，由 `make_badges.py` 每次跟实跑结果比一次，
+  对不上就红。三类标记：总数用 `data-count="tests|suites|selftest"`；
+  **逐套的项数**（"63 项质量统计"这种）用 `data-count="suite:<文件名>"` ——
+  后者是补上的：那几行同样是手写的，也过期过（`test_demo_real.js` 从 20 项加到
+  22 项之后，页面上还写着 20，而总数是对的、所以谁也没发现）。
+- **凡是产物里已经有答案的数，界面就别抄第二份。** 左栏「真实锡石」那句说明里的
+  文件个数就是从 `DS_DEMO_REAL.files` 现读的（原来手写"50 个"，数据改成 49 个之后
+  成了假话）。给这类元素留个 id、在 `boot()` 里填，并且**在 `#selftest` 里加一条
+  断言**钉住"确实填上了、填对了"。
 - **不要用 shields.io 之类的徽章图片。** 那是一次外部请求，与"零外链、离线可开"
   的约定冲突。徽章是内联 HTML 药丸（`.badges` / `.b`），跟着系统深浅色走。
 - **必须保留「关于这份文档」那一节**（`index.src.html` 的 `#about`）：用户的硬要求是

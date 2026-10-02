@@ -1412,8 +1412,8 @@
     /* ------------------------------------------------------------------
      *  示例数据：两个入口
      *
-     *  「真实锡石」那批是 50 个真实的 iCAP Qtegra 导出，gzip+base64 内嵌在
-     *  这个单文件里（约 450 KB），点一下才解压 —— 所以是异步的。
+     *  「真实锡石」那批是真实的 iCAP Qtegra 导出，gzip+base64 内嵌在
+     *  这个单文件里，点一下才解压 —— 所以是异步的。
      *  它带的 DS_DEMO_REAL.params 是**推荐参数**、stdMeasured 是**这套参数跑出来的
      *  标样结果**，两样都由生成脚本用真管线在这批数据上量出来（AY-4 出
      *  157.04 ± 1.43 Ma（2σ），与文献两个 ID-TIMS 值都对得上）。
@@ -1548,10 +1548,19 @@
     host.textContent = '构建于 ' + b.built + fp;
   }
 
+  /*  左栏「真实锡石」那句说明里的文件个数，从产物读。
+   *  这里原来是手写的一个数，数据从 50 个改成 49 个之后没人记得改 ——
+   *  凡是从产物里就有答案的数，就不该在界面里抄第二份。 */
+  function fillDemoCount() {
+    var el = $('demo-n'), D = window.DS_DEMO_REAL;
+    if (el && D && D.files) el.textContent = D.files + ' 个';
+  }
+
   function boot() {
     wire();
     buildPbParams();
     fillBuildInfo();
+    fillDemoCount();
     renderQcDoc();          // ⑥ 里那些阈值说明取自 qc.js，不在 HTML 里重复一遍
     if (location.hash === '#selftest') {
       window.__selftest = { done: false, results: [] };

@@ -545,7 +545,7 @@
      * 或者更糟——把这些数字当成一批真实数据的结果读走。 */
     var demoNote = R.demo === 'real'
       ? '<div class="alert demonote"><b>本次用的是内置的真实锡石数据'
-        + '（50 个 Thermo iCAP Qtegra 导出）。</b>'
+        + '（' + esc(R.files) + ' 个 Thermo iCAP Qtegra 导出）。</b>'
         + '脱敏处理：样品代号按出现顺序重编号成 S-01…，每个文件第 1 行的采集时间戳'
         + '归零，文件名改成 sample_NN.csv；<b>数值一个字节都没有改</b>。'
         + '12 行仪器元信息原样保留 —— 那是方法信息，不是身份信息。'

@@ -322,6 +322,14 @@ footer .wrap{display:flex;gap:22px;flex-wrap:wrap;align-items:baseline}
       （²⁰⁶Pb/²³⁸U、²⁰⁷Pb/²³⁵U、²⁰⁸Pb/²³²Th、²⁰⁷Pb/²⁰⁶Pb）的年龄表。</li>
   </ol>
 
+  <figure>
+    <a href="assets/ui-signal.png" target="_blank" rel="noopener" title="点开看原图">
+      <img src="assets/ui-signal.png" alt="Isoclock 网页版的信号图界面：七个质量通道叠在一张对数坐标图上，背景窗与信号窗用底色标出">
+    </a>
+    <figcaption>第 1–2 步的现场：七个质量通道叠在一张对数纵轴图上，背景窗与积分窗用底色画出。
+      先用肉眼确认窗口取得对不对，再往下算——这一步能挡掉大部分"结果很怪"的情况。</figcaption>
+  </figure>
+
   <h3>输出什么</h3>
   <div class="grid g3">
     <div class="card">
@@ -341,20 +349,22 @@ footer .wrap{display:flex;gap:22px;flex-wrap:wrap;align-items:baseline}
     </div>
   </div>
 
+  <figure>
+    <a href="assets/ui-ages.png" target="_blank" rel="noopener" title="点开看原图">
+      <img src="assets/ui-ages.png" alt="网页版的年龄表：51 列，四个体系的年龄与 2σ，分校正前与校正后">
+    </a>
+    <figcaption>三个输出里最要紧的那个长什么样：年龄表 51 列，四个体系
+      （²⁰⁶Pb/²³⁸U、²⁰⁷Pb/²³⁵U、²⁰⁸Pb/²³²Th、²⁰⁷Pb/²⁰⁶Pb）的年龄与 2σ，分校正前 / 校正后。
+      <b>校正后的列号按校正方式分派</b>——这是个容易踩的坑，
+      所以表格帮助文字里写明了每一列到底是什么。</figcaption>
+  </figure>
+
   <div class="callout">
     <p class="t">一句话定位</p>
     <p>Isoclock 不是"又一个锆石软件"。它面对的是<b>普通铅含量不可忽略、且各点还不一样</b>的矿物。
     这类样品里，普通铅处理得好不好，直接决定年龄可用不可用——所以它的核心是四条普通铅校正路径，
     而不是锆石流程里的那些常规步骤。<a href="guide.html#sec7">图解第 2 章</a>用误差传递把这件事量化了。</p>
   </div>
-
-  <figure>
-    <a href="assets/ui-signal.png" target="_blank" rel="noopener" title="点开看原图">
-      <img src="assets/ui-signal.png" alt="Isoclock 网页版的信号图界面：七个质量通道叠在一张对数坐标图上，背景窗与信号窗用底色标出">
-    </a>
-    <figcaption>网页版的信号图：七个质量通道叠在一张对数纵轴图上，背景窗与积分窗用底色画出。
-      先用肉眼确认窗口取得对不对，再往下算——这一步能挡掉大部分"结果很怪"的情况。</figcaption>
-  </figure>
 </section>
 
 <!-- ==================== FORK ==================== -->
@@ -502,7 +512,7 @@ footer .wrap{display:flex;gap:22px;flex-wrap:wrap;align-items:baseline}
       <p>一个 <code>isoclock.html</code>，<b>{{PAGEKB}} KB</b>。下载后<b>双击</b>，
         用你现有的浏览器打开就能用。不装 Python、不装依赖、不联网 ——
         样式和图都在这个文件里面。</p>
-      <p>为此涨到 {{PAGEKB}} KB 上下是<b>故意的</b>：里面内嵌了 50 个<b>真实</b>的锡石
+      <p>为此涨到 {{PAGEKB}} KB 上下是<b>故意的</b>：里面内嵌了 {{DEMOFILES}} 个<b>真实</b>的锡石
         LA-ICP-MS 导出（压缩后 {{GZIPKB}} KB），所以开箱就能拿真数据跑一遍完整流程，
         而不是只能看合成出来的假计数。一个网页 {{PAGEKB}} KB 仍然比一张手机照片小。</p>
       <p>Windows / macOS / Linux 通用，只要那台机器有浏览器。</p>
@@ -585,14 +595,19 @@ footer .wrap{display:flex;gap:22px;flex-wrap:wrap;align-items:baseline}
     <p class="t">不确定就用内置示例</p>
     <p>左栏有两个示例按钮，<b>点下去连参数一起配好</b>——先看一遍完整的输出长什么样，
     再拿自己的数据进来。</p>
-    <p><b>「载入示例：真实锡石数据」</b>是 50 个<b>真实</b>的 Thermo iCAP Qtegra 导出
-    （锡石 LA-ICP-MS U-Pb，一套方法对比实验）。它不是挑出来的"干净"数据：
-    里面有剥蚀失败的空文件、有信号很弱的点、有 4 个文件的积分窗口压根没定出来
+    <p><b>「载入示例：真实锡石数据」</b>是 {{DEMOFILES}} 个<b>真实</b>的 Thermo iCAP Qtegra 导出
+    （锡石 LA-ICP-MS U-Pb，<b>一次连续会话</b>：首尾各夹着一个标样 SRM 612）。
+    它不是挑出来的"干净"数据：有信号很弱的点（最弱的净 ²⁰⁶Pb 只有 {{DEMOMIN}} cps，
+    不到本批中位数一半的有 {{DEMOWEAK}} 个）、有 {{DEMONAN}} 个文件的积分窗口压根没定出来
     （比值列整行 NaN）—— 这些都会在日志里点名说清，质量报告会把它们剔除而不是
     拿去污染平均。所以你可以拿它当一次真实的练习：<b>看程序怎么处理一批不完美的数据</b>。
     脱敏处理只有三件事：样品代号重编号成 <code>S-01…</code>、每个文件第 1 行的采集时间归零、
     文件名改成 <code>sample_NN.csv</code>；<b>数值一个字节都没有改</b>，
-    12 行仪器元信息原样保留（那是方法信息，不是身份信息）。标样名保留原名。</p>
+    12 行仪器元信息原样保留（那是方法信息，不是身份信息）。标样名保留原名。
+    唯一少掉的是<b>一个文件</b>：批次最开头那一次采集是<b>前一天</b>的孤立信号
+    （总行数与驻留时间都和这批不是一套设置，净 ²⁰⁶Pb 只有全批最弱的零头），
+    按数据主人的判定剔除 —— 内嵌的这批是 {{DEMOFILES}} 个，比原始目录少这一个。
+    剔除规则与复核方式写在 <code>webgui/make_real_demo.py</code> 里。</p>
     <p>顺带把数字摆出来：它的标样 <b>AY-4</b> 按内置参数跑出
     <b>{{AY4}} ± {{AY4SE}} Ma（2σ，MSWD {{AY4MSWD}}）</b>，与两个公开发表的 ID-TIMS 值
     （158.2 ± 0.4 Ma、151.9 ± 2.2 Ma）都对得上 —— 这正是
@@ -600,15 +615,6 @@ footer .wrap{display:flex;gap:22px;flex-wrap:wrap;align-items:baseline}
     <p><b>「载入示例：合成数据」</b>是另一条路：人为拼出来的计数，只用来演示版面。
     它<b>不满足 U-Pb 体系关系</b>，出报告时顶部会挂一块红色声明确认这件事。</p>
   </div>
-
-  <figure>
-    <a href="assets/ui-ages.png" target="_blank" rel="noopener" title="点开看原图">
-      <img src="assets/ui-ages.png" alt="网页版的年龄表：51 列，四个体系的年龄与 2σ，分校正前与校正后">
-    </a>
-    <figcaption>年龄表：51 列，四个体系（²⁰⁶Pb/²³⁸U、²⁰⁷Pb/²³⁵U、²⁰⁸Pb/²³²Th、²⁰⁷Pb/²⁰⁶Pb）
-      的年龄与 2σ，分校正前 / 校正后。<b>校正后的列号按校正方式分派</b>——
-      这是个容易踩的坑，所以表格帮助文字里写明了每一列到底是什么。</figcaption>
-  </figure>
 
   <h3>为什么是单文件，而不是"网页部署 + 后端"</h3>
   <p>因为这个软件的使用场景是：一台装了仪器的电脑、一个不能上网的实验室、
@@ -727,7 +733,7 @@ footer .wrap{display:flex;gap:22px;flex-wrap:wrap;align-items:baseline}
   <div class="callout">
     <p class="t">真实数据这条待办：Thermo 侧已结清，Agilent 侧还没有</p>
     <p><b>Thermo / iCAP Qtegra 侧已经用真文件验过了。</b>
-    一批 50 个真实导出（锡石 LA-ICP-MS U-Pb）全部走严格读取路径，
+    一批 {{DEMOFILES}} 个真实导出（锡石 LA-ICP-MS U-Pb）全部走严格读取路径，
     并且整条链跑到底：标样 AY-4 出 {{AY4}} ± {{AY4SE}} Ma（2σ），与两个公开发表的
     ID-TIMS 值相容。这批数据已内嵌进网页版作为默认示例，
     判据写在 <code>webgui/test_demo_real.js</code> 里，每次 CI 都会重跑。
