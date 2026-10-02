@@ -80,6 +80,17 @@ MODULES = [
     'qc.js',        # 批次质量统计（加权平均 / MSWD / 分组 / 异常），供出报告用
 ]
 
+# 内置**数据**（不是"与桌面版逐位比对过的模块"，所以单列一类，让 banner 说实话）。
+# demo_real.js 是生成的（webgui/make_real_demo.py），454 KB 的 base64。
+# 它自己带 decode()，运行时用浏览器标准库 DecompressionStream 解压，不引第三方库。
+DATASETS = [
+    'demo_real.js',
+]
+
+# 数据集的 script 块的说明文字。与 MODULES 那句分开，是因为两者性质不同 ——
+# 把"数据"写成"与桌面版逐位比对过的模块"是在说谎。
+DATASET_NOTE = '内置示例数据（生成的，见 webgui/make_real_demo.py）'
+
 #  顺序即加载顺序：report.js 必须在 app.js 之前（app.js 要用 window.DS_QCREPORT）
 SCRIPTS_TAIL = [
     ('report.js', os.path.join(UI, 'report.js')),
@@ -124,7 +135,7 @@ TOP_LEVEL_DUP_OK = {
 REQUIRED_GLOBALS = [
     'window.DS_FP', 'window.DS', 'window.DS_THERMO', 'window.DS_WINDOW',
     'window.DS_REPORT', 'window.DS_PIPELINE', 'window.DS_AGE', 'window.DS_QC',
-    'window.DS_QCREPORT',
+    'window.DS_QCREPORT', 'window.DS_DEMO_REAL',
 ]
 
 PLACEHOLDERS = ['@STYLE@', '@LIBS@', '@QCREPORT@', '@SELFTEST@', '@APP@']
@@ -164,6 +175,17 @@ def collect():
         manifest.append(('src/' + name, path, len(text), sha(text)))
         libs.append((name, text))
 
+    data = []
+    for name in DATASETS:
+        path = os.path.join(SRC, name)
+        if not os.path.isfile(path):
+            die('缺少数据集：src/%s\n'
+                '      它是生成的，跑一次：python webgui/make_real_demo.py --src <原始导出目录>'
+                % name)
+        text = read(path)
+        manifest.append(('src/' + name, path, len(text), sha(text)))
+        data.append((name, text))
+
     tail = []
     for name, path in SCRIPTS_TAIL:
         if not os.path.isfile(path):
@@ -181,7 +203,8 @@ def collect():
     tpl = read(tpl_path)
     manifest.append(('ui/app.html', tpl_path, len(tpl), sha(tpl)))
 
-    return {'style': style, 'libs': libs, 'tail': tail, 'tpl': tpl}, manifest
+    return {'style': style, 'libs': libs, 'data': data, 'tail': tail,
+            'tpl': tpl}, manifest
 
 
 def die(msg):
@@ -200,7 +223,7 @@ def check_sources(payloads):
 
     # ② 内联进 <script> / <style> 的内容里不能有结束标签，
     #    否则 HTML 解析器会提前收尾，后半截变成页面文字
-    for name, text in payloads['libs'] + payloads['tail']:
+    for name, text in payloads['libs'] + payloads['data'] + payloads['tail']:
         if '</script' in text.lower():
             die('%s 里含 "</script"，不能内联' % name)
     if '</style' in payloads['style'].lower():
@@ -209,7 +232,7 @@ def check_sources(payloads):
     # ③ src/ 下的每个文件都要么打包、要么在 SKIPPED 里登记，
     #    免得以后新加了一个模块却忘了加进 MODULES
     on_disk = set(os.listdir(SRC))
-    staged = set(MODULES) | set(SKIPPED)
+    staged = set(MODULES) | set(DATASETS) | set(SKIPPED)
     missing = sorted(on_disk - staged)
     if missing:
         die('src/ 下有没登记的文件：%s\n'
@@ -290,7 +313,8 @@ for (const [n, mods] of dups) {
   }
 }
 console.log(JSON.stringify({ dups: dups, shots: shots, collapsed: collapsed }));
-''' % {'order': json.dumps(MODULES), 'dir': json.dumps(SRC.replace('\\', '/'))}
+''' % {'order': json.dumps(MODULES + DATASETS),
+       'dir': json.dumps(SRC.replace('\\', '/'))}
 
     node = shutil.which('node') or os.environ.get('NODE_BIN')
     if not node:
@@ -377,8 +401,14 @@ def assemble(tpl, payloads, manifest):
             banner('src/' + name, '与桌面版逐位比对过的模块'), text.rstrip('\n'))
         for name, text in payloads['libs'])
 
+    # 数据集有自己的 banner 说明 —— 它不是"比对过的模块"，是数据。
+    data = '\n'.join(
+        '<script>\n%s%s\n</script>' % (
+            banner('src/' + name, DATASET_NOTE), text.rstrip('\n'))
+        for name, text in payloads['data'])
+
     out = tpl.replace('<!--@STYLE@-->', payloads['style'].rstrip('\n'))
-    out = out.replace('<!--@LIBS@-->', head + '\n' + libs)
+    out = out.replace('<!--@LIBS@-->', head + '\n' + data + '\n' + libs)
     # 这三个模板里已经带了自己的 <script> 外壳
     out = out.replace('<!--@QCREPORT@-->',
                       [t for n, t in payloads['tail'] if n == 'report.js'][0].rstrip('\n'))
@@ -404,14 +434,20 @@ def verify(out, tpl):
             die('%s 的内容没有原样出现在产物里' % name)
         if '<script>\n' + banner('src/' + name, '与桌面版逐位比对过的模块') not in out:
             die('%s 没有自己的 <script> 块 —— 检查 assemble() 是不是被改回去了' % name)
+    for name in DATASETS:
+        text = read(os.path.join(SRC, name)).strip()
+        if text not in out:
+            die('%s 的内容没有原样出现在产物里' % name)
+        if '<script>\n' + banner('src/' + name, DATASET_NOTE) not in out:
+            die('%s 没有自己的 <script> 块' % name)
     if out.count('<script') != out.count('</script>'):
         die('<script> 与 </script> 数量对不上')
-    # 1 个构建信息 + 7 个模块 + 自检 + 界面
-    want = 1 + len(MODULES) + len(SCRIPTS_TAIL)
+    # 1 个构建信息 + N 个模块 + M 个数据集 + 自检 + 界面
+    want = 1 + len(MODULES) + len(DATASETS) + len(SCRIPTS_TAIL)
     got = out.count('<script')
     if got != want:
-        die('产物里有 %d 个 <script>，应为 %d 个（构建信息 1 + 模块 %d + 脚本 %d）'
-            % (got, want, len(MODULES), len(SCRIPTS_TAIL)))
+        die('产物里有 %d 个 <script>，应为 %d 个（构建信息 1 + 模块 %d + 数据集 %d + 脚本 %d）'
+            % (got, want, len(MODULES), len(DATASETS), len(SCRIPTS_TAIL)))
 
 
 def main():

@@ -28,7 +28,7 @@ jobs:
   # 数值比对本该在 CI 上跑。原来只有打包，等于"314 项比对"只在本机出现过 ——
   # 一旦谁改了 src/，推上来也没人拦。先跑比对，再打包。
   verify-node:
-    name: 数值比对（314 项）
+    name: 数值比对（336 项）
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -39,10 +39,13 @@ jobs:
         working-directory: webgui
         run: |
           set -e
+          #  清单从 docs/make_badges.py 的 SUITES 读 —— 别在这里再抄一份。
+          #  抄过：加了 test_demo_real.js 之后这个循环没跟上，
+          #  那套测试等于从没在 CI 上被点名跑过（只有 --check 顺带跑到）。
+          files=$(python3 "$GITHUB_WORKSPACE/docs/make_badges.py" --list-suites)
+          echo "套件：$files"
           fail=0
-          for f in test_fp.js test_math.js test_thermo.js test_agilent.js \
-                   test_window.js test_e2e.js test_age.js test_age76.js \
-                   test_agilent_e2e.js test_thermo_compat.js test_qc.js test_report.js; do
+          for f in $files; do
             echo "===== $f ====="
             if ! node "$f"; then fail=1; fi
           done
@@ -51,7 +54,7 @@ jobs:
       - name: 核对页面上的徽章没过期
         # 徽章里的数字是算出来的（文件体积、真跑出来的比对项数）。
         # 页面改了但忘了重算徽章，这里就会拦下来。
-        run: python docs/make_badges.py --check
+        run: python3 docs/make_badges.py --check
 
   build:
     name: ${{ matrix.name }}

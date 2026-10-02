@@ -124,6 +124,46 @@
       && window.DS_REPORT), 'DS / DS_AGE / DS_PIPELINE / DS_FP / DS_WINDOW / DS_THERMO / DS_REPORT');
     if (!DS || !AGE || !PL || !FP) return { done: true, pass: pass, fail: fail, results: out };
 
+    /* --- 0a. 内置真实示例数据必须真的打进来了 ---
+       桌面壳（packaging/isoclock_desktop.py）的 --selftest 只看这一套自检的
+       通过数。如果 build_ui.py 漏拼了 demo_real.js，界面照样能开、手工拖 CSV
+       也照样能用 —— 只有主推的那个示例按钮会在**用户手里**才报错。
+       所以这里必须有一条。
+
+       注意这里只查**存在与形状**，不查内容：解压是异步的，而 run() 是同步的。
+       内容对不对由 CI 里的 webgui/test_demo_real.js 管 —— 它会真解压、
+       重算 sha256、跑完整管线并拿标样去对公开文献值。两条分工明确。 */
+    var DR = window.DS_DEMO_REAL;
+    t('内置真实示例数据已打包进来',
+      !!(DR && typeof DR.decode === 'function' && DR.files > 0 && DR.rawBytes > 0),
+      DR ? (DR.files + ' 个文件，' + Math.round(DR.b64Chars / 1024) + ' KB base64，'
+            + DR.encoding) : '没找到 window.DS_DEMO_REAL');
+    t('内置真实示例数据的推荐参数齐全',
+      !!(DR && DR.params && DR.params.stdName && DR.params.stdAge > 0
+        && DR.params.fracStd && DR.params.nistStd
+        && typeof DR.params.method === 'number' && DR.params.multi > 0
+        && DR.params.b1 > DR.params.b0),
+      DR && DR.params ? (DR.params.stdName + ' = ' + DR.params.stdAge + ' Ma ｜ method '
+        + DR.params.method + ' ｜ 背景 ' + DR.params.b0 + '~' + DR.params.b1 + ' s ｜ 外标 '
+        + DR.params.nistStd) : '没有 params');
+    t('内置真实示例数据带实测毛病清单（flaws）',
+      !!(DR && DR.flaws && Array.isArray(DR.flaws.nanRows)
+        && Array.isArray(DR.flaws.weakFiles)),
+      DR && DR.flaws ? (DR.flaws.nanRows.length + ' 个整行 NaN 的文件 ｜ '
+        + DR.flaws.weakFiles.length + ' 个弱信号文件 ｜ 净 ²⁰⁶Pb 中位数 '
+        + Math.round(DR.flaws.netPbMedian) + ' cps') : '没有 flaws');
+    /*  界面日志与文档正文引的那个"标样跑出来是多少"必须来自这里，
+        不能是手写的第二份 —— 而且**误差口径要一起带着**：质量报告的标样表
+        印 1σ 内部标准误，正文引 2σ，少了 sigma 就会看着像两个数对不上。 */
+    t('内置真实示例数据带实测标样结果（含误差口径）',
+      !!(DR && DR.stdMeasured && DR.stdMeasured.mean > 0 && DR.stdMeasured.se2 > 0
+        && DR.stdMeasured.mswd > 0 && DR.stdMeasured.n > 0
+        && /σ/.test(DR.stdMeasured.sigma)),
+      DR && DR.stdMeasured ? (DR.stdMeasured.name + ' = '
+        + DR.stdMeasured.mean.toFixed(2) + ' ± ' + DR.stdMeasured.se2.toFixed(2) + ' Ma（'
+        + DR.stdMeasured.sigma + '），' + DR.stdMeasured.n + ' 个点，MSWD '
+        + DR.stdMeasured.mswd.toFixed(2)) : '没有 stdMeasured');
+
     /* --- 0b. 单文件构建的结构自检（踩过的坑，留个哨兵）---
        src 下的模块是"平铺式脚本"：顶层直接写 const / function，靠 window.DS_* 交接。
        构建时如果把多个模块合并进**同一个** script 块，同名顶层函数就会互相覆盖

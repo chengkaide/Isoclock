@@ -15,6 +15,9 @@ cal_age_result_*.xls
 # 数值语义探针的临时输出
 webgui/_probe/
 
+# make_real_demo.py 给 node 探针喂数据用的临时文件（跑完即删，防万一）
+webgui/src/_demo_probe.json
+
 # 打包产物
 build/
 dist/

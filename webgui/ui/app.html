@@ -32,8 +32,17 @@
     </div>
     <div class="row" style="margin-top:8px">
       <button class="plain" id="btn-clear" style="flex:1">清空</button>
-      <button class="plain" id="btn-demo" style="flex:1">载入示例数据</button>
     </div>
+    <div class="row" style="margin-top:6px">
+      <button class="plain" id="btn-demo" style="flex:2">载入示例：真实锡石数据</button>
+    </div>
+    <div class="row" style="margin-top:6px">
+      <button class="plain" id="btn-demo-syn" style="flex:2">载入示例：合成数据</button>
+    </div>
+    <p class="hint">「真实锡石」是 <b>50 个真实的 iCAP Qtegra 导出</b>
+      （锡石 LA-ICP-MS U-Pb，YS 方法对比那批）—— 样品代号已重编号、采集时间已归零，
+      <b>数值一个字节都没改</b>。里面有失败点、弱信号点和整行 NaN 的点，那是真数据的常态。
+      <br>「合成数据」是人为拼的计数，只用来跑通流程、看版面，算出的年龄没有地质意义。</p>
     <p class="hint">文件顺序即处理顺序（原桌面版用 <code>os.listdir</code>，不保证稳定）。</p>
 
     <div class="row" style="margin-top:6px">
@@ -288,10 +297,14 @@
 
     <h3>结果可信到什么程度</h3>
     <p>同一批数据下，网页版的输出与桌面版<b>逐位相同</b>（bit-for-bit，包括浮点最后一位）。
-      这不是估计，是跑出来的：<b>314 项</b> Node 端自动比对（数值内核、Thermo/Agilent 解析、
-      积分窗口、两个 CSV 的<b>逐字节</b>输出、年龄层 51 列 × 19 组参数、
-      20 项 Agilent 端到端、47 项 Thermo 兼容读取、63 项质量统计、50 项报告组装）
-      ＋<b>37 项</b>本页面内自检（走的是真按钮那条路）。<br>
+      这不是估计，是跑出来的：<b data-count="tests">336 项</b> Node 端自动比对
+      （<b data-count="suites">13 套</b> <code>webgui/test_*.js</code>：数值内核、
+      Thermo/Agilent 解析、积分窗口、两个 CSV 的<b>逐字节</b>输出、
+      年龄层 51 列 × 19 组参数、20 项 Agilent 端到端、47 项 Thermo 兼容读取、
+      63 项质量统计、50 项报告组装、20 项内置真实示例数据）
+      ＋<b data-count="selftest">41 项</b>本页面内自检（走的是真按钮那条路）。<br>
+      上面这三个数不是手写的：<code>docs/make_badges.py</code> 每次都会把测试真跑一遍，
+      对不上就让 CI 红。真正手写的是这一句解释。</p>
       唯一一处曾经对不上的地方是 <code>exp</code> / <code>log</code>：宿主 C 运行时与浏览器的
       实现允许差 1 ULP，实测约有 9% 的 <code>Math.exp</code> 调用与正确舍入不同。
       网页版因此自己实现了<b>正确舍入</b>的 exp/log（<code>fp.js</code>），

@@ -287,7 +287,10 @@
    * ==================================================================== */
   var state = { files: [], entries: null, entriesKey: '', result: null,
     ageResult: null, ageInput: null, cfg: null, selected: null,
-    demo: false,                 // 当前数据是不是"载入示例"来的（信号图要标注）
+    demo: false,                 // false | 'real'（内置真实锡石）| 'syn'（合成示例）
+                                 // 取值是字符串而不是 true —— 报告里两种数据的
+                                 // 免责声明**意思完全相反**，分不清就会把真实结果
+                                 // 说成"不是真实样品"。
     sampleNames: null,           // 样品名清单：{文件名键: 样品名}
     sampleListName: null,        // 清单的来源文件名，仅用于显示
     probeKey: '', probeMap: null };   // 文件/仪器 → 轻量解析结果的缓存
@@ -975,7 +978,8 @@
     g.fillStyle = '#1d2733';
     g.font = '12.5px "Segoe UI", "Microsoft YaHei", sans-serif';
     g.textAlign = 'left';
-    g.fillText((state.demo ? '【示例合成数据，非真实样品】' : '')
+    g.fillText((state.demo === 'real' ? '【内置真实数据（已脱敏）】'
+      : state.demo === 'syn' ? '【示例合成数据，非真实样品】' : '')
       + file + '  样品「' + e.sample + '」  ' + n + ' 点  驻留 '
       + e.timeinternal.toFixed(4) + ' s' + (adjusted ? '   （窗口已含 dataprocess 的修正）' : ''),
       L, 16);
@@ -1237,7 +1241,7 @@
         pbParams: pbText
       },
       qc: qc,
-      demo: !!state.demo,
+      demo: state.demo || false,
       fix76Text: c.fix76
         ? '本次用了收敛修正版，按收敛判据正常迭代 —— 与桌面版默认行为不同。'
         : '本次「按桌面版原样」执行：原实现的收敛判据因一处赋值缺失而失效，'
@@ -1405,34 +1409,121 @@
       if (ev.target === $('modal')) $('modal').className = '';
     });
 
-    $('btn-demo').addEventListener('click', function () {
-      var fs = window.__demoFiles();
+    /* ------------------------------------------------------------------
+     *  示例数据：两个入口
+     *
+     *  「真实锡石」那批是 50 个真实的 iCAP Qtegra 导出，gzip+base64 内嵌在
+     *  这个单文件里（约 450 KB），点一下才解压 —— 所以是异步的。
+     *  它带的 DS_DEMO_REAL.params 是**推荐参数**、stdMeasured 是**这套参数跑出来的
+     *  标样结果**，两样都由生成脚本用真管线在这批数据上量出来（AY-4 出
+     *  157.04 ± 1.43 Ma（2σ），与文献两个 ID-TIMS 值都对得上）。
+     *  界面不要再抄一份 —— 抄的那份迟早与数据脱节。口径尤其要跟着走：
+     *  质量报告里印的是 **1σ 内部标准误**（0.7），正文引的是 **2σ**（1.4），
+     *  同一个数在两处看着像对不上，所以 stdMeasured 连 sigma 一起记下来。
+     * ---------------------------------------------------------------- */
+    function applyParams(P) {
+      $('p-b0').value = String(P.b0);
+      $('p-b1').value = String(P.b1);
+      $('p-multi').value = String(P.multi);
+      $('p-stdname').value = P.stdName;
+      $('p-stdage').value = String(P.stdAge);
+      $('p-fracstd').value = P.fracStd;
+      $('p-nist').value = P.nistStd;
+      $('p-method').value = String(P.method);
+      $('p-algo').value = P.algo;
+      $('p-excess').value = String(P.excess);
+      $('p-inst').value = P.inst;
+    }
+
+    function loadFiles(fs, kind) {
       state.files = fs;
       state.entries = null;
       state.selected = fs[0].file;
-      state.demo = true;
-      //  示例数据的信号大约落在第 7~17 秒，背景得取在信号之前，否则净信号≈0、
-      //  比值全是 NaN。所以载入示例时把窗口参数一并调好 —— 只为让流程能跑通。
-      $('p-b0').value = '1';
-      $('p-b1').value = '5';
-      $('p-multi').value = '8';
-      $('p-stdname').value = 'MAD-NEW';
-      $('p-stdage').value = '485';
-      $('p-fracstd').value = 'MAD-NEW';
-      $('p-nist').value = 'NIST610';
-      $('p-method').value = '0';
-      $('p-algo').value = 'avg';
-      $('p-excess').value = '3';                    // 与桌面版 var5.set(3) 一致
-      $('p-inst').value = 'thermo';
+      state.demo = kind;
       dropProbeCache();
-      buildPbParams();
+      buildPbParams();          // 必须在 $('p-method').value 改完之后调用
       refreshFileList();
       state.entries = null;
-      logLine('已载入 ' + fs.length + ' 个示例文件（合成数据，只为了让你先看到流程跑通）。');
+    }
+
+    $('btn-demo').addEventListener('click', function () {
+      var D = window.DS_DEMO_REAL;
+      if (!D || typeof D.decode !== 'function') {
+        toast('这份文件里没有内置真实示例数据', true);
+        logLine('!! 找不到 window.DS_DEMO_REAL —— 产物可能被手工改过，或来自旧版构建。', 'e');
+        return;
+      }
+      logLine('正在解压内置真实示例数据（' + D.files + ' 个文件，'
+        + Math.round(D.b64Chars / 1024) + ' KB base64 → gzip 解压）…');
+      D.decode().then(function (fs) {
+        applyParams(D.params);
+        loadFiles(fs, 'real');
+        logLine('已载入 ' + fs.length + ' 个真实文件：锡石 LA-ICP-MS U-Pb，'
+          + 'Thermo iCAP Qtegra 导出，按原始采集顺序。', 'g');
+        logLine('  参数按数据自带的推荐值填好了：标样 ' + D.params.stdName + ' = '
+          + D.params.stdAge + ' Ma，分馏校正用 ' + D.params.fracStd
+          + '，微量元素外标 ' + D.params.nistStd + '，背景 ' + D.params.b0 + '~'
+          + D.params.b1 + ' s，普通铅按 207Pb 校正（方式 ' + D.params.method + '）。');
+        //  数字取自产物（stdMeasured），不在这里手写第二份。
+        //  质量报告的标样表印的是 1σ 内部标准误，这里引的是 2σ —— 所以
+        //  M.sigma 要跟着一起印出来，否则同一个数在两处看着像对不上。
+        var M = D.stdMeasured;
+        var refs = (D.stdRefs || []).map(function (x) {
+          return x.who + ' ' + x.age + ' ± ' + x.s2 + ' Ma';
+        }).join('、');
+        if (M) {
+          logLine('  这一批的标样 ' + M.name + ' 跑出来是 ' + M.mean.toFixed(2)
+            + ' ± ' + M.se2.toFixed(2) + ' Ma（' + M.sigma + '，MSWD '
+            + M.mswd.toFixed(2) + '，' + M.n + ' 个点）—— 与公开发表的 '
+            + 'ID-TIMS 值都对得上：' + refs + '。');
+        } else {
+          logLine('  这一批的标样 ' + D.params.stdName + ' 已按推荐参数跑过一遍，'
+            + '公开的 ID-TIMS 值是 ' + refs + '。');
+        }
+        logLine('  脱敏说明：样品代号已重编号成 S-01…，第 1 行的采集时间已归零，'
+          + '文件名改成 sample_NN.csv，**数值一个字节都没动**。'
+          + '标样名（' + D.params.stdName + '、' + D.params.nistStd
+          + '）保留原名 —— 标样本来就要写进论文。');
+        if (D.flaws) {
+          var bad = D.flaws.nanRows || [];
+          var weak = D.flaws.weakFiles || [];
+          if (bad.length) {
+            logLine('  ⚠ 有 ' + bad.length + ' 个文件的比值列整行算不出来（NaN）：'
+              + bad.map(function (x) { return x.file + '（' + x.sample + '）'; }).join('、')
+              + '。', 'w');
+            logLine('     原因是积分窗口没定出来：探测到的 s0 落在 s1 之后（探到了一个'
+              + '反的窗口），原实现里那段窗口自检随后把它压成空切片。'
+              + '质量报告会把这些点剔除，而不是拿它们去污染加权平均 —— 所以'
+              + '"参与平均的点数"比"文件数"少是对的。', 'w');
+          }
+          if (weak.length) {
+            logLine('  ⚠ 另有 ' + weak.length + ' 个文件的净 ²⁰⁶Pb 计数低于本批中位数的一半'
+              + '（剥蚀失败或颗粒贫 U），它们的单点误差会明显偏大。本批净 ²⁰⁶Pb 中位数 '
+              + '= ' + Math.round(D.flaws.netPbMedian) + ' cps。', 'w');
+          }
+        }
+        logLine('  这不是为了演示而挑出来的"干净"数据 —— 真数据就长这样。'
+          + '点"开始计算"，再点质量报告看它怎么处理这些点。');
+        toast('真实示例数据已载入，点"开始计算"');
+      }).catch(function (e) {
+        logLine('!! 解压内置数据失败：' + (e && e.message || e), 'e');
+        toast('解压内置数据失败，见日志', true);
+      });
+    });
+
+    $('btn-demo-syn').addEventListener('click', function () {
+      var fs = window.__demoFiles();
+      //  合成数据的信号大约落在第 7~17 秒，背景得取在信号之前，否则净信号≈0、
+      //  比值全是 NaN。所以载入时把窗口参数一并调好 —— 只为让流程能跑通。
+      applyParams({ inst: 'thermo', b0: 1, b1: 5, multi: 8,
+        stdName: 'MAD-NEW', stdAge: 485, fracStd: 'MAD-NEW', nistStd: 'NIST610',
+        method: 0, algo: 'avg', excess: 3 });
+      loadFiles(fs, 'syn');
+      logLine('已载入 ' + fs.length + ' 个示例文件（**合成数据**，只为了让你先看到流程跑通）。');
       logLine('  示例数据是合成的，算出来的年龄没有地质意义，别拿去用。');
       logLine('  顺带把积分窗口改成了 背景 1~5s、阈值 8 倍 —— 这份数据的信号在 7~17s，'
         + '按默认的 8~16s 取背景会把信号也当成背景。');
-      toast('示例数据已载入，点"开始计算"');
+      toast('合成示例已载入，点"开始计算"');
     });
   }
 
