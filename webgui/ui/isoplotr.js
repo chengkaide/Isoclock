@@ -115,6 +115,18 @@
  *     （w/s 在两个比值相对误差相当时就是 1）—— 年龄表也照印，所以这是**原实现
  *     的口径**，不是我们引入的。IsoplotR 那边 ρ=1 就是非法输入，只能剔掉并
  *     如实报数；界面上会写明剔了几个、为什么。
+ *
+ *  ⑬ 作图的**主体是样品，不是标样**（2026-10-02 用户指出，这一条是领域口径）：
+ *       这批内置数据是**一个文件一个测点** —— 32 个样品各 1 点，而标样
+ *       AY-4 有 15 个文件、SRM 612 有 2 个。于是"按点数排序、点最多的排前面"
+ *       就会把 AY-4 顶到第一位，最自然的操作恰好是拿标样去拟合"样品年龄"——
+ *       而 AY-4 是 QC 样：它的谐和年龄要跟②里填的真值（158.2 Ma）比，
+ *       用来判断本批的分馏校正/再现性，**不是**待测样品的年龄。
+ *       ⇒ `standardNames(cfg)` 从配置里认标样；界面上把它们分到 optgroup
+ *         「标样（QC 用）」，默认选择是**不含标样的全部样品**；
+ *         `buildTable` 的 `drop` 只在合并选时生效（单点某个标样仍可画）。
+ *       单看代码是发现不了这个错的 —— 它数值上完全正常（14 个近谐和点能拟合出
+ *       157.29 Ma，很漂亮），错的是"这 14 个点是什么"。
  * ========================================================================== */
 (function () {
   'use strict';
@@ -246,11 +258,42 @@
   }
 
   /**
+   * 从配置里取「标样名」集合。
+   *
+   * 为什么必须把标样单独拎出来（2026-10-02 用户指出）：这批数据是**一个文件
+   * 一个测点** —— 32 个样品各 1 点，而标样 AY-4 有 15 个文件、SRM 612 有 2 个。
+   * 只按 `r[COL.name]` 分组的话，AY-4 会被当成"点最多的那个样品"排到最前面，
+   * 于是最自然的操作（选第一个）恰好是拿**标样**去拟合谐和年龄 ——
+   * 而标样是用来检验本批再现性的 QC 样（要跟②里填的真值比），
+   * 不是待测样品的年龄。谐和图该看的是**样品**（这里是 32 个点）。
+   *
+   * 真源是 cfg（②里填的那些），不猜名字：识别不出来就返回空数组，
+   * 界面照旧全部列出来 —— 宁可不错分，也不要按名字模式去猜。
+   *
+   * 读的字段：stdName（U-Pb 分馏标样）、nistStd（微量元素外标）、
+   *           fracStd（分馏校正用的标样，通常与 stdName 同一个）。
+   */
+  function standardNames(cfg) {
+    cfg = cfg || {};
+    var out = [], seen = {};
+    [cfg.stdName, cfg.nistStd, cfg.fracStd].forEach(function (v) {
+      var s = (v === undefined || v === null) ? '' : String(v).trim();
+      if (!s || seen[s]) return;
+      seen[s] = 1;
+      out.push(s);
+    });
+    return out;
+  }
+
+  /**
    * 把年龄表的行转成 IsoplotR 的 format=1 表。
    *
-   * opts: { sample: '*' | 样品名 }
-   * 返回 { lines, n, skipped, badRho, rhoFiles, sample, header, headerSpec }
+   * opts: { sample: '*' | 样品名, drop: [要排除的样品名] }
+   * 返回 { lines, n, skipped, badRho, dropped, rhoFiles, sample, header, headerSpec }
    *   lines[0] 是表头，其余每行 5 个数（X, errX, Y, errY, rho）
+   *   dropped  —— 因在 drop 名单里而被排除的行数（界面用来报"另有 N 行是标样"）。
+   *               `drop` **只在合并选（sample='*'）时生效**：用户明确点名要看
+   *               某个标样时当然要照画，不能因为他同时被列在 drop 里就画不出来。
    *   rhoFiles —— 因 ρ 写出即 ±1 而被剔掉的那几行的**文件名**。
    *   光有计数不够用：用户看到"剔了 2 行"第一反应是"哪两行、要不要紧"，
    *   而他能拿来核对的就是文件名。
@@ -259,15 +302,24 @@
     opts = opts || {};
     var want = (opts.sample === undefined || opts.sample === null
       || opts.sample === '' || opts.sample === '*') ? null : String(opts.sample).trim();
+    var drop = {};
+    if (want === null && opts.drop) {
+      for (var d = 0; d < opts.drop.length; d++) {
+        var dn = String(opts.drop[d] === undefined ? '' : opts.drop[d]).trim();
+        if (dn) drop[dn] = 1;
+      }
+    }
     var lines = [HEADER];
-    var n = 0, skipped = 0, badRho = 0, others = 0, rhoFiles = [];
+    var n = 0, skipped = 0, badRho = 0, others = 0, dropped = 0, rhoFiles = [];
     for (var i = 0; i < rows.length; i++) {
       var r = rows[i];
       if (!r) continue;
-      if (want !== null && String(r[COL.name] === undefined ? '' : r[COL.name]).trim() !== want) {
+      var nm = String(r[COL.name] === undefined ? '' : r[COL.name]).trim();
+      if (want !== null && nm !== want) {
         others++;
         continue;
       }
+      if (drop[nm]) { dropped++; continue; }
       var u = rowUsable(r);
       if (!u.ok) {
         if (u.why === 'badrho') {
@@ -282,8 +334,8 @@
       lines.push(u.cells.join(','));
       if (u.why === '') n++;
     }
-    return { lines: lines, n: n, skipped: skipped, badRho: badRho, rhoFiles: rhoFiles,
-             others: others, sample: want === null ? '*' : want,
+    return { lines: lines, n: n, skipped: skipped, badRho: badRho, dropped: dropped,
+             rhoFiles: rhoFiles, others: others, sample: want === null ? '*' : want,
              header: HEADER, headerSpec: HEADER_SPEC };
   }
 
@@ -633,6 +685,7 @@
     COL: COL, HEADER: HEADER, HEADER_SPEC: HEADER_SPEC, SIGDIG: SIGDIG,
     TYPES: TYPES, AGES: AGES, CPB: CPB, Z95: Z95,
     numOr: numOr, asWritten: asWritten, rowUsable: rowUsable, sampleNames: sampleNames,
+    standardNames: standardNames,
     buildTable: buildTable, rCode: rCode, parseResult: parseResult,
     summarise: summarise, svgDataUri: svgDataUri, fnum: fnum, rStr: rStr,
     load: load, render: render,

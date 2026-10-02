@@ -202,6 +202,42 @@ t("sample='*' 与不传等价（都是全部）",
 t('两端空白不影响样品匹配', ISO.buildTable([mkRow(' AY-4 ', 0.17, 0.005, 0.025, 0.0008, 0.8)],
   { sample: 'AY-4' }).n === 1);
 
+/* ---- 标样 vs 样品（isoplotr.js 文件头 ⑬）--------------------------------
+ *
+ * 这一组是**领域口径**，不是代码技巧：内置这批数据是"一个文件一个测点"
+ * （32 个样品各 1 点，而标样 AY-4 有 15 个文件、SRM 612 有 2 个）。
+ * 只按点数排序，AY-4 会被顶到第一位 —— 于是最自然的操作恰好是拿**标样**
+ * 去拟合"样品年龄"，而标样是拿来做 QC 的（它的年龄要跟②里填的真值比）。
+ * 数值上完全正常（14 个近谐和点能出很漂亮的 157.29 Ma），错的是"这些点是什么"。
+ * 所以下面每条都钉住"哪一类点进表"。 */
+
+t('standardNames：从 cfg 认标样（stdName + nistStd + fracStd，去重、去空白）',
+  (function () {
+    const a = ISO.standardNames({ stdName: 'AY-4', nistStd: 'SRM 612', fracStd: 'AY-4' });
+    const b = ISO.standardNames({ stdName: ' AY-4 ' });
+    const c = ISO.standardNames({});
+    return a.length === 2 && a[0] === 'AY-4' && a[1] === 'SRM 612'
+      && b.length === 1 && b[0] === 'AY-4'
+      && Array.isArray(c) && c.length === 0 && ISO.standardNames(null).length === 0;
+  })(), '同名（fracStd===stdName）只算一次；认不出来就返回空数组 —— 不按名字模式猜');
+
+t('drop：合并选时把标样行排除，并单独计数（dropped）',
+  (function () {
+    const x = ISO.buildTable([R1, R2, R3], { sample: '*', drop: ['AY-4'] });
+    return x.n === 1 && x.dropped === 2 && x.others === 0;
+  })(), 'dropped 与 skipped/others 分开报 —— 界面上那句"另有 N 行是标样"靠它');
+
+t('drop 只在合并选时生效：点名看某个标样照样画得出来',
+  (function () {
+    const x = ISO.buildTable([R1, R2, R3], { sample: 'AY-4', drop: ['AY-4'] });
+    return x.n === 2 && x.dropped === 0 && x.others === 1;
+  })(), '用户明确点了标样，就不能因为他同时在 drop 名单里而画不出来');
+
+t('drop 传空 / 不传时行为不变（旧调用方不受影响）',
+  ISO.buildTable([R1, R3], { sample: '*' }).n === 2
+  && ISO.buildTable([R1, R3], { sample: '*', drop: [] }).n === 2
+  && ISO.buildTable([R1, R3], { sample: '*', drop: null }).dropped === 0);
+
 /* ======================================================================
  *  §C sampleNames
  * ==================================================================== */
@@ -489,6 +525,32 @@ t('点数太少（n=1）时明确说出来', su.notes.some((n) => /几何上就�
     t('§G 样品分组：AY-4 有 ' + (ay4 ? ay4.usable : '?') + ' 个可用点（15 行里剔 1 缺值 + 2 个 ρ=1）',
       !!ay4 && ay4.rows === 15 && ay4.usable === 12,
       grp.length + ' 组；单点样品 ' + grp.filter((g) => g.usable === 1).length + ' 个');
+
+    /*  默认选中的必须是「全部样品」而不是标样（用户 2026-10-02 指出）。
+     *  这批数据一个文件一个测点：32 个样品各 1 点，标样 AY-4 有 15 个文件、
+     *  SRM 612 有 2 个 —— 49 = 32 + 15 + 2。所以"选样品作图"只有选**全部**
+     *  才有 29 个点可看；按点数排序会把 AY-4 顶到第一位，而它是 QC 样。 */
+    const stdNames = ISO.standardNames({ stdName: P.stdName, nistStd: P.nistStd });
+    const tSmp = ISO.buildTable(res.rows, { sample: '*', drop: stdNames });
+    t('§G 真实数据：默认「全部样品」= 32 个样品测点（29 可用），标样被排掉',
+      JSON.stringify(stdNames) === JSON.stringify([P.stdName, P.nistStd])
+      && tSmp.n === 29 && tSmp.skipped === 3 && tSmp.badRho === 0
+      && tSmp.dropped === 17 && tSmp.others === 0,
+      `样品 ${tSmp.n} 点（另剔 ${tSmp.skipped} 个缺值）；排掉标样 ${tSmp.dropped} 行`
+      + `（${P.stdName} 15 + ${P.nistStd} 2）；含标样时是 ${tb.n} 点 —— 两个数不能混报`);
+
+    t('§G 真实数据：ρ=±1 被剔的那两个点属于标样，不在样品那 29 点里',
+      rhoOut.length === 2 && rhoOut.every(function (f) {
+        const r = res.rows.filter((x) => String(x[0]) === f)[0];
+        return r && String(r[1]).trim() === P.stdName;
+      }), '被 ρ 饱和剔掉的是 [' + rhoOut.join('、') + ']，都属于 ' + P.stdName
+      + ' ⇒ 默认的样品视图里 badRho 是 0（界面上不会再无端报"剔了 2 行"）');
+
+    t('§G 真实数据：每个样品只有 1 个测点（所以"选单个样品"出不了年龄）',
+      grp.filter((g) => stdNames.indexOf(g.name) < 0).length === 32
+      && grp.filter((g) => stdNames.indexOf(g.name) < 0).every((g) => g.rows === 1),
+      '32 个样品各 1 行；单个样品在图上就是一个点（IsoplotR 拟合会报 '
+      + 'Cannot fit a straight line）—— 所以默认必须是"全部样品"');
 
     /*  交叉验证：IsoplotR 的谐和年龄与 Isoclock 自己的加权平均
      *  —— 两条完全独立的路径，对得上才说明接进来的不是个摆设。

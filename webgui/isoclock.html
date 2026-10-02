@@ -654,6 +654,10 @@ table.iso-sum tr.head td { font-weight: 600; color: var(--ink-2); border-bottom-
         这是本软件里<b>唯一需要联网</b>的部分：点上面那个按钮才会去下载
         webR（WebAssembly 版 R）与 IsoplotR 包，<b>首次约 16 MB、约 1 分钟</b>，
         之后走浏览器缓存。<b>数据不出本机</b>—— 只在本页内存里交给 wasm 里的 R。
+        <br>
+        <b>图上的点应该是「样品」</b>：默认的「全部样品（不含标样）」把这一批的样品
+        测点合在一张图上。标样（如 AY-4）不参与样品统计 —— 它是 QC 样，单独列在
+        下拉最后那个分组里，选它出来的年龄是拿来对②里填的真值的。
       </div>
       <div class="iso-figwrap"><img id="iso-fig" alt="" style="display:none"></div>
       <table class="iso-sum" id="iso-sum" style="display:none"></table>
@@ -691,7 +695,7 @@ table.iso-sum tr.head td { font-weight: 600; color: var(--ink-2); border-bottom-
 
     <h3>结果可信到什么程度</h3>
     <p>同一批数据下，网页版的输出与桌面版<b>逐位相同</b>（bit-for-bit，包括浮点最后一位）。
-      这不是估计，是跑出来的：<b data-count="tests">402 项</b> Node 端自动比对
+      这不是估计，是跑出来的：<b data-count="tests">409 项</b> Node 端自动比对
       （<b data-count="suites">14 套</b> <code>webgui/test_*.js</code>：数值内核、
       Thermo/Agilent 解析、积分窗口、两个 CSV 的<b>逐字节</b>输出、
       年龄层 51 列 × 19 组参数、<b data-count="suite:test_agilent_e2e.js">20 项</b> Agilent 端到端、
@@ -699,8 +703,8 @@ table.iso-sum tr.head td { font-weight: 600; color: var(--ink-2); border-bottom-
       <b data-count="suite:test_qc.js">63 项</b> 质量统计、
       <b data-count="suite:test_report.js">50 项</b> 报告组装、
       <b data-count="suite:test_demo_real.js">22 项</b> 内置真实示例数据、
-      <b data-count="suite:test_isoplotr.js">66 项</b> IsoplotR 接入层）
-      ＋<b data-count="selftest">54 项</b>本页面内自检（走的是真按钮那条路）。<br>
+      <b data-count="suite:test_isoplotr.js">73 项</b> IsoplotR 接入层）
+      ＋<b data-count="selftest">56 项</b>本页面内自检（走的是真按钮那条路）。<br>
       上面这些数不是手写的：<code>docs/make_badges.py</code> 每次都会把测试真跑一遍，
       <b>连逐套的项数也一起核</b>，对不上就让 CI 红。真正手写的是这一句解释。</p>
       唯一一处曾经对不上的地方是 <code>exp</code> / <code>log</code>：宿主 C 运行时与浏览器的
@@ -754,6 +758,8 @@ table.iso-sum tr.head td { font-weight: 600; color: var(--ink-2); border-bottom-
         （首次约 16 MB），数据不出本机。口径上也说明白：本软件的 <code>2s</code> 是
         <b>2σ</b>，IsoplotR 表里的 <code>1σ</code> 是 <b>1σ 标准误</b>，
         图上印的是 <b>95% 置信区间</b>，三者不要直接对着比。
+        <b>图上的点该选样品，不是标样</b>：标样被收进下拉最后那个分组，它的年龄
+        要拿去对②里填的真值（检验这一批的分馏校正与再现性），不是样品年龄。
         那一页还会把本次的谐和年龄与<b>本软件自己的加权平均</b>并排印出来
         —— 两条完全独立的路径，对得上才说明接进来的不是个摆设
         （对照逻辑与判据见 <code>webgui/test_isoplotr.js</code> 的 §G）。</li>
@@ -809,15 +815,15 @@ table.iso-sum tr.head td { font-weight: 600; color: var(--ink-2); border-bottom-
    本文件由 webgui/build_ui.py 拼成，请勿手改。要改就改 ui/ 与 src/ 下的
    源头，然后重新运行：python webgui/build_ui.py
 
-   生成时间：2026-10-02 22:28:27（取全部源码里最新的那次改动时间，
+   生成时间：2026-10-02 23:23:36（取全部源码里最新的那次改动时间，
              所以同样的源码永远得到同样的文件）
 
-   模块指纹：style.css=23f279d85d68 src/fp.js=0ec13124f10d src/math.js=ed93964b9ba1 src/thermo.js=1596a3593c89 src/window.js=7e8dfba81ca9 src/report.js=2e5ac3aa5cb8 src/pipeline.js=6a7f362158c5 src/age.js=bfcb91404ec9 src/qc.js=7a96b7f3fc51 src/demo_real.js=2c445b347618 ui/report.js=b8d0f3beeb76 ui/isoplotr.js=5ec26fdf7089 ui/selftest.js=84d740cad8e4 ui/app.js=4765a11d147c ui/app.html=0a3ee9403307
-   源码指纹：a1bb38d09853（页脚显示的就是它，与本脚本末尾打印的那一行同值）
+   模块指纹：style.css=23f279d85d68 src/fp.js=0ec13124f10d src/math.js=ed93964b9ba1 src/thermo.js=1596a3593c89 src/window.js=7e8dfba81ca9 src/report.js=2e5ac3aa5cb8 src/pipeline.js=6a7f362158c5 src/age.js=bfcb91404ec9 src/qc.js=7a96b7f3fc51 src/demo_real.js=2c445b347618 ui/report.js=b8d0f3beeb76 ui/isoplotr.js=70c81f4a0c7b ui/selftest.js=70df616e1376 ui/app.js=19cf0e8afa14 ui/app.html=1f7d86d194cf
+   源码指纹：6928c8b264d9（页脚显示的就是它，与本脚本末尾打印的那一行同值）
   ==========================================================================
 -->
 <script>
-window.__build = { built: "2026-10-02 22:28:27", fingerprint: "style.css=23f279d85d68 src/fp.js=0ec13124f10d src/math.js=ed93964b9ba1 src/thermo.js=1596a3593c89 src/window.js=7e8dfba81ca9 src/report.js=2e5ac3aa5cb8 src/pipeline.js=6a7f362158c5 src/age.js=bfcb91404ec9 src/qc.js=7a96b7f3fc51 src/demo_real.js=2c445b347618 ui/report.js=b8d0f3beeb76 ui/isoplotr.js=5ec26fdf7089 ui/selftest.js=84d740cad8e4 ui/app.js=4765a11d147c ui/app.html=0a3ee9403307", id: "a1bb38d09853" };
+window.__build = { built: "2026-10-02 23:23:36", fingerprint: "style.css=23f279d85d68 src/fp.js=0ec13124f10d src/math.js=ed93964b9ba1 src/thermo.js=1596a3593c89 src/window.js=7e8dfba81ca9 src/report.js=2e5ac3aa5cb8 src/pipeline.js=6a7f362158c5 src/age.js=bfcb91404ec9 src/qc.js=7a96b7f3fc51 src/demo_real.js=2c445b347618 ui/report.js=b8d0f3beeb76 ui/isoplotr.js=70c81f4a0c7b ui/selftest.js=70df616e1376 ui/app.js=19cf0e8afa14 ui/app.html=1f7d86d194cf", id: "6928c8b264d9" };
 </script>
 
 <script>
@@ -4434,6 +4440,18 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_QC;
  *     （w/s 在两个比值相对误差相当时就是 1）—— 年龄表也照印，所以这是**原实现
  *     的口径**，不是我们引入的。IsoplotR 那边 ρ=1 就是非法输入，只能剔掉并
  *     如实报数；界面上会写明剔了几个、为什么。
+ *
+ *  ⑬ 作图的**主体是样品，不是标样**（2026-10-02 用户指出，这一条是领域口径）：
+ *       这批内置数据是**一个文件一个测点** —— 32 个样品各 1 点，而标样
+ *       AY-4 有 15 个文件、SRM 612 有 2 个。于是"按点数排序、点最多的排前面"
+ *       就会把 AY-4 顶到第一位，最自然的操作恰好是拿标样去拟合"样品年龄"——
+ *       而 AY-4 是 QC 样：它的谐和年龄要跟②里填的真值（158.2 Ma）比，
+ *       用来判断本批的分馏校正/再现性，**不是**待测样品的年龄。
+ *       ⇒ `standardNames(cfg)` 从配置里认标样；界面上把它们分到 optgroup
+ *         「标样（QC 用）」，默认选择是**不含标样的全部样品**；
+ *         `buildTable` 的 `drop` 只在合并选时生效（单点某个标样仍可画）。
+ *       单看代码是发现不了这个错的 —— 它数值上完全正常（14 个近谐和点能拟合出
+ *       157.29 Ma，很漂亮），错的是"这 14 个点是什么"。
  * ========================================================================== */
 (function () {
   'use strict';
@@ -4565,11 +4583,42 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_QC;
   }
 
   /**
+   * 从配置里取「标样名」集合。
+   *
+   * 为什么必须把标样单独拎出来（2026-10-02 用户指出）：这批数据是**一个文件
+   * 一个测点** —— 32 个样品各 1 点，而标样 AY-4 有 15 个文件、SRM 612 有 2 个。
+   * 只按 `r[COL.name]` 分组的话，AY-4 会被当成"点最多的那个样品"排到最前面，
+   * 于是最自然的操作（选第一个）恰好是拿**标样**去拟合谐和年龄 ——
+   * 而标样是用来检验本批再现性的 QC 样（要跟②里填的真值比），
+   * 不是待测样品的年龄。谐和图该看的是**样品**（这里是 32 个点）。
+   *
+   * 真源是 cfg（②里填的那些），不猜名字：识别不出来就返回空数组，
+   * 界面照旧全部列出来 —— 宁可不错分，也不要按名字模式去猜。
+   *
+   * 读的字段：stdName（U-Pb 分馏标样）、nistStd（微量元素外标）、
+   *           fracStd（分馏校正用的标样，通常与 stdName 同一个）。
+   */
+  function standardNames(cfg) {
+    cfg = cfg || {};
+    var out = [], seen = {};
+    [cfg.stdName, cfg.nistStd, cfg.fracStd].forEach(function (v) {
+      var s = (v === undefined || v === null) ? '' : String(v).trim();
+      if (!s || seen[s]) return;
+      seen[s] = 1;
+      out.push(s);
+    });
+    return out;
+  }
+
+  /**
    * 把年龄表的行转成 IsoplotR 的 format=1 表。
    *
-   * opts: { sample: '*' | 样品名 }
-   * 返回 { lines, n, skipped, badRho, rhoFiles, sample, header, headerSpec }
+   * opts: { sample: '*' | 样品名, drop: [要排除的样品名] }
+   * 返回 { lines, n, skipped, badRho, dropped, rhoFiles, sample, header, headerSpec }
    *   lines[0] 是表头，其余每行 5 个数（X, errX, Y, errY, rho）
+   *   dropped  —— 因在 drop 名单里而被排除的行数（界面用来报"另有 N 行是标样"）。
+   *               `drop` **只在合并选（sample='*'）时生效**：用户明确点名要看
+   *               某个标样时当然要照画，不能因为他同时被列在 drop 里就画不出来。
    *   rhoFiles —— 因 ρ 写出即 ±1 而被剔掉的那几行的**文件名**。
    *   光有计数不够用：用户看到"剔了 2 行"第一反应是"哪两行、要不要紧"，
    *   而他能拿来核对的就是文件名。
@@ -4578,15 +4627,24 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_QC;
     opts = opts || {};
     var want = (opts.sample === undefined || opts.sample === null
       || opts.sample === '' || opts.sample === '*') ? null : String(opts.sample).trim();
+    var drop = {};
+    if (want === null && opts.drop) {
+      for (var d = 0; d < opts.drop.length; d++) {
+        var dn = String(opts.drop[d] === undefined ? '' : opts.drop[d]).trim();
+        if (dn) drop[dn] = 1;
+      }
+    }
     var lines = [HEADER];
-    var n = 0, skipped = 0, badRho = 0, others = 0, rhoFiles = [];
+    var n = 0, skipped = 0, badRho = 0, others = 0, dropped = 0, rhoFiles = [];
     for (var i = 0; i < rows.length; i++) {
       var r = rows[i];
       if (!r) continue;
-      if (want !== null && String(r[COL.name] === undefined ? '' : r[COL.name]).trim() !== want) {
+      var nm = String(r[COL.name] === undefined ? '' : r[COL.name]).trim();
+      if (want !== null && nm !== want) {
         others++;
         continue;
       }
+      if (drop[nm]) { dropped++; continue; }
       var u = rowUsable(r);
       if (!u.ok) {
         if (u.why === 'badrho') {
@@ -4601,8 +4659,8 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_QC;
       lines.push(u.cells.join(','));
       if (u.why === '') n++;
     }
-    return { lines: lines, n: n, skipped: skipped, badRho: badRho, rhoFiles: rhoFiles,
-             others: others, sample: want === null ? '*' : want,
+    return { lines: lines, n: n, skipped: skipped, badRho: badRho, dropped: dropped,
+             rhoFiles: rhoFiles, others: others, sample: want === null ? '*' : want,
              header: HEADER, headerSpec: HEADER_SPEC };
   }
 
@@ -4952,6 +5010,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_QC;
     COL: COL, HEADER: HEADER, HEADER_SPEC: HEADER_SPEC, SIGDIG: SIGDIG,
     TYPES: TYPES, AGES: AGES, CPB: CPB, Z95: Z95,
     numOr: numOr, asWritten: asWritten, rowUsable: rowUsable, sampleNames: sampleNames,
+    standardNames: standardNames,
     buildTable: buildTable, rCode: rCode, parseResult: parseResult,
     summarise: summarise, svgDataUri: svgDataUri, fnum: fnum, rStr: rStr,
     load: load, render: render,
@@ -6104,9 +6163,78 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_QC;
     //  样品下拉：切到那一页时要按当前结果重建
     ui.selectTab('iso');
     var sopts = $('iso-sample').options;
-    t('切到该页后，样品下拉按当前结果重建（第一项是"全部样品"）',
-      sopts.length >= 2 && /^全部样品（\d+ 个可用点）$/.test(sopts[0].textContent),
+    t('切到该页后，样品下拉按当前结果重建（第一项是"全部样品"，且注明不含标样）',
+      sopts.length >= 2 && /^全部样品（(不含标样，)?\d+ 个可用点）$/.test(sopts[0].textContent),
       sopts.length + ' 项，第一项「' + (sopts[0] ? sopts[0].textContent : '') + '」');
+
+    /*  样品与标样必须分开（isoplotr.js 文件头 ⑬）。内置这批数据是**一个文件
+     *  一个测点**：32 个样品各 1 点，而标样 AY-4 有 15 个文件、SRM 612 有 2 个
+     *  —— 只按点数排序会把 AY-4 顶到第一位，于是最自然的操作就是拿标样去拟合
+     *  "样品年龄"。所以这里钉住三件事：默认项不含标样、标样在单独的分组里、
+     *  真正送出去的表里确实没有标样行。 */
+    t('默认选中的「全部样品」不含标样；标样在单独的分组里',
+      (function () {
+        if (!ISO || !arIso || !ui.state.cfg) return false;
+        var std = ISO.standardNames(ui.state.cfg);
+        if (!std.length) return true;              // 认不出标样就没什么可分的
+        var isStd = function (nm) { return std.indexOf(nm) >= 0; };
+        var nSmp = 0, opts0 = $('iso-sample').options[0];
+        ISO.sampleNames(arIso.rows).forEach(function (g) {
+          if (!isStd(g.name)) nSmp += g.usable;
+        });
+        if (opts0.value !== '*' || opts0.textContent.indexOf(String(nSmp)) < 0) return false;
+        //  标样选项必须落在某个 <optgroup> 里（下拉的标题就是"标样（QC 用…）"）
+        var og = $('iso-sample').querySelectorAll('optgroup');
+        if (!og.length || og[og.length - 1].label.indexOf('标样') < 0) return false;
+        var inGroup = {};
+        for (var i = 0; i < og.length; i++) {
+          var kids = og[i].children;
+          for (var j = 0; j < kids.length; j++) inGroup[kids[j].value] = 1;
+        }
+        var allIn = std.every(function (nm) { return inGroup[nm]; });
+        //  真正交给 IsoplotR 的那张表里也不能有标样行
+        var t2 = ISO.buildTable(arIso.rows, { sample: '*', drop: std });
+        return allIn && t2.n === nSmp && t2.dropped > 0;
+      })(), '标样 ' + ISO.standardNames(ui.state.cfg || {}).join('、')
+      + ' —— 默认视图是样品那 ' + (function () {
+        var std = ISO.standardNames(ui.state.cfg || {});
+        var n = 0;
+        ISO.sampleNames(arIso ? arIso.rows : []).forEach(function (g) {
+          if (std.indexOf(g.name) < 0) n += g.usable;
+        });
+        return n;
+      })() + ' 个点');
+
+    //  选中标样时要明说"这不是样品年龄"，并把②里填的真值一起摆出来
+    t('选中标样时，说明里点明它是 QC 样（不是样品年龄）',
+      (function () {
+        if (!ISO || !arIso || !ui.state.cfg) return false;
+        var std = ISO.standardNames(ui.state.cfg);
+        if (!std.length) return true;
+        var has = false;
+        for (var i = 0; i < $('iso-sample').options.length; i++) {
+          if ($('iso-sample').options[i].value === std[0]) { has = true; break; }
+        }
+        if (!has) return false;
+        $('iso-sample').value = std[0];
+        var bad0 = null;
+        try {
+          //  不真跑 R（这里不联网）：只看下拉项的 title 有没有把话说清楚
+          bad0 = $('iso-sample').options[$('iso-sample').selectedIndex].title;
+        } catch (e) { return false; }
+        $('iso-sample').value = '*';
+        $('iso-sample').dispatchEvent(new Event('change'));
+        return typeof bad0 === 'string' && bad0.indexOf('不是') >= 0
+          && bad0.indexOf('真值') >= 0;
+      })(), '标样那一项的 title：' + (function () {
+        var std = ISO.standardNames(ui.state.cfg || {});
+        for (var i = 0; i < $('iso-sample').options.length; i++) {
+          if ($('iso-sample').options[i].value === std[0]) {
+            return String($('iso-sample').options[i].title).slice(0, 40) + '…';
+          }
+        }
+        return '—';
+      })());
 
     t('单点样品的 discordia 选项被禁用（IsoplotR 对 <3 点必然报错）',
       (function () {
@@ -7473,17 +7601,36 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_QC;
     el.className = 'iso-msg' + (cls ? ' ' + cls : '');
   }
 
-  /** 往一个 <select> 里填选项（value 用字符串，读的时候再转数字）。 */
+  /**
+   * 往一个 <select> 里填选项（value 用字符串，读的时候再转数字）。
+   *
+   * 列表项有两种形态：
+   *   · { v, label, note }                       —— 普通选项
+   *   · { group: '标样（QC 用）', items: [...] } —— 生成一个 <optgroup>
+   * 加分组是因为**样品和标样必须分开**（见 isoplotr.js 文件头 ⑬）：这批数据里
+   * 标样 AY-4 有 15 个文件、样品每个只有 1 个，只按点数排序会把 AY-4 顶到第一位。
+   * 用文字后缀标注不够 —— 下拉里第一眼看到的就是标题，分组才拦得住。
+   */
   function isoFill(sel, list, keep) {
     if (!sel) return;
     var want = (keep === undefined) ? sel.value : String(keep);
-    sel.innerHTML = '';
-    list.forEach(function (o) {
+    function addOption(host, o) {
       var op = document.createElement('option');
       op.value = String(o.v);
       op.textContent = o.label;
       if (o.note) op.title = o.note;
-      sel.appendChild(op);
+      host.appendChild(op);
+    }
+    sel.innerHTML = '';
+    list.forEach(function (o) {
+      if (o && o.group) {
+        var g = document.createElement('optgroup');
+        g.label = o.group;
+        (o.items || []).forEach(function (it) { addOption(g, it); });
+        sel.appendChild(g);
+      } else {
+        addOption(sel, o);
+      }
     });
     var hit = -1;
     for (var i = 0; i < sel.options.length; i++) {
@@ -7492,15 +7639,23 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_QC;
     sel.selectedIndex = hit >= 0 ? hit : 0;
   }
 
-  /** 当前选中的样品能进表几个点（决定"拟合"里哪些选项可用）。 */
-  function isoUsableCount(groups, sample) {
+  /**
+   * 当前选中项能进表几个点（决定"拟合"里哪些选项可用）。
+   *
+   * 合并选（'*'）时**不含标样** —— 必须与 buildTable 的 drop 口径一致，
+   * 否则下拉里写"41 个可用点"、真正送进 R 的只有 29 个（踩过：两处各算一遍）。
+   */
+  function isoUsableCount(groups, sample, std) {
     if (!groups || !groups.length) return 0;
+    var isStd = function (nm) { return !!std && std.indexOf(nm) >= 0; };
     for (var i = 0; i < groups.length; i++) {
       if (groups[i].name === sample) return groups[i].usable;
     }
-    //  '全部'：把所有分组的可用点加起来
+    //  '全部'：把所有**样品**分组的可用点加起来（标样不算）
     var n = 0;
-    for (var j = 0; j < groups.length; j++) n += groups[j].usable;
+    for (var j = 0; j < groups.length; j++) {
+      if (!isStd(groups[j].name)) n += groups[j].usable;
+    }
     return n;
   }
 
@@ -7523,14 +7678,56 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_QC;
       return;
     }
 
+    /*  样品与标样分组（isoplotr.js 文件头 ⑬）。顺序有意义：
+     *  默认选中的是第一个选项「全部样品（不含标样）」—— 谐和图上该看的是样品，
+     *  而标样只该拿来对 QC 真值。 */
     var groups = ISO.sampleNames(ar.rows);
-    var usable = groups.map(function (g) { return g; });
-    var total = usable.reduce(function (a, g) { return a + g.usable; }, 0);
-    var opts = [{ v: '*', label: '全部样品（' + total + ' 个可用点）' }];
-    usable.sort(function (a, b) { return (b.usable - a.usable) || (a.name < b.name ? -1 : 1); });
-    usable.forEach(function (g) {
-      opts.push({ v: g.name, label: g.name + '（' + g.usable + ' / ' + g.rows + ' 点可用）' });
+    var std = ISO.standardNames(state.cfg);
+    var smp = [], stg = [];
+    groups.forEach(function (g) { (std.indexOf(g.name) >= 0 ? stg : smp).push(g); });
+    var byUsable = function (a, b) {
+      return (b.usable - a.usable) || (a.name < b.name ? -1 : 1);
+    };
+    smp.sort(byUsable);
+    stg.sort(byUsable);
+
+    var nSmp = smp.reduce(function (a, g) { return a + g.usable; }, 0);
+    var opts = [{
+      v: '*',
+      //  没配标样（认不出标样名）时就不写"不含标样" —— 那会是一句假话。
+      label: '全部样品（' + (std.length ? '不含标样，' : '') + nSmp + ' 个可用点）',
+      note: '把这一批的样品测点合在一张谐和图上 —— 谐和线/不一致线该看的就是这个样本。'
+        + (std.length ? '标样（' + std.join('、') + '）不在里面：它是 QC 样。' : '')
+    }];
+    smp.forEach(function (g) {
+      opts.push({
+        v: g.name,
+        label: g.name + '（' + g.usable + ' / ' + g.rows + ' 点可用）',
+        note: g.rows === 1
+          ? '这个样品只有 1 个测点：图上就是一个带误差椭圆的点，拟合年龄没有意义'
+            + '（IsoplotR 会直接报 Cannot fit a straight line）。要出年龄请选'
+            + '「全部样品」。'
+          : ''
+      });
     });
+    if (stg.length) {
+      opts.push({
+        group: '标样（QC 用，不是样品年龄）',
+        items: stg.map(function (g) {
+          var note = '标样是用来检验这一批的再现性与分馏校正的：它的年龄要与②里'
+            + '填的真值比，不是待测样品的年龄。画它是为了看它落不落在谐和线上。';
+          if (state.cfg && String(state.cfg.stdName).trim() === g.name
+              && isFinite(Number(state.cfg.stdAge))) {
+            note += '本批填的真值 = ' + state.cfg.stdAge + ' Ma。';
+          }
+          return {
+            v: g.name,
+            label: g.name + '（标样 · ' + g.usable + ' / ' + g.rows + ' 点可用）',
+            note: note
+          };
+        })
+      });
+    }
     var keep = $('iso-sample').value || '*';
     isoFill($('iso-sample'), opts, keep);
     btn.disabled = false;
@@ -7547,7 +7744,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_QC;
     var ar = state.ageResult;
     if (!ar || !$('iso-age')) return;
     var groups = ISO.sampleNames(ar.rows);
-    var n = isoUsableCount(groups, $('iso-sample').value);
+    var n = isoUsableCount(groups, $('iso-sample').value, ISO.standardNames(state.cfg));
     var sel = $('iso-age');
     var notes = [];
     for (var i = 0; i < sel.options.length; i++) {
@@ -7565,13 +7762,14 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_QC;
     }
   }
 
-  /** 把 <select> 的当前值读成参数。 */
+  /** 把 <select> 的当前值读成参数。`drop` 只在"全部样品"时生效（见 buildTable）。 */
   function isoOpts() {
     return {
       type: Number($('iso-type').value),
       showAge: Number($('iso-age').value),
       commonPb: Number($('iso-cpb').value),
-      sample: $('iso-sample').value
+      sample: $('iso-sample').value,
+      drop: ISO.standardNames(state.cfg)
     };
   }
 
@@ -7605,12 +7803,14 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_QC;
     var ar = state.ageResult;
     if (!ISO || !ar) return;
     var o = isoOpts();
-    var tab = ISO.buildTable(ar.rows, { sample: o.sample });
+    var tab = ISO.buildTable(ar.rows, { sample: o.sample, drop: o.drop });
 
     if (tab.n < 1) {
       isoMsg('选中的样品里没有能进表的点（三比值或 rho 缺）。', 'warn');
       return;
     }
+    var std = ISO.standardNames(state.cfg);
+    var isStd = std.indexOf(o.sample) >= 0;
     var notes = [];
     if (tab.skipped) notes.push(tab.skipped + ' 行因比值/误差缺失被剔除');
     if (tab.badRho) {
@@ -7620,9 +7820,19 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_QC;
         + (tab.rhoFiles && tab.rhoFiles.length
           ? '：' + tab.rhoFiles.join('、') : ''));
     }
+    if (tab.dropped) {
+      notes.push('另有 ' + tab.dropped + ' 行是<b>标样</b>（' + std.join('、')
+        + '），不参与样品统计 —— 想画标样请在下面那个分组里单独选它');
+    }
     if (tab.others) notes.push('另有 ' + tab.others + ' 行不属于所选样品');
+    if (isStd) {
+      notes.push('你选的是<b>标样 ' + o.sample + '</b>：标样的年龄是拿来对②里'
+        + '填的真值、检验这一批分馏校正与再现性的，<b>不是样品年龄</b>。'
+        + '要看样品年龄请选「全部样品」或某个样品。');
+    }
     var head = '正在处理 <b>' + tab.n + '</b> 个点'
-      + (o.sample === '*' ? '（全部样品）' : '（' + o.sample + '）')
+      + (o.sample === '*' ? '（全部样品，不含标样）'
+        : '（' + o.sample + (isStd ? '，标样' : '') + '）')
       + (notes.length ? '；' + notes.join('，') : '') + '。';
 
     var svgText = null;
@@ -7665,16 +7875,33 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_QC;
           + ISO.fnum(Math.abs(diff), 2) + ' Ma</b>。';
       }
 
+      //  标样：把拟合结果与②里填的真值并排摆出来 —— 这才是标样图上该看的那个比较
+      var stdCmp = '';
+      var ageNow = out.result.age && out.result.age.t;
+      if (isStd && !out.result.error && isFinite(ageNow)
+          && state.cfg && isFinite(Number(state.cfg.stdAge))
+          && String(state.cfg.stdName).trim() === o.sample) {
+        var truth = Number(state.cfg.stdAge);
+        stdCmp = '<p>标样对照：IsoplotR 的谐和年龄 <b>' + ISO.fnum(ageNow, 2)
+          + ' Ma</b>，你在②里填的标样真值 <b>' + ISO.fnum(truth, 2) + ' Ma</b>，'
+          + '相差 <b>' + ISO.fnum(Math.abs(ageNow - truth), 2) + ' Ma</b>。'
+          + '标样对得上，说明这一批的分馏校正没问题；差得多，先回去查②里的'
+          + '参数与数据，而不是去改样品年龄。</p>';
+      }
+
       //  说明（口径、失败原因、地质含义）
       var nl = out.summary.notes.map(function (s) { return '<li>' + s + '</li>'; }).join('');
-      $('iso-notes').innerHTML = (cross ? '<p>' + cross + '</p>' : '')
+      $('iso-notes').innerHTML = (stdCmp ? stdCmp : '')
+        + (cross ? '<p>' + cross + '</p>' : '')
         + (nl ? '<ul>' + nl + '</ul>' : '');
 
       var cls = out.result.error ? 'err' : '';
       isoMsg(head + '<br>图已出（' + out.seconds.toFixed(1) + ' s，'
         + Math.round(svgText.length / 1024) + ' KB）。'
         + (out.result.error ? ' <b>但拟合失败了，已退回只画点 —— 见下方说明。</b>' : ''), cls);
-      logLine('IsoplotR：' + tab.n + ' 点，图型 ' + o.type + '，拟合 show.age='
+      logLine('IsoplotR：' + tab.n + ' 点（'
+        + (o.sample === '*' ? '全部样品，不含标样' : o.sample) + '），图型 ' + o.type
+        + '，拟合 show.age='
         + o.showAge + '，普通铅 ' + o.commonPb + '，' + out.seconds.toFixed(1) + ' s'
         + (out.result.error ? '（拟合失败：' + out.result.error + '）' : ''), out.result.error ? 'w' : 'g');
     }).catch(function (e) {

@@ -497,9 +497,78 @@
     //  样品下拉：切到那一页时要按当前结果重建
     ui.selectTab('iso');
     var sopts = $('iso-sample').options;
-    t('切到该页后，样品下拉按当前结果重建（第一项是"全部样品"）',
-      sopts.length >= 2 && /^全部样品（\d+ 个可用点）$/.test(sopts[0].textContent),
+    t('切到该页后，样品下拉按当前结果重建（第一项是"全部样品"，且注明不含标样）',
+      sopts.length >= 2 && /^全部样品（(不含标样，)?\d+ 个可用点）$/.test(sopts[0].textContent),
       sopts.length + ' 项，第一项「' + (sopts[0] ? sopts[0].textContent : '') + '」');
+
+    /*  样品与标样必须分开（isoplotr.js 文件头 ⑬）。内置这批数据是**一个文件
+     *  一个测点**：32 个样品各 1 点，而标样 AY-4 有 15 个文件、SRM 612 有 2 个
+     *  —— 只按点数排序会把 AY-4 顶到第一位，于是最自然的操作就是拿标样去拟合
+     *  "样品年龄"。所以这里钉住三件事：默认项不含标样、标样在单独的分组里、
+     *  真正送出去的表里确实没有标样行。 */
+    t('默认选中的「全部样品」不含标样；标样在单独的分组里',
+      (function () {
+        if (!ISO || !arIso || !ui.state.cfg) return false;
+        var std = ISO.standardNames(ui.state.cfg);
+        if (!std.length) return true;              // 认不出标样就没什么可分的
+        var isStd = function (nm) { return std.indexOf(nm) >= 0; };
+        var nSmp = 0, opts0 = $('iso-sample').options[0];
+        ISO.sampleNames(arIso.rows).forEach(function (g) {
+          if (!isStd(g.name)) nSmp += g.usable;
+        });
+        if (opts0.value !== '*' || opts0.textContent.indexOf(String(nSmp)) < 0) return false;
+        //  标样选项必须落在某个 <optgroup> 里（下拉的标题就是"标样（QC 用…）"）
+        var og = $('iso-sample').querySelectorAll('optgroup');
+        if (!og.length || og[og.length - 1].label.indexOf('标样') < 0) return false;
+        var inGroup = {};
+        for (var i = 0; i < og.length; i++) {
+          var kids = og[i].children;
+          for (var j = 0; j < kids.length; j++) inGroup[kids[j].value] = 1;
+        }
+        var allIn = std.every(function (nm) { return inGroup[nm]; });
+        //  真正交给 IsoplotR 的那张表里也不能有标样行
+        var t2 = ISO.buildTable(arIso.rows, { sample: '*', drop: std });
+        return allIn && t2.n === nSmp && t2.dropped > 0;
+      })(), '标样 ' + ISO.standardNames(ui.state.cfg || {}).join('、')
+      + ' —— 默认视图是样品那 ' + (function () {
+        var std = ISO.standardNames(ui.state.cfg || {});
+        var n = 0;
+        ISO.sampleNames(arIso ? arIso.rows : []).forEach(function (g) {
+          if (std.indexOf(g.name) < 0) n += g.usable;
+        });
+        return n;
+      })() + ' 个点');
+
+    //  选中标样时要明说"这不是样品年龄"，并把②里填的真值一起摆出来
+    t('选中标样时，说明里点明它是 QC 样（不是样品年龄）',
+      (function () {
+        if (!ISO || !arIso || !ui.state.cfg) return false;
+        var std = ISO.standardNames(ui.state.cfg);
+        if (!std.length) return true;
+        var has = false;
+        for (var i = 0; i < $('iso-sample').options.length; i++) {
+          if ($('iso-sample').options[i].value === std[0]) { has = true; break; }
+        }
+        if (!has) return false;
+        $('iso-sample').value = std[0];
+        var bad0 = null;
+        try {
+          //  不真跑 R（这里不联网）：只看下拉项的 title 有没有把话说清楚
+          bad0 = $('iso-sample').options[$('iso-sample').selectedIndex].title;
+        } catch (e) { return false; }
+        $('iso-sample').value = '*';
+        $('iso-sample').dispatchEvent(new Event('change'));
+        return typeof bad0 === 'string' && bad0.indexOf('不是') >= 0
+          && bad0.indexOf('真值') >= 0;
+      })(), '标样那一项的 title：' + (function () {
+        var std = ISO.standardNames(ui.state.cfg || {});
+        for (var i = 0; i < $('iso-sample').options.length; i++) {
+          if ($('iso-sample').options[i].value === std[0]) {
+            return String($('iso-sample').options[i].title).slice(0, 40) + '…';
+          }
+        }
+        return '—';
+      })());
 
     t('单点样品的 discordia 选项被禁用（IsoplotR 对 <3 点必然报错）',
       (function () {

@@ -11,7 +11,7 @@
 | `index.html` | 落地页的**产物**，也是 GitHub Pages 真正服务的那一份（徽章、正文数字都已物化） | `python docs/make_badges.py`，**不要手改** |
 | `guide.html` | 《原理与代码解读》图解版：8 章、56 张内联 SVG | 由 docbuild/ 流水线产出，**不要手改** |
 | `app/isoclock.html` | 网页版应用本体（单文件、离线可用） | `webgui/build_ui.py` 的产物，**不要手改** |
-| `assets/*.png` | 页面里引用的 5 张界面截图 + 1 张社交分享预览 `og.png` | 无头 Edge 实拍 |
+| `assets/*.png` | 页面里引用的 7 张界面截图（清单的唯一真源是 `sync_assets.py` 的 `SHOT_MAP`，别在这里再抄一份）+ 1 张社交分享预览 `og.png` | 无头 Edge 实拍 |
 | `sync_assets.py` | 把 `guide.html`、`app/`、`assets/` 从未提交/别处的地方同步进来 | — |
 | `make_badges.py` | 由 `index.src.html` 生成 `index.html`（徽章 + 正文数字） | — |
 | `.nojekyll` | 关掉 GitHub Pages 的 Jekyll 处理（本站全是静态文件，不需要） | `sync_assets.py` |
@@ -76,7 +76,7 @@ python -m http.server 8000 --directory docs
   时的高度；图没加载上版面会塌缩到 11000 出头，那时截出来的图是残的）。
   ⚠ 注入探针的临时副本必须放在**被仿页面的同一目录**里，否则 `assets/ui-*.png`
   这些相对路径全部解析不到，量出来的每一个绝对位置都是错的。
-- **不要写没验证过的数字。** 页面上所有计数（402 项、814 KB、9.8 MB 等）
+- **不要写没验证过的数字。** 页面上所有计数（409 项、826 KB、9.8 MB 等）
   都来自已经跑过的实测记录；新增数字要有出处。
 - **首屏那排徽章不要手写** —— 它由 `python docs/make_badges.py` **算出来**再写进
   `index.html`；同一趟也会把 `index.src.html` 里 `<!-- BADGES:BEGIN -->` 与

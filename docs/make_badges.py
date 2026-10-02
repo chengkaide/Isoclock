@@ -81,8 +81,8 @@ SUITES = ['test_fp.js', 'test_math.js', 'test_thermo.js', 'test_agilent.js',
           'test_isoplotr.js']
 
 # 页面内自检的项数。真源是产物页面在 #selftest 下自己报出来的那个数
-# （标题形如 `SELFTEST-OK [54/54]`）。有 Edge 时用 --selftest 现场核一遍。
-SELFTEST_ITEMS = 54
+# （标题形如 `SELFTEST-OK [56/56]`）。有 Edge 时用 --selftest 现场核一遍。
+SELFTEST_ITEMS = 56
 
 SUM_RE = re.compile(r'总计\s*(\d+)\s*项：通过\s*(\d+)，失败\s*(\d+)'
                     r'|结果：\s*(\d+)\s*通过\s*/\s*(\d+)\s*失败')
@@ -182,7 +182,8 @@ def read_demo_facts():
 
     可用的键：DEMOFILES（文件数）、GZIPKB（内嵌数据压缩后多少 KB）、
     DEMONAN / DEMOWEAK / DEMOMIN（整行 NaN 的文件数 / 弱信号文件数 /
-    最弱那个的净 ²⁰⁶Pb）、AY4 / AY4SE / AY4MSWD（标样实测值，连 2σ 口径）。
+    最弱那个的净 ²⁰⁶Pb）、AY4 / AY4SE / AY4MSWD（标样实测值，连 2σ 口径）、
+    STDAGE（②里填的标样真值 —— 正文讲"标样要拿去对真值"时引它）。
 
     读不到就少几个键，让 substitute() 因为换不掉标记而报错 ——
     宁可构建停下来，也不要印一个猜出来的标样年龄。
@@ -224,6 +225,12 @@ def read_demo_facts():
             #  否则跟报告里的 1σ（0.7）看着像两个数对不上。
             f.update({'AY4': '%.1f' % mean, 'AY4SE': '%.1f' % se2,
                       'AY4MSWD': '%.2f' % mswd})
+    #  ②里填的标样真值（params.stdAge）。正文讲"标样是要拿去对真值的"时要用它
+    #  —— 手写 158.2 就又成了一处换参数就会过期的话。
+    m = re.search(r'\bstdAge:\s*(-?[\d.eE+]+)', txt)
+    if m:
+        v = float(m.group(1))
+        f['STDAGE'] = ('%.1f' % v).rstrip('0').rstrip('.')
     return f
 
 

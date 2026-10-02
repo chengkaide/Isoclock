@@ -1287,17 +1287,36 @@
     el.className = 'iso-msg' + (cls ? ' ' + cls : '');
   }
 
-  /** 往一个 <select> 里填选项（value 用字符串，读的时候再转数字）。 */
+  /**
+   * 往一个 <select> 里填选项（value 用字符串，读的时候再转数字）。
+   *
+   * 列表项有两种形态：
+   *   · { v, label, note }                       —— 普通选项
+   *   · { group: '标样（QC 用）', items: [...] } —— 生成一个 <optgroup>
+   * 加分组是因为**样品和标样必须分开**（见 isoplotr.js 文件头 ⑬）：这批数据里
+   * 标样 AY-4 有 15 个文件、样品每个只有 1 个，只按点数排序会把 AY-4 顶到第一位。
+   * 用文字后缀标注不够 —— 下拉里第一眼看到的就是标题，分组才拦得住。
+   */
   function isoFill(sel, list, keep) {
     if (!sel) return;
     var want = (keep === undefined) ? sel.value : String(keep);
-    sel.innerHTML = '';
-    list.forEach(function (o) {
+    function addOption(host, o) {
       var op = document.createElement('option');
       op.value = String(o.v);
       op.textContent = o.label;
       if (o.note) op.title = o.note;
-      sel.appendChild(op);
+      host.appendChild(op);
+    }
+    sel.innerHTML = '';
+    list.forEach(function (o) {
+      if (o && o.group) {
+        var g = document.createElement('optgroup');
+        g.label = o.group;
+        (o.items || []).forEach(function (it) { addOption(g, it); });
+        sel.appendChild(g);
+      } else {
+        addOption(sel, o);
+      }
     });
     var hit = -1;
     for (var i = 0; i < sel.options.length; i++) {
@@ -1306,15 +1325,23 @@
     sel.selectedIndex = hit >= 0 ? hit : 0;
   }
 
-  /** 当前选中的样品能进表几个点（决定"拟合"里哪些选项可用）。 */
-  function isoUsableCount(groups, sample) {
+  /**
+   * 当前选中项能进表几个点（决定"拟合"里哪些选项可用）。
+   *
+   * 合并选（'*'）时**不含标样** —— 必须与 buildTable 的 drop 口径一致，
+   * 否则下拉里写"41 个可用点"、真正送进 R 的只有 29 个（踩过：两处各算一遍）。
+   */
+  function isoUsableCount(groups, sample, std) {
     if (!groups || !groups.length) return 0;
+    var isStd = function (nm) { return !!std && std.indexOf(nm) >= 0; };
     for (var i = 0; i < groups.length; i++) {
       if (groups[i].name === sample) return groups[i].usable;
     }
-    //  '全部'：把所有分组的可用点加起来
+    //  '全部'：把所有**样品**分组的可用点加起来（标样不算）
     var n = 0;
-    for (var j = 0; j < groups.length; j++) n += groups[j].usable;
+    for (var j = 0; j < groups.length; j++) {
+      if (!isStd(groups[j].name)) n += groups[j].usable;
+    }
     return n;
   }
 
@@ -1337,14 +1364,56 @@
       return;
     }
 
+    /*  样品与标样分组（isoplotr.js 文件头 ⑬）。顺序有意义：
+     *  默认选中的是第一个选项「全部样品（不含标样）」—— 谐和图上该看的是样品，
+     *  而标样只该拿来对 QC 真值。 */
     var groups = ISO.sampleNames(ar.rows);
-    var usable = groups.map(function (g) { return g; });
-    var total = usable.reduce(function (a, g) { return a + g.usable; }, 0);
-    var opts = [{ v: '*', label: '全部样品（' + total + ' 个可用点）' }];
-    usable.sort(function (a, b) { return (b.usable - a.usable) || (a.name < b.name ? -1 : 1); });
-    usable.forEach(function (g) {
-      opts.push({ v: g.name, label: g.name + '（' + g.usable + ' / ' + g.rows + ' 点可用）' });
+    var std = ISO.standardNames(state.cfg);
+    var smp = [], stg = [];
+    groups.forEach(function (g) { (std.indexOf(g.name) >= 0 ? stg : smp).push(g); });
+    var byUsable = function (a, b) {
+      return (b.usable - a.usable) || (a.name < b.name ? -1 : 1);
+    };
+    smp.sort(byUsable);
+    stg.sort(byUsable);
+
+    var nSmp = smp.reduce(function (a, g) { return a + g.usable; }, 0);
+    var opts = [{
+      v: '*',
+      //  没配标样（认不出标样名）时就不写"不含标样" —— 那会是一句假话。
+      label: '全部样品（' + (std.length ? '不含标样，' : '') + nSmp + ' 个可用点）',
+      note: '把这一批的样品测点合在一张谐和图上 —— 谐和线/不一致线该看的就是这个样本。'
+        + (std.length ? '标样（' + std.join('、') + '）不在里面：它是 QC 样。' : '')
+    }];
+    smp.forEach(function (g) {
+      opts.push({
+        v: g.name,
+        label: g.name + '（' + g.usable + ' / ' + g.rows + ' 点可用）',
+        note: g.rows === 1
+          ? '这个样品只有 1 个测点：图上就是一个带误差椭圆的点，拟合年龄没有意义'
+            + '（IsoplotR 会直接报 Cannot fit a straight line）。要出年龄请选'
+            + '「全部样品」。'
+          : ''
+      });
     });
+    if (stg.length) {
+      opts.push({
+        group: '标样（QC 用，不是样品年龄）',
+        items: stg.map(function (g) {
+          var note = '标样是用来检验这一批的再现性与分馏校正的：它的年龄要与②里'
+            + '填的真值比，不是待测样品的年龄。画它是为了看它落不落在谐和线上。';
+          if (state.cfg && String(state.cfg.stdName).trim() === g.name
+              && isFinite(Number(state.cfg.stdAge))) {
+            note += '本批填的真值 = ' + state.cfg.stdAge + ' Ma。';
+          }
+          return {
+            v: g.name,
+            label: g.name + '（标样 · ' + g.usable + ' / ' + g.rows + ' 点可用）',
+            note: note
+          };
+        })
+      });
+    }
     var keep = $('iso-sample').value || '*';
     isoFill($('iso-sample'), opts, keep);
     btn.disabled = false;
@@ -1361,7 +1430,7 @@
     var ar = state.ageResult;
     if (!ar || !$('iso-age')) return;
     var groups = ISO.sampleNames(ar.rows);
-    var n = isoUsableCount(groups, $('iso-sample').value);
+    var n = isoUsableCount(groups, $('iso-sample').value, ISO.standardNames(state.cfg));
     var sel = $('iso-age');
     var notes = [];
     for (var i = 0; i < sel.options.length; i++) {
@@ -1379,13 +1448,14 @@
     }
   }
 
-  /** 把 <select> 的当前值读成参数。 */
+  /** 把 <select> 的当前值读成参数。`drop` 只在"全部样品"时生效（见 buildTable）。 */
   function isoOpts() {
     return {
       type: Number($('iso-type').value),
       showAge: Number($('iso-age').value),
       commonPb: Number($('iso-cpb').value),
-      sample: $('iso-sample').value
+      sample: $('iso-sample').value,
+      drop: ISO.standardNames(state.cfg)
     };
   }
 
@@ -1419,12 +1489,14 @@
     var ar = state.ageResult;
     if (!ISO || !ar) return;
     var o = isoOpts();
-    var tab = ISO.buildTable(ar.rows, { sample: o.sample });
+    var tab = ISO.buildTable(ar.rows, { sample: o.sample, drop: o.drop });
 
     if (tab.n < 1) {
       isoMsg('选中的样品里没有能进表的点（三比值或 rho 缺）。', 'warn');
       return;
     }
+    var std = ISO.standardNames(state.cfg);
+    var isStd = std.indexOf(o.sample) >= 0;
     var notes = [];
     if (tab.skipped) notes.push(tab.skipped + ' 行因比值/误差缺失被剔除');
     if (tab.badRho) {
@@ -1434,9 +1506,19 @@
         + (tab.rhoFiles && tab.rhoFiles.length
           ? '：' + tab.rhoFiles.join('、') : ''));
     }
+    if (tab.dropped) {
+      notes.push('另有 ' + tab.dropped + ' 行是<b>标样</b>（' + std.join('、')
+        + '），不参与样品统计 —— 想画标样请在下面那个分组里单独选它');
+    }
     if (tab.others) notes.push('另有 ' + tab.others + ' 行不属于所选样品');
+    if (isStd) {
+      notes.push('你选的是<b>标样 ' + o.sample + '</b>：标样的年龄是拿来对②里'
+        + '填的真值、检验这一批分馏校正与再现性的，<b>不是样品年龄</b>。'
+        + '要看样品年龄请选「全部样品」或某个样品。');
+    }
     var head = '正在处理 <b>' + tab.n + '</b> 个点'
-      + (o.sample === '*' ? '（全部样品）' : '（' + o.sample + '）')
+      + (o.sample === '*' ? '（全部样品，不含标样）'
+        : '（' + o.sample + (isStd ? '，标样' : '') + '）')
       + (notes.length ? '；' + notes.join('，') : '') + '。';
 
     var svgText = null;
@@ -1479,16 +1561,33 @@
           + ISO.fnum(Math.abs(diff), 2) + ' Ma</b>。';
       }
 
+      //  标样：把拟合结果与②里填的真值并排摆出来 —— 这才是标样图上该看的那个比较
+      var stdCmp = '';
+      var ageNow = out.result.age && out.result.age.t;
+      if (isStd && !out.result.error && isFinite(ageNow)
+          && state.cfg && isFinite(Number(state.cfg.stdAge))
+          && String(state.cfg.stdName).trim() === o.sample) {
+        var truth = Number(state.cfg.stdAge);
+        stdCmp = '<p>标样对照：IsoplotR 的谐和年龄 <b>' + ISO.fnum(ageNow, 2)
+          + ' Ma</b>，你在②里填的标样真值 <b>' + ISO.fnum(truth, 2) + ' Ma</b>，'
+          + '相差 <b>' + ISO.fnum(Math.abs(ageNow - truth), 2) + ' Ma</b>。'
+          + '标样对得上，说明这一批的分馏校正没问题；差得多，先回去查②里的'
+          + '参数与数据，而不是去改样品年龄。</p>';
+      }
+
       //  说明（口径、失败原因、地质含义）
       var nl = out.summary.notes.map(function (s) { return '<li>' + s + '</li>'; }).join('');
-      $('iso-notes').innerHTML = (cross ? '<p>' + cross + '</p>' : '')
+      $('iso-notes').innerHTML = (stdCmp ? stdCmp : '')
+        + (cross ? '<p>' + cross + '</p>' : '')
         + (nl ? '<ul>' + nl + '</ul>' : '');
 
       var cls = out.result.error ? 'err' : '';
       isoMsg(head + '<br>图已出（' + out.seconds.toFixed(1) + ' s，'
         + Math.round(svgText.length / 1024) + ' KB）。'
         + (out.result.error ? ' <b>但拟合失败了，已退回只画点 —— 见下方说明。</b>' : ''), cls);
-      logLine('IsoplotR：' + tab.n + ' 点，图型 ' + o.type + '，拟合 show.age='
+      logLine('IsoplotR：' + tab.n + ' 点（'
+        + (o.sample === '*' ? '全部样品，不含标样' : o.sample) + '），图型 ' + o.type
+        + '，拟合 show.age='
         + o.showAge + '，普通铅 ' + o.commonPb + '，' + out.seconds.toFixed(1) + ' s'
         + (out.result.error ? '（拟合失败：' + out.result.error + '）' : ''), out.result.error ? 'w' : 'g');
     }).catch(function (e) {

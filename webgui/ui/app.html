@@ -296,6 +296,10 @@
         这是本软件里<b>唯一需要联网</b>的部分：点上面那个按钮才会去下载
         webR（WebAssembly 版 R）与 IsoplotR 包，<b>首次约 16 MB、约 1 分钟</b>，
         之后走浏览器缓存。<b>数据不出本机</b>—— 只在本页内存里交给 wasm 里的 R。
+        <br>
+        <b>图上的点应该是「样品」</b>：默认的「全部样品（不含标样）」把这一批的样品
+        测点合在一张图上。标样（如 AY-4）不参与样品统计 —— 它是 QC 样，单独列在
+        下拉最后那个分组里，选它出来的年龄是拿来对②里填的真值的。
       </div>
       <div class="iso-figwrap"><img id="iso-fig" alt="" style="display:none"></div>
       <table class="iso-sum" id="iso-sum" style="display:none"></table>
@@ -333,7 +337,7 @@
 
     <h3>结果可信到什么程度</h3>
     <p>同一批数据下，网页版的输出与桌面版<b>逐位相同</b>（bit-for-bit，包括浮点最后一位）。
-      这不是估计，是跑出来的：<b data-count="tests">402 项</b> Node 端自动比对
+      这不是估计，是跑出来的：<b data-count="tests">409 项</b> Node 端自动比对
       （<b data-count="suites">14 套</b> <code>webgui/test_*.js</code>：数值内核、
       Thermo/Agilent 解析、积分窗口、两个 CSV 的<b>逐字节</b>输出、
       年龄层 51 列 × 19 组参数、<b data-count="suite:test_agilent_e2e.js">20 项</b> Agilent 端到端、
@@ -341,8 +345,8 @@
       <b data-count="suite:test_qc.js">63 项</b> 质量统计、
       <b data-count="suite:test_report.js">50 项</b> 报告组装、
       <b data-count="suite:test_demo_real.js">22 项</b> 内置真实示例数据、
-      <b data-count="suite:test_isoplotr.js">66 项</b> IsoplotR 接入层）
-      ＋<b data-count="selftest">54 项</b>本页面内自检（走的是真按钮那条路）。<br>
+      <b data-count="suite:test_isoplotr.js">73 项</b> IsoplotR 接入层）
+      ＋<b data-count="selftest">56 项</b>本页面内自检（走的是真按钮那条路）。<br>
       上面这些数不是手写的：<code>docs/make_badges.py</code> 每次都会把测试真跑一遍，
       <b>连逐套的项数也一起核</b>，对不上就让 CI 红。真正手写的是这一句解释。</p>
       唯一一处曾经对不上的地方是 <code>exp</code> / <code>log</code>：宿主 C 运行时与浏览器的
@@ -396,6 +400,8 @@
         （首次约 16 MB），数据不出本机。口径上也说明白：本软件的 <code>2s</code> 是
         <b>2σ</b>，IsoplotR 表里的 <code>1σ</code> 是 <b>1σ 标准误</b>，
         图上印的是 <b>95% 置信区间</b>，三者不要直接对着比。
+        <b>图上的点该选样品，不是标样</b>：标样被收进下拉最后那个分组，它的年龄
+        要拿去对②里填的真值（检验这一批的分馏校正与再现性），不是样品年龄。
         那一页还会把本次的谐和年龄与<b>本软件自己的加权平均</b>并排印出来
         —— 两条完全独立的路径，对得上才说明接进来的不是个摆设
         （对照逻辑与判据见 <code>webgui/test_isoplotr.js</code> 的 §G）。</li>
