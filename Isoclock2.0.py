@@ -19,6 +19,7 @@ import logging
 import csv
 import os
 import os.path
+import sys
 from math import *
 import time
 import pandas as pd
@@ -32,10 +33,83 @@ from scipy.optimize import curve_fit
 
 
 
+# --- 工作目录与"选文件夹"的默认位置 -----------------------------------------
+# 程序要往盘上写 my.log / Mean_Cps.csv / result_all.csv / cal_age_result_*.xls，
+# 原来一律用相对路径，于是落在"当前工作目录"：双击 exe 时是 exe 目录，
+# 装在 Program Files 下则不可写（logging 会在导入期抛异常，exe 无控制台 → 静默退出）。
+# 打包后统一锚定到程序所在目录；不可写时退到 %LOCALAPPDATA%\Isoclock。
+import sys
+import json as _json
+
+
+def _app_dir():
+    if getattr(sys, 'frozen', False):
+        return os.path.dirname(os.path.abspath(sys.executable))
+    return os.path.dirname(os.path.abspath(__file__))
+
+
+def _writable_dir():
+    d = _app_dir()
+    try:
+        probe = os.path.join(d, '.iso_write_probe')
+        with open(probe, 'w') as fh:
+            fh.write('')
+        os.remove(probe)
+        return d
+    except OSError:
+        d = os.path.join(os.environ.get('LOCALAPPDATA') or os.path.expanduser('~'),
+                         'Isoclock')
+        os.makedirs(d, exist_ok=True)
+        return d
+
+
+APP_DIR = _writable_dir()
+if getattr(sys, 'frozen', False):
+    # 只在使用打包版时改工作目录。源码运行时保持原样，
+    # 免得影响 webgui/make_*.py 那批"加载真源码取参考值"的脚本。
+    os.chdir(APP_DIR)
+
+_DIRS_CFG = os.path.join(APP_DIR, 'isoclock_dirs.json')
+
+
+def _saved_dirs():
+    try:
+        with open(_DIRS_CFG, 'r', encoding='utf-8') as fh:
+            cfg = _json.load(fh)
+        return cfg if isinstance(cfg, dict) else {}
+    except Exception:
+        return {}
+
+
+def _default_dir(key):
+    """上次选过的目录；没有就退到桌面 / 用户主目录。原来是写死的 'H:/'。"""
+    d = _saved_dirs().get(key)
+    if d and os.path.isdir(d):
+        return d
+    for cand in (os.path.expanduser('~/Desktop'), os.path.expanduser('~')):
+        if os.path.isdir(cand):
+            return cand
+    return APP_DIR
+
+
+def askdir_remembered(title, key):
+    """askdirectory 的包装：以上次选的目录为起点，选完记住；取消返回空串。"""
+    chosen = askdirectory(title=title, initialdir=_default_dir(key))
+    if chosen:
+        try:
+            cfg = _saved_dirs()
+            cfg[key] = chosen
+            with open(_DIRS_CFG, 'w', encoding='utf-8') as fh:
+                _json.dump(cfg, fh, ensure_ascii=False, indent=1)
+        except OSError:
+            pass
+    return chosen
+
 LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
 DATE_FORMAT = "%m/%d/%Y %H:%M:%S %p"
 
-logging.basicConfig(filename='my.log', level=logging.INFO, format=LOG_FORMAT, datefmt=DATE_FORMAT)
+logging.basicConfig(filename=os.path.join(APP_DIR, 'my.log'), level=logging.INFO,
+                    format=LOG_FORMAT, datefmt=DATE_FORMAT)
 
 def SK2model(age):
         #Sk2_64=11.152  sk2_74=12.998  sk2_84=31.23   sk2_mu=9.74  sk2_kp=36.84
@@ -2926,7 +3000,7 @@ def main():
 
     def selectPath_in():
         global inputpath        
-        inputpath=askdirectory(title=u'Select input folder:',initialdir=(os.path.expanduser('H:/')))
+        inputpath=askdir_remembered(title=u'Select input folder:', key='input')
         print('Open：', inputpath)
         if inputpath is not None:
             path1.set(inputpath)
@@ -2936,7 +3010,7 @@ def main():
     def selectPath_out():
         global outputpath
         global theLB
-        outputpath=askdirectory(title=u'Select output folder',initialdir=(os.path.expanduser('H:/')))
+        outputpath=askdir_remembered(title=u'Select output folder', key='output')
         print('Save：',outputpath)
         #print('<3>点击【读取数据】按钮，完成数据读取和初步检查工作！')
         if outputpath is not None:
@@ -2959,7 +3033,7 @@ def main():
             output_dir=''
             def selectPath_in():
                 global  origin_dir      
-                origin_dir=askdirectory(title=u'选择输入文件夹',initialdir=(os.path.expanduser('H:/')))
+                origin_dir=askdir_remembered(title=u'选择输入文件夹', key='input')
                 print('打开文件：', origin_dir)
                 if origin_dir is not None:
                     path1.set(origin_dir)                   
@@ -2968,7 +3042,7 @@ def main():
             
             def selectPath_out():
                 global output_dir
-                output_dir=askdirectory(title=u'选择目标文件夹',initialdir=(os.path.expanduser('H:/')))
+                output_dir=askdir_remembered(title=u'选择目标文件夹', key='output')
                 print('保存文件夹：',output_dir)
                 if output_dir is not None:                    
                     path2.set(output_dir)
