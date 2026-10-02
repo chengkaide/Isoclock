@@ -47,9 +47,14 @@ jobs:
           python-version: '3.12'
 
       - name: 安装依赖
+        env:
+          # GitHub 的日志查看器是 UTF-8；显式指定免得中文构建信息变成乱码
+          PYTHONIOENCODING: utf-8
         run: |
           python -m pip install --upgrade pip
-          python -m pip install pywebview pyinstaller
+          # pillow 不只是 make_icon.py 要：macOS 上 PyInstaller 要用它把
+          # PNG 转成 .icns，缺了会在 BUNDLE 阶段直接失败
+          python -m pip install pywebview pyinstaller pillow
 
       - name: 打包 + 页面内自检
         # --verify 会把产物真的启动一次，读页面自检结果。

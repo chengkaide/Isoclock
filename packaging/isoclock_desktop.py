@@ -29,6 +29,14 @@ import os
 import sys
 import time
 
+# 英文版 Windows 控制台是 cp1252；虽然打包后是 windowed（没有控制台），
+# 源码方式运行时仍可能打印中文，先放宽 errors 免得抛异常。
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(errors='replace')
+    except Exception:
+        pass
+
 # 产品名只在这里定义一次。改名时改这一行 + build_app.py 会跟着走。
 APP_NAME = 'Isoclock 网页版'
 APP_TAG = 'isoclock-web'          # 用作产物文件名前缀

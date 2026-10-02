@@ -18,3 +18,4 @@ webgui/_probe/
 # 打包产物
 build/
 dist/
+packaging/icons/_preview32.png

@@ -36,6 +36,16 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 
+# Windows 控制台在英文版系统上是 cp1252，中文版是 cp936 —— 前者编不出中文，
+# `print` 直接抛 UnicodeEncodeError 把构建脚本打断（CI 上就是这么挂的）。
+# 这里只放宽 errors，**保留控制台自己的编码**（强行改成 utf-8 会让中文控制台
+# 显示成乱码），编不出来的字符退化成 '?'，不再致命。
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(errors='replace')
+    except Exception:
+        pass
+
 from isoclock_desktop import APP_NAME, APP_TAG, HTML_NAME, RESULT_FILE  # noqa: E402
 
 VERSION = '2.1'
@@ -116,6 +126,29 @@ def patch_macos_plist(app_dir):
     with open(plist, 'wb') as fh:
         plistlib.dump(info, fh)
     print('  Info.plist: CFBundleDisplayName = %s' % APP_NAME)
+
+
+def sign_macos(app_dir):
+    """ad-hoc 签名（`codesign -s -`）。
+
+    **Apple Silicon 上这一步不是可选项**：arm64 的可执行文件必须带签名，
+    哪怕是 ad-hoc 的，否则内核直接拒绝执行（表现是"打不开，没有任何提示"）。
+    PyInstaller 会给它生成的二进制做 ad-hoc 签名，但整个 .app 包的外层
+    也补一次更稳。
+
+    这**不是**开发者签名 —— 从网上下载的包仍然会被 Gatekeeper 拦一次，
+    用户需要右键"打开"或在"隐私与安全性"里放行（README 里写了）。
+    """
+    if not shutil.which('codesign'):
+        print('  !! 没有 codesign（缺 Xcode 命令行工具），跳过签名。'
+              'Apple Silicon 上产物可能无法启动。')
+        return
+    for target in (app_dir, os.path.join(app_dir, 'Contents', 'MacOS', OUT_NAME)):
+        if os.path.exists(target):
+            try:
+                sh(['codesign', '--force', '--deep', '--sign', '-', target])
+            except subprocess.CalledProcessError as exc:
+                print('  !! 签名失败（exit %s），产物仍可尝试运行' % exc.returncode)
 
 
 def make_zip(path):
@@ -210,6 +243,7 @@ def main():
         raise SystemExit('!! 没找到产物 %s' % artifact)
     if sys.platform == 'darwin':
         patch_macos_plist(artifact)
+        sign_macos(artifact)
 
     def size_of(p):
         if os.path.isfile(p):

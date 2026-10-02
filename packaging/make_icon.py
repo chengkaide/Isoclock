@@ -15,6 +15,14 @@ import math
 import os
 import sys
 
+# 英文版 Windows 的控制台是 cp1252，打印中文会抛 UnicodeEncodeError。
+# 只放宽 errors、保留控制台编码，编不出来的字符退化成 '?'。
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(errors='replace')
+    except Exception:
+        pass
+
 from PIL import Image, ImageDraw
 
 L238 = 1.55125e-10          # ²³⁸U 衰变常数
