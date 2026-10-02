@@ -174,6 +174,7 @@ footer .wrap{display:flex;gap:22px;flex-wrap:wrap;align-items:baseline}
     <nav>
       <a href="#what">它在做什么</a>
       <a href="#fork">这个分支改了什么</a>
+      <a href="#download">下载</a>
       <a href="#web">网页版</a>
       <a href="#learn">讲原理</a>
       <a href="#verify">验证与边界</a>
@@ -203,11 +204,17 @@ footer .wrap{display:flex;gap:22px;flex-wrap:wrap;align-items:baseline}
   </p>
 
   <div class="badges">
-    <span class="b ok">314 项数值比对全绿</span>
-    <span class="b ok">与桌面版逐位相同</span>
-    <span class="b pu">单文件 · 289 KB · 离线</span>
-    <span class="b">Thermo + Agilent</span>
-    <span class="b">Apache-2.0</span>
+    <!-- BADGES:BEGIN 由 docs/make_badges.py 生成；改数字请改源头并重跑 -->
+    <span class="b ok" title="12 套 webgui/test_*.js，与桌面版逐位对照；本行由脚本实跑得出">314 项数值比对全绿</span>
+    <span class="b ok" title="在产物页面里点真按钮跑；项数无头浏览器现场读到">37 项页面内自检</span>
+    <span class="b ok" title="含浮点最后一位；由上面那批比对保证">与桌面版逐位相同</span>
+    <span class="b pu" title="isoclock.html = 290549 字节；零外链、零依赖，双击即用">单文件 284 KB · 离线</span>
+    <span class="b pu" title="guide.html = 482665 字节，56 张内联图">图解教程 471 KB</span>
+    <span class="b" title="同一个页面装进系统自带的 WebView；Windows 出 exe，macOS 出 app">Windows / macOS 桌面程序</span>
+    <span class="b" title="两种仪器导出都能读（Element 的 .fin 请用桌面版转换）">Thermo + Agilent</span>
+    <span class="b" title="沿用上游 sndjgm/Isoclock 的许可证">Apache-2.0</span>
+    <span class="b" title="dist/IsoclockWeb.exe = 9883284 字节">exe 单文件 9.4 MB</span>
+    <!-- BADGES:END -->
   </div>
 
   <div class="cta">
@@ -461,6 +468,70 @@ footer .wrap{display:flex;gap:22px;flex-wrap:wrap;align-items:baseline}
       列名大小写与后缀）。走兼容路径的文件在列表里打「兼容」标记，悬停能看到具体差异是什么。
       <b>标准格式的文件走的仍是原来那条严格路径，一行没动。</b></figcaption>
   </figure>
+</section>
+
+<!-- ==================== DOWNLOAD ==================== -->
+<section id="download">
+  <h2>三种拿法<span class="en">Three ways to get it</span></h2>
+
+  <p class="lead">同一套内核 —— 后两种装的都是同一份 <code>isoclock.html</code>。
+    按"要不要装东西"排，最省事的是什么都不装。</p>
+
+  <div class="grid g3">
+    <div class="card">
+      <span class="tag">零安装</span>
+      <h4>单文件网页版</h4>
+      <p>一个 <code>isoclock.html</code>，<b>284 KB</b>。下载后<b>双击</b>，
+        用你现有的浏览器打开就能用。不装 Python、不装依赖、不联网 ——
+        样式和图都在这个文件里面。</p>
+      <p>Windows / macOS / Linux 通用，只要那台机器有浏览器。</p>
+    </div>
+
+    <div class="card">
+      <span class="tag">Windows</span>
+      <h4>桌面程序 <code>.exe</code></h4>
+      <p>单个 <code>.exe</code>，约 <b>10 MB</b>（本机实测 9.4 MB，CI 上 12.3 MB，
+        随打包用的 Python 版本略有出入）。双击就是一个真正的程序窗口：有图标、
+        没有地址栏，导出走系统的<b>"另存为"</b>，文件名和扩展名都是对的。</p>
+      <p>需要 Windows 10/11。用的是系统自带的 <b>WebView2</b> 运行时 ——
+        一般都有；确实没有的话装一次即可（免费，约 2 MB）。</p>
+    </div>
+
+    <div class="card">
+      <span class="tag">macOS</span>
+      <h4>桌面程序 <code>.app</code></h4>
+      <p>同一个窗口程序的苹果版，Apple Silicon 与 Intel 各一份。
+        解压后把 <code>.app</code> 拖进「应用程序」就行（解压后约 54 MB）。</p>
+      <p><b>第一次打开请右键 → 打开。</b>产物只有 ad-hoc 签名（苹果的开发者签名
+        要年费），Gatekeeper 会拦一次；右键放行一次之后，正常双击即可。</p>
+    </div>
+  </div>
+
+  <div class="cta" style="margin-top:24px">
+    <a class="btn primary" href="https://github.com/chengkaide/Isoclock/releases/latest">去下载 <span class="en">Download</span></a>
+    <a class="btn" href="app/isoclock.html">不下载，直接在线用 <span class="en">Run online</span></a>
+  </div>
+
+  <div class="callout">
+    <div class="t">为什么不干脆只做一个</div>
+    <p>这个程序的读者很可能<b>一年只用两三次</b>，而且常常是在别人的电脑上、
+      或者实验室那台不让装软件的工作站上。对这种用法，"下载一个文件、双击打开"
+      比"装一个程序"合适得多 —— 用完可以直接删掉，什么都不留下。</p>
+    <p>桌面程序存在的理由只有三条：真正的应用窗口、导出走系统原生"另存为"、
+      macOS 上能进「应用程序」。<b>它算的还是同一份网页版</b> ——
+      壳里没有一行数值代码，只是把 <code>isoclock.html</code> 装进系统自带的
+      WebView（Windows 用 WebView2，macOS 用 WKWebView）。</p>
+  </div>
+
+  <div class="callout warn">
+    <div class="t">这些包是怎么出来的，怎么信的过</div>
+    <p>三个平台<b>各由一台对应系统的构建机</b>产出 —— 因为 <b>PyInstaller 不能
+      交叉编译</b>：Windows 的 exe 只能在 Windows 上构建，macOS 的 app 只能在
+      macOS 上构建。苹果那份必须在苹果的机器上出，这是没法绕过的。</p>
+    <p>每次构建分两步把关：先跑 <b>314 项数值比对</b>（<code>webgui/test_*.js</code>，
+      与桌面版逐位对照），再把<b>产物本身启动一次</b>、跑页面内自检
+      （<b>37 项</b>，走的是真按钮那条路）。<b>任一步不过就不发布。</b></p>
+  </div>
 </section>
 
 <!-- ==================== WEB ==================== -->

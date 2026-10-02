@@ -160,8 +160,20 @@
     });
     t('crExp/crLog 与正确舍入一致', fpBad.length === 0,
       fpBad.length ? fpBad.join('；') : FP_PROBES.length + ' 个探针逐位相同');
-    t('宿主 Math.exp/log 确有差异', fpHostDiff > 0,
-      FP_PROBES.length + ' 个探针里有 ' + fpHostDiff + ' 个与正确舍入不同（正是自实现的存在理由）');
+    /* 宿主更准还是更差，是**环境属性**，不能写成这个软件的通过/失败项。
+       `Math.exp` / `Math.log` 的精度随引擎和机器变：macOS 的 JavaScriptCore
+       （WKWebView）与一部分 Windows 上的 WebView2 在这 4 个探针上就是**与
+       正确舍入一致**的。原先把 `fpHostDiff > 0` 当断言，结果是同一个文件在
+       开发机上 37/37、在 CI 的 Windows 和 macOS 上都 36/37 ——
+       挂的不是软件，是机器。这种测试比没有更坏：它会训练人忽略红灯。
+
+       真正要守住的是：**自实现必须真的是自实现**。宿主越准，上面那条
+       "与参考值一致"就越没有区分力（把 crExp 换成 Math.exp 也能过），
+       所以这一条必须独立存在。 */
+    t('自实现没有被宿主函数顶掉',
+      FP.crExp !== Math.exp && FP.crLog !== Math.log,
+      '宿主与正确舍入不同的探针：' + fpHostDiff + '/' + FP_PROBES.length
+        + ' 个（引擎属性，只记录，不判通过与否）');
     t('dexp/dlog 默认走自实现', FP.dexp(0.11975871858733333) === 1.1272248403631944,
       'dexp(0.11975871858733333)=' + FP.dexp(0.11975871858733333));
 

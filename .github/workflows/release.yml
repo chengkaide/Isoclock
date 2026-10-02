@@ -25,8 +25,37 @@ permissions:
   contents: write
 
 jobs:
+  # 数值比对本该在 CI 上跑。原来只有打包，等于"314 项比对"只在本机出现过 ——
+  # 一旦谁改了 src/，推上来也没人拦。先跑比对，再打包。
+  verify-node:
+    name: 数值比对（314 项）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: 跑全部比对套件
+        working-directory: webgui
+        run: |
+          set -e
+          fail=0
+          for f in test_fp.js test_math.js test_thermo.js test_agilent.js \
+                   test_window.js test_e2e.js test_age.js test_age76.js \
+                   test_agilent_e2e.js test_thermo_compat.js test_qc.js test_report.js; do
+            echo "===== $f ====="
+            if ! node "$f"; then fail=1; fi
+          done
+          exit $fail
+
+      - name: 核对页面上的徽章没过期
+        # 徽章里的数字是算出来的（文件体积、真跑出来的比对项数）。
+        # 页面改了但忘了重算徽章，这里就会拦下来。
+        run: python docs/make_badges.py --check
+
   build:
     name: ${{ matrix.name }}
+    needs: verify-node
     runs-on: ${{ matrix.os }}
     # Intel Mac 的构建机（macos-13）已被 GitHub 标记为弃用，随时可能下线。
     # 标成可失败 —— 它挂了不该连带整个发布失败，用户还可以用 Rosetta 之外的办法

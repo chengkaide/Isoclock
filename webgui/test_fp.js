@@ -4,10 +4,16 @@
  *  判据：
  *      ① 正确舍入      src/fp.js 的 crExp / crLog 与参考值（Python decimal 算的
  *                      60 位结果再舍入）逐位相同 —— 覆盖率见夹具
- *      ② 动机成立      同一批自变量上，宿主的 Math.exp / Math.log 确实有若干点
- *                      与正确舍入不同（这正是当初不能直接用它们的原因）
+ *      ② 不可被顶掉    crExp / crLog 不是 Math.exp / Math.log 的别名
+ *                      （宿主某台机器上恰好更准，也不能因此放行一个"直接用宿主"
+ *                       的实现 —— 那样①就失去区分力了）
  *      ③ 偏差有界      crExp 与 Math.exp 的差始终在 1 ULP 以内（不是实现跑飞了）
  *      ④ 边界行为      0 / 1 / ±Inf / NaN 与 Math.exp / Math.log 一致
+ *
+ *  关于 ②：原来这里是"宿主确有差异（动机成立）"。`Math.exp` / `Math.log` 的
+ *  精度**随引擎与机器变** —— macOS 的 JavaScriptCore 和一部分机器上的 WebView2
+ *  在这批点上就是与正确舍入一致的。把环境属性写成断言，同一个文件就会在开发机
+ *  上过、在 CI 上挂（真踩过）。差异的具体数量仍然打印出来，只是不判通过与否。
  *
  *  用法:  node webgui/test_fp.js
  * ========================================================================== */
@@ -80,9 +86,17 @@ function main() {
     check(`${name} 逐位等于正确舍入`, bad === 0,
       bad === 0 ? `${pairs.length} 个点全部逐位相同`
         : `${bad}/${pairs.length} 个点不同，首个 ${first}`);
-    check(`${name} 宿主实现确有差异`, hostDiff > 0,
-      `${pairs.length} 个点里 Math.${name === 'crExp' ? 'exp' : 'log'} 有 ${hostDiff} 个`
-      + `与正确舍入不同（首个 ${hostFirst}）`);
+    /* 宿主更准还是更差，是**环境属性**，不能当判据。
+       原先这条写的是 `hostDiff > 0`（"动机成立"），但 `Math.exp` / `Math.log`
+       的精度随引擎与机器变：macOS 的 JavaScriptCore 与一部分机器上的
+       WebView2 在这批点上就是与正确舍入一致的。写死成断言，结果就是同一个
+       文件在开发机上过、在 CI 上挂 —— 挂的不是软件，是机器。
+       真正要守住的是：**自实现不是宿主的别名**。宿主越准，上面那条
+       "逐位等于正确舍入"就越没有区分力（crExp 直接指到 Math.exp 也能过），
+       所以这一条必须独立存在。差异数量只打印出来当参考。 */
+    check(`${name} 自实现不是宿主函数的别名`, fn !== host,
+      `宿主与正确舍入不同的点：${hostDiff}/${pairs.length}`
+      + (hostDiff ? `（首个 ${hostFirst}）` : ' —— 这台机器的宿主本身就够准，属正常'));
     check(`${name} 与正确舍入最远 ${maxUlp} ULP`, maxUlp <= 1,
       `最大 ${maxUlp} ULP @${maxUlpAt}`);
   }

@@ -690,15 +690,15 @@ footer.foot .grow { flex: 1 1 auto; }
    本文件由 webgui/build_ui.py 拼成，请勿手改。要改就改 ui/ 与 src/ 下的
    源头，然后重新运行：python webgui/build_ui.py
 
-   生成时间：2026-09-25 11:21:22（取全部源码里最新的那次改动时间，
+   生成时间：2026-10-02 14:13:58（取全部源码里最新的那次改动时间，
              所以同样的源码永远得到同样的文件）
 
-   模块指纹：style.css=ce62ca292834 src/fp.js=0ec13124f10d src/math.js=ed93964b9ba1 src/thermo.js=1596a3593c89 src/window.js=7e8dfba81ca9 src/report.js=2e5ac3aa5cb8 src/pipeline.js=6a7f362158c5 src/age.js=bfcb91404ec9 src/qc.js=7a96b7f3fc51 ui/report.js=f311148a50a0 ui/selftest.js=d4a9351d9d5d ui/app.js=0f90b3885ae2 ui/app.html=7354efc0500a
-   源码指纹：3d719ae17665（页脚显示的就是它，与本脚本末尾打印的那一行同值）
+   模块指纹：style.css=ce62ca292834 src/fp.js=0ec13124f10d src/math.js=ed93964b9ba1 src/thermo.js=1596a3593c89 src/window.js=7e8dfba81ca9 src/report.js=2e5ac3aa5cb8 src/pipeline.js=6a7f362158c5 src/age.js=bfcb91404ec9 src/qc.js=7a96b7f3fc51 ui/report.js=f311148a50a0 ui/selftest.js=d4a9351d9d5d ui/app.js=4810a8f6fca1 ui/app.html=7354efc0500a
+   源码指纹：d416dd629fdd（页脚显示的就是它，与本脚本末尾打印的那一行同值）
   ==========================================================================
 -->
 <script>
-window.__build = { built: "2026-09-25 11:21:22", fingerprint: "style.css=ce62ca292834 src/fp.js=0ec13124f10d src/math.js=ed93964b9ba1 src/thermo.js=1596a3593c89 src/window.js=7e8dfba81ca9 src/report.js=2e5ac3aa5cb8 src/pipeline.js=6a7f362158c5 src/age.js=bfcb91404ec9 src/qc.js=7a96b7f3fc51 ui/report.js=f311148a50a0 ui/selftest.js=d4a9351d9d5d ui/app.js=0f90b3885ae2 ui/app.html=7354efc0500a", id: "3d719ae17665" };
+window.__build = { built: "2026-10-02 14:13:58", fingerprint: "style.css=ce62ca292834 src/fp.js=0ec13124f10d src/math.js=ed93964b9ba1 src/thermo.js=1596a3593c89 src/window.js=7e8dfba81ca9 src/report.js=2e5ac3aa5cb8 src/pipeline.js=6a7f362158c5 src/age.js=bfcb91404ec9 src/qc.js=7a96b7f3fc51 ui/report.js=f311148a50a0 ui/selftest.js=d4a9351d9d5d ui/app.js=4810a8f6fca1 ui/app.html=7354efc0500a", id: "d416dd629fdd" };
 </script>
 
 <script>
@@ -5964,6 +5964,15 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_QC;
    *  导出
    * ==================================================================== */
   function download(name, text, mime) {
+    // 桌面版壳（packaging/isoclock_desktop.py）里走**系统原生"另存为"**。
+    // 不用 blob + <a download>：WebView2 给 blob 下载的默认文件名是一串 GUID、
+    // 没有扩展名，用户拿到 `a1b2c3d4` 这种文件还得自己改名。原生对话框带正确
+    // 文件名与扩展名。浏览器里没有这个桥，所以行为与原来完全一致。
+    var api = window.pywebview && window.pywebview.api;
+    if (api && typeof api.save_as === 'function') {
+      api.save_as(name, text);
+      return;
+    }
     var blob = new Blob([text], { type: mime || 'text/plain;charset=utf-8' });
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
