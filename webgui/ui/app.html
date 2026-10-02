@@ -245,6 +245,7 @@
     <button data-tab="cps">Mean_Cps</button>
     <button data-tab="all">result_all</button>
     <button data-tab="age">年龄表</button>
+    <button data-tab="iso" title="用 IsoplotR 画谐和图 / 拟合 discordia 交点年龄。这是本软件里唯一需要联网的部分：点了里面的按钮才会去下载（首次约 16 MB），数据不出本机。">IsoplotR 谐和图</button>
     <button data-tab="log">日志</button>
     <span class="spacer"></span>
     <label style="font-size:12px;color:var(--ink-2);white-space:nowrap"
@@ -271,6 +272,40 @@
     <div class="pane" id="pane-age">
       <div class="empty">还没有结果。</div>
     </div>
+    <div class="pane" id="pane-iso">
+      <div class="iso-bar">
+        <label>图型
+          <select id="iso-type"></select>
+        </label>
+        <label>样品
+          <select id="iso-sample"></select>
+        </label>
+        <label>拟合
+          <select id="iso-age"></select>
+        </label>
+        <label>普通铅
+          <select id="iso-cpb"></select>
+        </label>
+        <span class="spacer"></span>
+        <button class="go" id="btn-iso-run" disabled>加载 IsoplotR 并作图</button>
+        <button id="btn-iso-svg" disabled>另存 SVG</button>
+      </div>
+      <div class="iso-msg" id="iso-msg">
+        这一页把当前结果交给 <b>IsoplotR</b>（Pieter Vermeesch 的 R 语言年代学工具箱）
+        画谐和图，并可选地拟合谐和年龄或 discordia 交点年龄。
+        这是本软件里<b>唯一需要联网</b>的部分：点上面那个按钮才会去下载
+        webR（WebAssembly 版 R）与 IsoplotR 包，<b>首次约 16 MB、约 1 分钟</b>，
+        之后走浏览器缓存。<b>数据不出本机</b>—— 只在本页内存里交给 wasm 里的 R。
+      </div>
+      <div class="iso-figwrap"><img id="iso-fig" alt="" style="display:none"></div>
+      <table class="iso-sum" id="iso-sum" style="display:none"></table>
+      <div class="iso-notes" id="iso-notes"></div>
+      <p class="hint" style="margin-top:10px">
+        口径提醒：本软件的年龄表里 <code>2s</code> 是 <b>2σ</b>；
+        IsoplotR 的上表 <code>1σ</code> 是 <b>1σ 标准误</b>，
+        而画在图上的是 <b>95% 置信区间</b>（≈1.96σ）。三个数不要直接对着比。
+      </p>
+    </div>
     <div class="pane" id="pane-log">
       <pre id="log"></pre>
     </div>
@@ -281,7 +316,7 @@
 <footer class="foot">
   <span id="buildinfo">构建信息读取中…</span>
   <span class="grow"></span>
-  <span>单文件 · 离线 · 不上传任何数据</span>
+  <span>单文件 · 离线（IsoplotR 标签页除外）· 不上传任何数据</span>
 </footer>
 
 <div id="toast"></div>
@@ -293,19 +328,21 @@
     <p>它把 Isoclock 桌面版（<code>Isoclock2.0.py</code>）的两段核心数值计算——<b>Thermo 数据的
       读取/积分/还原</b>与<b>标样校正与年龄计算</b>——原样搬到了浏览器里，界面重写，
       数字一个不改。设计目标是<b>单文件、离线、零依赖</b>：把这一份 HTML 拷到任何地方双击就能用，
-      不上传数据、不联网。</p>
+      不上传数据、不联网。<b>唯一例外</b>是可选的"IsoplotR 谐和图"标签页
+      —— 那一页要联网（点了它的按钮才下载），其余全部功能离线可用。</p>
 
     <h3>结果可信到什么程度</h3>
     <p>同一批数据下，网页版的输出与桌面版<b>逐位相同</b>（bit-for-bit，包括浮点最后一位）。
-      这不是估计，是跑出来的：<b data-count="tests">336 项</b> Node 端自动比对
-      （<b data-count="suites">13 套</b> <code>webgui/test_*.js</code>：数值内核、
+      这不是估计，是跑出来的：<b data-count="tests">402 项</b> Node 端自动比对
+      （<b data-count="suites">14 套</b> <code>webgui/test_*.js</code>：数值内核、
       Thermo/Agilent 解析、积分窗口、两个 CSV 的<b>逐字节</b>输出、
       年龄层 51 列 × 19 组参数、<b data-count="suite:test_agilent_e2e.js">20 项</b> Agilent 端到端、
       <b data-count="suite:test_thermo_compat.js">47 项</b> Thermo 兼容读取、
       <b data-count="suite:test_qc.js">63 项</b> 质量统计、
       <b data-count="suite:test_report.js">50 项</b> 报告组装、
-      <b data-count="suite:test_demo_real.js">22 项</b> 内置真实示例数据）
-      ＋<b data-count="selftest">42 项</b>本页面内自检（走的是真按钮那条路）。<br>
+      <b data-count="suite:test_demo_real.js">22 项</b> 内置真实示例数据、
+      <b data-count="suite:test_isoplotr.js">66 项</b> IsoplotR 接入层）
+      ＋<b data-count="selftest">54 项</b>本页面内自检（走的是真按钮那条路）。<br>
       上面这些数不是手写的：<code>docs/make_badges.py</code> 每次都会把测试真跑一遍，
       <b>连逐套的项数也一起核</b>，对不上就让 CI 红。真正手写的是这一句解释。</p>
       唯一一处曾经对不上的地方是 <code>exp</code> / <code>log</code>：宿主 C 运行时与浏览器的
@@ -351,6 +388,17 @@
         里面有标样 QC、样品加权平均与 MSWD、异常与警告清单、以及每条判据的出处。
         <b>这一块是原程序没有的</b>——桌面版只输出逐点年龄，从不做归组统计；
         报告里也写明了这一点，引用时请区别对待。判据阈值都是经验值，可以在左侧⑥改。</li>
+      <li><b>新增"IsoplotR 谐和图"标签页</b>：把当前结果交给 <b>IsoplotR</b>
+        （R 语言，通过 WebAssembly 在浏览器里跑）画 Wetherill / Tera-Wasserburg 谐和图，
+        并可拟合谐和年龄、discordia 上/下交点年龄与 MSWD。<b>这一块也是原程序没有的</b>
+        —— 桌面版只到 51 列年龄表为止，从不画谐和图。
+        <b>它是本软件里唯一需要联网的功能</b>：不点那一页的按钮就不会下载任何东西
+        （首次约 16 MB），数据不出本机。口径上也说明白：本软件的 <code>2s</code> 是
+        <b>2σ</b>，IsoplotR 表里的 <code>1σ</code> 是 <b>1σ 标准误</b>，
+        图上印的是 <b>95% 置信区间</b>，三者不要直接对着比。
+        那一页还会把本次的谐和年龄与<b>本软件自己的加权平均</b>并排印出来
+        —— 两条完全独立的路径，对得上才说明接进来的不是个摆设
+        （对照逻辑与判据见 <code>webgui/test_isoplotr.js</code> 的 §G）。</li>
       <li>原桌面版的 <b>Agilent</b> 流程要求先选一份 Excel 清单（LIST）来定样品名；
         网页版把这份清单换成<b>两列 CSV/TSV</b>（见左侧①"样品名清单"）。
         <b>不提供清单也能跑</b>：那时样品名退化为取<b>文件名第一个点之前</b>那段
@@ -376,7 +424,8 @@
       方便无头浏览器读取。</p>
     <p><b>这一份单文件是怎么来的</b>：源码在 <code>webgui/</code> 下（<code>src/</code> 是数值模块
       ——每个模块都跟桌面版逐位比对过；<code>ui/</code> 是界面与自检；
-      <code>test_*.js</code> 是那 314 项比对）。本文件由
+      <code>test_*.js</code> 是上面那一批逐位比对，项数与套数由脚本每次实跑后核对，
+      所以这里不写死数字）。本文件由
       <code>python webgui/build_ui.py</code> 拼成，改动请改源头再重新构建，
       不要直接编辑本文件。构建脚本自己也会检查：占位符有没有残留、模块有没有漏、
       顶层有没有重名——重名这一条是踩过坑的（几个模块合并进同一个 script 块时，
@@ -397,6 +446,9 @@
      把参数写进了 age.js 的内部对象，一跑就报 "P.thermoLoad is not a function"。 -->
 <!--@LIBS@-->
 
+<script>
+<!--@ISOPLOTR@-->
+</script>
 <script>
 <!--@QCREPORT@-->
 </script>

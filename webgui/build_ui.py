@@ -94,6 +94,10 @@ DATASET_NOTE = '内置示例数据（生成的，见 webgui/make_real_demo.py）
 #  顺序即加载顺序：report.js 必须在 app.js 之前（app.js 要用 window.DS_QCREPORT）
 SCRIPTS_TAIL = [
     ('report.js', os.path.join(UI, 'report.js')),
+    #  isoplotr.js 是**可选**模块：它自己不下载任何东西，只是提供
+    #  "按需去 CDN 取 webR + IsoplotR" 的能力与几个纯函数。
+    #  打进来只占 20 KB 左右，不打进来那个标签页就会白屏。
+    ('isoplotr.js', os.path.join(UI, 'isoplotr.js')),
     ('selftest.js', os.path.join(UI, 'selftest.js')),
     ('app.js', os.path.join(UI, 'app.js')),
 ]
@@ -135,10 +139,10 @@ TOP_LEVEL_DUP_OK = {
 REQUIRED_GLOBALS = [
     'window.DS_FP', 'window.DS', 'window.DS_THERMO', 'window.DS_WINDOW',
     'window.DS_REPORT', 'window.DS_PIPELINE', 'window.DS_AGE', 'window.DS_QC',
-    'window.DS_QCREPORT', 'window.DS_DEMO_REAL',
+    'window.DS_QCREPORT', 'window.DS_DEMO_REAL', 'window.DS_ISOPLOTR',
 ]
 
-PLACEHOLDERS = ['@STYLE@', '@LIBS@', '@QCREPORT@', '@SELFTEST@', '@APP@']
+PLACEHOLDERS = ['@STYLE@', '@LIBS@', '@ISOPLOTR@', '@QCREPORT@', '@SELFTEST@', '@APP@']
 
 
 def read(path):
@@ -409,7 +413,9 @@ def assemble(tpl, payloads, manifest):
 
     out = tpl.replace('<!--@STYLE@-->', payloads['style'].rstrip('\n'))
     out = out.replace('<!--@LIBS@-->', head + '\n' + data + '\n' + libs)
-    # 这三个模板里已经带了自己的 <script> 外壳
+    #  这几个模板里已经带了自己的 <script> 外壳
+    out = out.replace('<!--@ISOPLOTR@-->',
+                      [t for n, t in payloads['tail'] if n == 'isoplotr.js'][0].rstrip('\n'))
     out = out.replace('<!--@QCREPORT@-->',
                       [t for n, t in payloads['tail'] if n == 'report.js'][0].rstrip('\n'))
     out = out.replace('<!--@SELFTEST@-->',
@@ -441,7 +447,12 @@ def verify(out, tpl):
         if '<script>\n' + banner('src/' + name, DATASET_NOTE) not in out:
             die('%s 没有自己的 <script> 块' % name)
     if out.count('<script') != out.count('</script>'):
-        die('<script> 与 </script> 数量对不上')
+        die('<script> 与 </script> 数量对不上（%d vs %d）。\n'
+            '      两种情况都会撞上它：① 真的漏了闭合标签；\n'
+            '      ② **源码的注释里写了尖括号的标签名**（比如文档里说\n'
+            '      "`<script>` 0 个"）—— 那个字面量也会被数进去。\n'
+            '      第二种改成"script 标签"这种写法就行，不必动真实的标签。'
+            % (out.count('<script'), out.count('</script>')))
     # 1 个构建信息 + N 个模块 + M 个数据集 + 自检 + 界面
     want = 1 + len(MODULES) + len(DATASETS) + len(SCRIPTS_TAIL)
     got = out.count('<script')

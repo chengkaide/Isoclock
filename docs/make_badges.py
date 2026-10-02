@@ -7,14 +7,20 @@
 而 isoclock.html 当时已经是 290549 字节 —— 重建一次页面它就不对了，
 而且没有任何东西会报错。所以这里把徽章改成**由脚本从源头算出来再写进 HTML**：
 
-    python docs/make_badges.py            # 重算并生成 index.html
+    python docs/make_badges.py            # 重算：生成 index.html，并回写源里的徽章块
     python docs/make_badges.py --check    # 只核对，不一致就非零退出（CI 用）
 
 两个文件的关系（**这是本目录最容易搞混的地方**）
 ----------------------------------------------
-    docs/index.src.html   手写源。徽章块 + 正文里的 {{TOKEN}} 都在这里改。
+    docs/index.src.html   手写源。正文与结构在这里改；正文里的 {{TOKEN}} 留在这里。
     docs/index.html       产物，也是 GitHub Pages 真正服务的那一份：
                           徽章已物化、{{TOKEN}} 已换成实算值。
+
+关于源里的那排徽章（一对 BADGES:BEGIN / END 之间）：**它由本脚本回写，不要手改。**
+那是"当前值"的展示位 —— 跑一次本脚本，源里就显示最新的徽章，和产物一致。
+（原先只写产物、不回写源：源里那排数字于是永远停在最后一次手抄的样子，
+而它旁边的文档字符串偏偏写着"徽章块在这里改" —— 一个会无声过期的副本，
+正是这个脚本存在的理由本身。--check 现在也盯这一处。）
 
 为什么非得分两个：正文里的数（单文件多大、标样跑出多少）必须**每次重算**，
 不能手写；而标记留在文件里就会原样发到线上 —— 读者会在页面上看到 `{{PAGEKB}}`。
@@ -68,11 +74,15 @@ LOCAL_ONLY_BADGE = 'exe 单文件'
 SUITES = ['test_fp.js', 'test_math.js', 'test_thermo.js', 'test_agilent.js',
           'test_window.js', 'test_e2e.js', 'test_age.js', 'test_age76.js',
           'test_agilent_e2e.js', 'test_thermo_compat.js', 'test_qc.js',
-          'test_report.js', 'test_demo_real.js']
+          'test_report.js', 'test_demo_real.js',
+          #  IsoplotR 接入层。这一套**不联网**：验的是"送给 IsoplotR 的表按
+          #  format=1 的列序、口径是 ierr=2、结果字段解析对不对"，
+          #  以及拿内置真实数据核一遍列号。真正跑 R 的部分在浏览器里验。
+          'test_isoplotr.js']
 
 # 页面内自检的项数。真源是产物页面在 #selftest 下自己报出来的那个数
-# （标题形如 `SELFTEST-OK [41/41]`）。有 Edge 时用 --selftest 现场核一遍。
-SELFTEST_ITEMS = 42
+# （标题形如 `SELFTEST-OK [54/54]`）。有 Edge 时用 --selftest 现场核一遍。
+SELFTEST_ITEMS = 54
 
 SUM_RE = re.compile(r'总计\s*(\d+)\s*项：通过\s*(\d+)，失败\s*(\d+)'
                     r'|结果：\s*(\d+)\s*通过\s*/\s*(\d+)\s*失败')
@@ -439,12 +449,23 @@ def main():
     #     因为那一行压根没参与比对。
     same_check = have is not None and comparable(want) == comparable(have)
     same_write = have == want
+    #  源里那排徽章同样是产物（由本脚本回写，见文件头）。它过期 = 下一个打开源的人
+    #  读到的是旧数字，而源正是"改内容的地方"。同样得用 comparable() 比：本机的源里
+    #  写着 9 枚、CI 上按 ubuntu 的环境算出来只有 8 枚。
+    src_fresh = comparable(new_url) == comparable(src)
 
     if a.check:
-        if same_check:
-            print('\n--check：产物与实算一致（徽章 %d 个 + 正文标记 %d 种）。'
-                  % (len(items), len(facts)))
+        if same_check and src_fresh:
+            print('\n--check：产物与实算一致（徽章 %d 个 + 正文标记 %d 种），'
+                  '源里的徽章块也是最新。' % (len(items), len(facts)))
             return 0
+        if same_check and not src_fresh:
+            #  这一条是补上的：以前只盯产物，源里那排数字可以一直停在旧值 ——
+            #  "过期的是副本、而总数还对得上"，于是没人发现（本项目的老毛病）。
+            print('\n--check：产物是对的，但 **%s 里的徽章块过期了**。'
+                  % os.path.relpath(SRC, ROOT))
+            print('   跑 `python docs/make_badges.py` 回写一次（源里的徽章不要手改）。')
+            return 1
         print('\n--check：**产物已过期**，跑 `python docs/make_badges.py` 重算。')
         if have is not None:
             #  产物里残留 {{…}} 正是"把花括号印给读者看"的那个毛病（线上出过一次）：
@@ -464,13 +485,21 @@ def main():
                             print('   ' + ln.strip())
         return 1
 
-    if same_write:
+    wrote = []
+    if not same_write:
+        io.open(INDEX, 'w', encoding='utf-8', newline='').write(want)
+        marks = re.findall(r'\{\{\w+\}\}', new_url)
+        wrote.append('已写入 %s（徽章物化 + 正文 %d 个标记全部按实算值替换）'
+                     % (os.path.relpath(INDEX, ROOT), len(marks)))
+    if not src_fresh:
+        io.open(SRC, 'w', encoding='utf-8', newline='').write(new_url)
+        wrote.append('已回写 %s 里的徽章块（正文标记一处没动）'
+                     % os.path.relpath(SRC, ROOT))
+    if not wrote:
         print('\n产物已经是最新，未改动。')
         return 0
-    io.open(INDEX, 'w', encoding='utf-8', newline='').write(want)
+    print('\n' + '\n       '.join(wrote))
     marks = re.findall(r'\{\{\w+\}\}', new_url)
-    print('\n已写入 %s（徽章物化 + 正文 %d 个标记全部按实算值替换）'
-          % (os.path.relpath(INDEX, ROOT), len(marks)))
     print('       源 %s 里仍保留这 %d 个标记 / %d 种 —— 改内容改源，然后重跑本脚本。'
           % (os.path.relpath(SRC, ROOT), len(marks), len(set(marks))))
     return 0

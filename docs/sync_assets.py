@@ -53,6 +53,10 @@ SHOT_MAP = {
     "ui-report-panel.png": "5_质量报告面板.png",
     "ui-compat.png": "6_兼容读取.png",
     "ui-report.png": "7_质量报告节选.png",
+    #  8 号这张是唯一**需要联网**的一张：拍之前要真去 CDN 下 webR 与 IsoplotR。
+    #  上游脚本是 G:/_isohtml/shot_iso.py（走 CDP 等页面报完成再抓图，
+    #  不能用 `--virtual-time-budget`，见那个脚本的文件头）。
+    "ui-isoplotr.png": "8_IsoplotR谐和图.png",
 }
 
 # 注入到 guide.html 末尾的浮动返回链接。

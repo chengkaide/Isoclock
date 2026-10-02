@@ -698,6 +698,9 @@
     });
     if (state.selected) showPlot(state.selected);
     selectTab('age');
+    //  这一遍的年龄表变了 → IsoplotR 那一页的样品清单与可用点数跟着重算。
+    //  放在最后：它只读 state.ageResult，不参与计算链。
+    refreshIsoControls();
     toast('算完了：' + ageRes.rows.length + ' 行年龄');
   }
 
@@ -1262,6 +1265,266 @@
   }
 
   /* ======================================================================
+   *  IsoplotR 谐和图（可选模块）
+   *
+   *  这是整个页面里**唯一**需要联网的部分，所以接线的原则与别处相反：
+   *    · 页面加载时只往三个下拉框里填文案，一个字节都不下载；
+   *    · 只有点了"加载 IsoplotR 并作图"才去 CDN 取运行时；
+   *    · 取回来的图以 data URI 塞进 <img>，不走内联 —— IsoplotR 的 SVG 用
+   *      <symbol id="glyph0-1"> 定义字形，两张图内联进同一份文档必然撞 id；
+   *    · 任何失败都把原文摊在面板上（R 的报错、网络错、CDN 改版都算），不吞。
+   *
+   *  为什么要有这一页：report.js 里原本写着"不做谐和图，那是另一个工具的事"，
+   *  而 docs 里又说谐和图"这套软件最后要交代的就是这张图"。自己重写一遍
+   *  Ludwig(1998) 的 discordia 不现实，接 IsoplotR 进来才诚实。
+   * ==================================================================== */
+  var ISO = window.DS_ISOPLOTR;
+
+  function isoMsg(text, cls) {
+    var el = $('iso-msg');
+    if (!el) return;
+    el.innerHTML = text;
+    el.className = 'iso-msg' + (cls ? ' ' + cls : '');
+  }
+
+  /** 往一个 <select> 里填选项（value 用字符串，读的时候再转数字）。 */
+  function isoFill(sel, list, keep) {
+    if (!sel) return;
+    var want = (keep === undefined) ? sel.value : String(keep);
+    sel.innerHTML = '';
+    list.forEach(function (o) {
+      var op = document.createElement('option');
+      op.value = String(o.v);
+      op.textContent = o.label;
+      if (o.note) op.title = o.note;
+      sel.appendChild(op);
+    });
+    var hit = -1;
+    for (var i = 0; i < sel.options.length; i++) {
+      if (sel.options[i].value === want) { hit = i; break; }
+    }
+    sel.selectedIndex = hit >= 0 ? hit : 0;
+  }
+
+  /** 当前选中的样品能进表几个点（决定"拟合"里哪些选项可用）。 */
+  function isoUsableCount(groups, sample) {
+    if (!groups || !groups.length) return 0;
+    for (var i = 0; i < groups.length; i++) {
+      if (groups[i].name === sample) return groups[i].usable;
+    }
+    //  '全部'：把所有分组的可用点加起来
+    var n = 0;
+    for (var j = 0; j < groups.length; j++) n += groups[j].usable;
+    return n;
+  }
+
+  /**
+   * 把当前结果的状态同步到这一页的控件上。
+   * 每次切到这个标签页、以及每次算完一遍之后都会调一次。
+   */
+  function refreshIsoControls() {
+    if (!ISO || !$('iso-type')) return;
+    if (!$('iso-type').options.length) {
+      isoFill($('iso-type'), ISO.TYPES, 1);
+      isoFill($('iso-age'), ISO.AGES, 1);
+      isoFill($('iso-cpb'), ISO.CPB, 0);
+    }
+    var ar = state.ageResult;
+    var btn = $('btn-iso-run');
+    if (!ar || !ar.rows || !ar.rows.length) {
+      $('iso-sample').innerHTML = '<option value="*">（还没有结果）</option>';
+      btn.disabled = true;
+      return;
+    }
+
+    var groups = ISO.sampleNames(ar.rows);
+    var usable = groups.map(function (g) { return g; });
+    var total = usable.reduce(function (a, g) { return a + g.usable; }, 0);
+    var opts = [{ v: '*', label: '全部样品（' + total + ' 个可用点）' }];
+    usable.sort(function (a, b) { return (b.usable - a.usable) || (a.name < b.name ? -1 : 1); });
+    usable.forEach(function (g) {
+      opts.push({ v: g.name, label: g.name + '（' + g.usable + ' / ' + g.rows + ' 点可用）' });
+    });
+    var keep = $('iso-sample').value || '*';
+    isoFill($('iso-sample'), opts, keep);
+    btn.disabled = false;
+    refreshIsoAgeOptions();
+  }
+
+  /**
+   * discordia（show.age ≥ 2）在点数太少时会**必然失败**（IsoplotR 的原话：
+   * "Cannot fit a straight line through these data"）。与其让用户点了再吃一个
+   * 报错，不如在这里就把选项禁掉并把原因写在旁边 —— 但也只是"禁掉默认路径"，
+   * 数据本身我们不替用户删。实测失败的三种情形见 isoplotr.js 的文件头 ⑥。
+   */
+  function refreshIsoAgeOptions() {
+    var ar = state.ageResult;
+    if (!ar || !$('iso-age')) return;
+    var groups = ISO.sampleNames(ar.rows);
+    var n = isoUsableCount(groups, $('iso-sample').value);
+    var sel = $('iso-age');
+    var notes = [];
+    for (var i = 0; i < sel.options.length; i++) {
+      var v = Number(sel.options[i].value);
+      var dis = (v >= 2 && n < 3);
+      sel.options[i].disabled = dis;
+      if (dis) notes.push('「' + sel.options[i].textContent + '」');
+    }
+    if (n < 3 && Number(sel.value) >= 2) sel.value = '1';
+    if (notes.length) {
+      sel.title = '当前只有 ' + n + ' 个可用点，' + notes.join('、')
+        + ' 需要至少 3 个点才能拟合一条线（IsoplotR 会直接报错）。';
+    } else {
+      sel.title = '';
+    }
+  }
+
+  /** 把 <select> 的当前值读成参数。 */
+  function isoOpts() {
+    return {
+      type: Number($('iso-type').value),
+      showAge: Number($('iso-age').value),
+      commonPb: Number($('iso-cpb').value),
+      sample: $('iso-sample').value
+    };
+  }
+
+  /**
+   * 本软件自己的加权平均（与质量报告同一套算法 —— QC.qcWavg）。
+   * 用来与 IsoplotR 的谐和年龄做**独立交叉验证**：两条路径的实现完全不同
+   * （一个是我们自己的加权平均 + MSWD，一个是 IsoplotR 的最大似然谐和拟合），
+   * 对得上才说明接进来的不是个摆设。
+   */
+  function isoOwnMean(sampleName) {
+    try {
+      if (!sampleName || sampleName === '*' || !state.ageResult || !state.cfg) return null;
+      var pick = QC.qcDefaultAge(state.cfg.method, '206Pb/238U');
+      var col = QC.qcAgeCol(state.cfg.method, pick.key, pick.corrected);
+      if (typeof col !== 'number' || col < 0) return null;
+      var groups = QC.qcGroupBySample(state.ageResult.rows);
+      for (var i = 0; i < groups.length; i++) {
+        if (groups[i].name !== sampleName) continue;
+        var w = QC.qcWavg(groups[i].rows.map(function (r) {
+          return { age: +r[col], s2: +r[col + QC.QC_ERR_OFFSET] };
+        }));
+        if (!w || !isFinite(w.mean)) return null;
+        return { mean: w.mean, se: w.se, mswd: w.mswd, n: w.n, key: pick.key,
+                 corrected: pick.corrected };
+      }
+      return null;
+    } catch (e) { return null; }
+  }
+
+  function isoRender() {
+    var ar = state.ageResult;
+    if (!ISO || !ar) return;
+    var o = isoOpts();
+    var tab = ISO.buildTable(ar.rows, { sample: o.sample });
+
+    if (tab.n < 1) {
+      isoMsg('选中的样品里没有能进表的点（三比值或 rho 缺）。', 'warn');
+      return;
+    }
+    var notes = [];
+    if (tab.skipped) notes.push(tab.skipped + ' 行因比值/误差缺失被剔除');
+    if (tab.badRho) {
+      notes.push(tab.badRho + ' 行因 <b>ρ 写成 10 位有效数字后正好是 ±1</b> 被剔除'
+        + '（ρ=1 的协方差矩阵是退化的，IsoplotR 会直接报 L-BFGS-B 失败；'
+        + '这不是数据坏了，是原实现的 ρ 夹逼饱和到 1）'
+        + (tab.rhoFiles && tab.rhoFiles.length
+          ? '：' + tab.rhoFiles.join('、') : ''));
+    }
+    if (tab.others) notes.push('另有 ' + tab.others + ' 行不属于所选样品');
+    var head = '正在处理 <b>' + tab.n + '</b> 个点'
+      + (o.sample === '*' ? '（全部样品）' : '（' + o.sample + '）')
+      + (notes.length ? '；' + notes.join('，') : '') + '。';
+
+    var svgText = null;
+    var btn = $('btn-iso-run');
+    btn.disabled = true;
+    $('btn-iso-svg').disabled = true;
+    isoMsg(head + '<br>正在加载…');
+
+    ISO.render(tab, {
+      type: o.type, showAge: o.showAge, commonPb: o.commonPb
+    }, function (s) {
+      isoMsg(head + '<br>' + s);
+    }).then(function (out) {
+      svgText = out.svg;
+      $('iso-fig').src = ISO.svgDataUri(svgText);
+      $('iso-fig').style.display = '';
+      $('btn-iso-svg').disabled = false;
+
+      //  汇总表
+      var html = '<tbody>';
+      out.summary.rows.forEach(function (r) {
+        html += '<tr><td>' + r.k + '</td><td class="v">' + r.v + '</td><td class="note">'
+          + (r.note || '') + '</td></tr>';
+      });
+      html += '</tbody>';
+      $('iso-sum').innerHTML = html;
+      $('iso-sum').style.display = '';
+
+      //  独立交叉验证：只在"单样品 + 谐和年龄 + 那个样品本软件也有加权平均"时给
+      var cross = '';
+      var own = (!out.result.error && o.showAge === 1) ? isoOwnMean(o.sample) : null;
+      if (own && isFinite(out.result.age.t)) {
+        var diff = out.result.age.t - own.mean;
+        cross = '交叉验证：同一组数据，<b>本软件的加权平均</b>（' + own.key
+          + (own.corrected ? '，校正后' : '') + '，' + own.n + ' 点，MSWD '
+          + ISO.fnum(own.mswd, 2) + '）给出 <b>' + ISO.fnum(own.mean, 2) + ' ± '
+          + ISO.fnum(own.se * 2, 2) + ' Ma（2σ）</b>，<b>IsoplotR 的谐和年龄</b>给出 <b>'
+          + ISO.fnum(out.result.age.t, 2) + ' ± ' + ISO.fnum(out.result.age['s[t]'] * 2, 2)
+          + ' Ma（2σ）</b> —— 两条实现完全不同的路径相差 <b>'
+          + ISO.fnum(Math.abs(diff), 2) + ' Ma</b>。';
+      }
+
+      //  说明（口径、失败原因、地质含义）
+      var nl = out.summary.notes.map(function (s) { return '<li>' + s + '</li>'; }).join('');
+      $('iso-notes').innerHTML = (cross ? '<p>' + cross + '</p>' : '')
+        + (nl ? '<ul>' + nl + '</ul>' : '');
+
+      var cls = out.result.error ? 'err' : '';
+      isoMsg(head + '<br>图已出（' + out.seconds.toFixed(1) + ' s，'
+        + Math.round(svgText.length / 1024) + ' KB）。'
+        + (out.result.error ? ' <b>但拟合失败了，已退回只画点 —— 见下方说明。</b>' : ''), cls);
+      logLine('IsoplotR：' + tab.n + ' 点，图型 ' + o.type + '，拟合 show.age='
+        + o.showAge + '，普通铅 ' + o.commonPb + '，' + out.seconds.toFixed(1) + ' s'
+        + (out.result.error ? '（拟合失败：' + out.result.error + '）' : ''), out.result.error ? 'w' : 'g');
+    }).catch(function (e) {
+      var m = String(e && e.message || e);
+      isoMsg(head + '<br><b>失败：</b>' + m + '<br>'
+        + '常见原因：没联网、公司网络拦了 webr.r-wasm.org、浏览器太旧（不支持 WebAssembly）。'
+        + '其余功能不受影响 —— 这一页本来就是可选的。', 'err');
+      logLine('!! IsoplotR 失败：' + m
+        + (e && e.stack ? '\n' + e.stack : ''), 'e');
+    }).then(function () {
+      btn.disabled = false;
+      refreshIsoAgeOptions();
+    });
+  }
+
+  function initIsoTab() {
+    if (!ISO) {
+      isoMsg('这一页需要 <code>ui/isoplotr.js</code>，但产物里没有它 —— '
+        + '请重新运行 <code>python webgui/build_ui.py</code>。', 'err');
+      return;
+    }
+    isoFill($('iso-type'), ISO.TYPES, 1);
+    isoFill($('iso-age'), ISO.AGES, 1);
+    isoFill($('iso-cpb'), ISO.CPB, 0);
+    $('btn-iso-run').addEventListener('click', isoRender);
+    $('btn-iso-svg').addEventListener('click', function () {
+      var img = $('iso-fig');
+      if (!img || !img.src) return;
+      var svg = decodeURIComponent(img.src.slice(img.src.indexOf(',') + 1));
+      download('isoplotr_谐和图.svg', svg, 'image/svg+xml;charset=utf-8');
+    });
+    $('iso-sample').addEventListener('change', refreshIsoAgeOptions);
+    refreshIsoControls();
+  }
+
+  /* ======================================================================
    *  标签页
    * ==================================================================== */
   function selectTab(name) {
@@ -1269,11 +1532,12 @@
     for (var i = 0; i < btns.length; i++) {
       btns[i].className = btns[i].getAttribute('data-tab') === name ? 'on' : '';
     }
-    ['plot', 'cps', 'all', 'age', 'log'].forEach(function (k) {
+    ['plot', 'cps', 'all', 'age', 'iso', 'log'].forEach(function (k) {
       $('pane-' + k).className = 'pane' + (k === name ? ' on' : '')
         + (k === 'plot' ? ' center' : '');
     });
     if (name === 'plot' && state.selected) showPlot(state.selected);
+    if (name === 'iso') refreshIsoControls();   // 样品下拉要跟着当前结果走
   }
 
   /* ======================================================================
@@ -1562,6 +1826,7 @@
     fillBuildInfo();
     fillDemoCount();
     renderQcDoc();          // ⑥ 里那些阈值说明取自 qc.js，不在 HTML 里重复一遍
+    initIsoTab();           // IsoplotR 那一页：只填下拉文案，不碰网络
     if (location.hash === '#selftest') {
       window.__selftest = { done: false, results: [] };
       setTimeout(function () {
@@ -1602,6 +1867,10 @@
     displayHeader: displayHeader, typoColumns: typoColumns,
     updateListInfo: updateListInfo, resetPane: resetPane,
     fmtNum: fmtNum, ageCsv: ageCsv, exportJson: exportJson, download: download,
-    logLine: logLine, logClear: logClear, ISONAME: ISONAME, ISO_AGILENT: ISO_AGILENT
+    logLine: logLine, logClear: logClear, ISONAME: ISONAME, ISO_AGILENT: ISO_AGILENT,
+    //  IsoplotR 那一页：自检要能读它的控件状态，也要能直接调交叉验证那一段
+    initIsoTab: initIsoTab, refreshIsoControls: refreshIsoControls,
+    refreshIsoAgeOptions: refreshIsoAgeOptions, isoOpts: isoOpts,
+    isoOwnMean: isoOwnMean, isoRender: isoRender, isoMsg: isoMsg
   };
 })();

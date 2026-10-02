@@ -25,10 +25,15 @@ permissions:
   contents: write
 
 jobs:
-  # 数值比对本该在 CI 上跑。原来只有打包，等于"314 项比对"只在本机出现过 ——
+  # 数值比对本该在 CI 上跑。原来只有打包，等于比对只在开发者本机出现过 ——
   # 一旦谁改了 src/，推上来也没人拦。先跑比对，再打包。
+  #
+  # ⚠ 下面这个 job 名里**故意不写项数**。它原来写的是"数值比对（336 项）"，
+  #   而那时早就是 402 项了 —— 项数只有一个真源（docs/make_badges.py 的 SUITES
+  #   与实跑结果，页面徽章引的就是它），抄到这里就会悄悄过期。
+  #   要看当前项数：读页面徽章，或跑 python docs/make_badges.py。
   verify-node:
-    name: 数值比对（336 项）
+    name: 数值比对（全部套件）
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

@@ -435,6 +435,139 @@
       return pmNo[f.file].sampleFrom === 'file';
     }), 'sampleFrom 全为 file');
 
+    /* --- 14. IsoplotR 那一页的接线 ---
+       这一套**不验联网**（无头 CI 里没有网，也不是这条链的职责）。
+       验的是"不联网也该对"的那几件事：模块打进来了、控件填上了、
+       给 IsoplotR 的表是按 format=1 的列序、禁用了必然失败的选项、
+       以及 Page 上没有没换掉的模板标记。真正跑 R 的部分由
+       webgui/test_isoplotr.js（纯函数）与 G:/_isohtml/isoplotr/ 下的
+       浏览器探针记录负责。 */
+    var ISO = window.DS_ISOPLOTR;
+    t('IsoplotR 模块已打包进来（ui/isoplotr.js）',
+      !!(ISO && typeof ISO.buildTable === 'function' && typeof ISO.svgDataUri === 'function'),
+      ISO ? (ISO.WEBR_ENTRY + ' ｜ 导出 ' + Object.keys(ISO).length + ' 项')
+          : '没找到 window.DS_ISOPLOTR');
+    var isoTab = document.querySelector('.tabs button[data-tab="iso"]');
+    t('标签栏里有「IsoplotR 谐和图」这一页',
+      !!isoTab && !!$('pane-iso'), isoTab ? isoTab.textContent.trim() : '没有这个按钮');
+    t('三个下拉都填满了（图型 / 拟合 / 普通铅）',
+      $('iso-type').options.length === (ISO ? ISO.TYPES.length : 0)
+      && $('iso-age').options.length === (ISO ? ISO.AGES.length : 0)
+      && $('iso-cpb').options.length === (ISO ? ISO.CPB.length : 0),
+      $('iso-type').options.length + ' / ' + $('iso-age').options.length
+      + ' / ' + $('iso-cpb').options.length + ' 项');
+
+    var arIso = ui.state.ageResult;
+    t('有结果时「加载 IsoplotR 并作图」可用；没结果时禁用',
+      !!arIso && $('btn-iso-run').disabled === false,
+      arIso ? ('当前 ' + arIso.rows.length + ' 行结果，按钮 enabled=' +
+        !$('btn-iso-run').disabled) : '还没有结果');
+
+    var tabIso = ISO ? ISO.buildTable(arIso ? arIso.rows : [], {}) : null;
+    t('给 IsoplotR 的表按 format=1 的列序，且表头就是那五列',
+      !!tabIso && tabIso.lines[0] === 'Pb207U235,errPb207U235,Pb206U238,errPb206U238,rhoXY',
+      tabIso ? tabIso.lines[0] : '—');
+    t('表里的点数与年龄表里能用的行数一致（不是把 NaN 行也塞进去）',
+      !!tabIso && tabIso.n > 0
+      && tabIso.n === (arIso ? arIso.rows.filter(function (r) {
+        return ISO.rowUsable(r).ok;
+      }).length : -1),
+      tabIso ? (tabIso.n + ' 点，剔除 ' + tabIso.skipped + ' 行') : '—');
+    t('表里第 1 行第 1 个数 = 年龄表那一行的第 36 列（列号没数错）',
+      (function () {
+        if (!tabIso || !arIso) return false;
+        var first = arIso.rows.filter(function (r) { return ISO.rowUsable(r).ok; })[0];
+        return !!first && tabIso.lines[1].split(',')[0] === Number(first[36]).toPrecision(10);
+      })(), '取错列（比如取了 2s 那列）这里立刻红');
+
+    /*  这一条是本模块最贵的一个坑的守卫：判据必须作用在**写出去的那个数**上。
+        年龄表里 ρ 可以到 0.99999999999999889，按原始值判 |ρ|<1 就放行了，
+        而写出格式是 10 位有效数字 ⇒ "1.000000000" ⇒ R 收到精确的 1
+        ⇒ 协方差矩阵退化 ⇒ 拟合静默失败（只报一句 L-BFGS-B）。 */
+    t('表里每一行的 ρ（写出去的第 5 列）都严格小于 1',
+      !!tabIso && tabIso.lines.slice(1).length > 0
+      && tabIso.lines.slice(1).every(function (l) {
+        var v = Number(l.split(',')[4]);
+        return isFinite(v) && Math.abs(v) < 1;
+      }),
+      tabIso ? ('剔掉 ' + tabIso.badRho + ' 行 ρ 写出去就是 ±1'
+        + (tabIso.rhoFiles && tabIso.rhoFiles.length
+          ? '：' + tabIso.rhoFiles.join('、') : '')) : '—');
+
+    //  样品下拉：切到那一页时要按当前结果重建
+    ui.selectTab('iso');
+    var sopts = $('iso-sample').options;
+    t('切到该页后，样品下拉按当前结果重建（第一项是"全部样品"）',
+      sopts.length >= 2 && /^全部样品（\d+ 个可用点）$/.test(sopts[0].textContent),
+      sopts.length + ' 项，第一项「' + (sopts[0] ? sopts[0].textContent : '') + '」');
+
+    t('单点样品的 discordia 选项被禁用（IsoplotR 对 <3 点必然报错）',
+      (function () {
+        if (!ISO || !arIso) return false;
+        var groups = ISO.sampleNames(arIso.rows);
+        var one = groups.filter(function (g) { return g.usable === 1; })[0];
+        if (!one) return false;                     // 合成夹具里没有单点样品就跳过
+        $('iso-sample').value = one.name;
+        $('iso-sample').dispatchEvent(new Event('change'));
+        var sel = $('iso-age');
+        var dis = 0, tot = 0;
+        for (var i = 0; i < sel.options.length; i++) {
+          if (Number(sel.options[i].value) >= 2) { tot++; if (sel.options[i].disabled) dis++; }
+        }
+        var back = Number(sel.value) < 2;           // 而且自动退回到不会失败的那一项
+        $('iso-sample').value = '*';
+        $('iso-sample').dispatchEvent(new Event('change'));
+        return tot > 0 && dis === tot && back;
+      })(), '只有一个可用点时，discordia 那三个选项应当全被禁掉');
+
+    t('本软件自己的加权平均能被取到（交叉验证那一行要用）',
+      (function () {
+        if (!ISO || !ui.state.cfg) return false;
+        var own = ui.isoOwnMean(ui.state.cfg.stdName);
+        return !!own && isFinite(own.mean) && own.n > 0;
+      })(), (function () {
+        var own = ui.isoOwnMean(ui.state.cfg ? ui.state.cfg.stdName : null);
+        return own ? (own.key + ' = ' + own.mean.toFixed(3) + ' Ma，' + own.n + ' 点') : '取不到';
+      })());
+
+    /*  这条查的是"页面上有没有没换掉的模板标记"。两个坑都踩过：
+        ① 待查串若写成字面量，查的就是本文件自己（自指）⇒ 按字符拼出来；
+        ② 内联脚本里的 JSDoc 有若干处"@returns"后接双花括号的写法，
+           它在 body.innerHTML 里但**不渲染**、读者看不见 ⇒ 只看 innerHTML 必假警报。
+        所以改成"扫 body 下所有文字节点与属性值，但跳过 SCRIPT/STYLE 两类的文字"
+        —— 这样隐藏面板里的残留也照样能抓到。
+        （本注释里也不能出现尖括号包住的 script 字样：build_ui.py 会把它当成
+          真的标签数进去，上一轮就是这么被拦下的。） */
+    var NEEDLE = '{' + '{';
+    var leftover = (function () {
+      var hits = [];
+      var notText = /^(SCRIPT|STYLE)$/;
+      var walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+        acceptNode: function (n) {
+          var p = n.parentNode;
+          if (p && p.nodeType === 1 && notText.test(p.tagName)) return NodeFilter.FILTER_REJECT;
+          return NodeFilter.FILTER_ACCEPT;
+        }
+      });
+      while (walk.nextNode()) {
+        var s = String(walk.currentNode.nodeValue || '');
+        if (s.indexOf(NEEDLE) >= 0) hits.push('文字「' + s.slice(0, 40) + '」');
+      }
+      var all = document.body.querySelectorAll('*');
+      for (var e = 0; e < all.length; e++) {
+        var at = all[e].attributes;
+        for (var a = 0; a < at.length; a++) {
+          var v = String(at[a].value || '');
+          if (v.indexOf(NEEDLE) >= 0) hits.push('属性 ' + at[a].name + '="' + v.slice(0, 40) + '"');
+        }
+      }
+      return hits;
+    })();
+    t('页面上没有没换掉的模板标记（双花括号会把标记原样印给读者）',
+      leftover.length === 0,
+      leftover.length ? leftover.slice(0, 3).join(' ｜ ')
+        : '全文与属性都扫过；踩过：首页真的把 PAGEKB 标记印出来过');
+
     return { done: true, pass: pass, fail: fail, results: out,
       ages: ages.map(function (a) { return ui.fmtNum(a); }) };
   }

@@ -295,21 +295,75 @@ footer.foot .grow { flex: 1 1 auto; }
 @media (max-width: 860px) { footer.foot .grow + span { display: none; } }
 
 /* ---------- 窄窗口：工具栏换行 ----------
-   实测"标签 + 修正列名笔误 + 四个导出按钮 + 质量报告"这一行的自然宽度是
-   **876px**（这是加了"质量报告"按钮之后的数；之前没有它是 798px。
-   用 G:/_isohtml/mkinject.py 的 measure 用例重量：它把 .tabs 设成
-   width:max-content 再读实际宽度，与视口无关）。
-   右栏宽度 ≈ 视口 - 左栏(约 300px)。在 1284px 视口下实测只剩约 17px 余量，
-   太贴边了，所以断点取 1300px：视口 ≤1300 时让导出按钮整行换到第二行，
-   五个按钮全部可见；1300 以上单行放得下（1366px 视口约余 145px）。
-   仍留 overflow:auto 兜底，万一第二行还放不下也能横向滚。
-   改按钮文案或增删按钮后，务必用 measure 用例重量一次并更新这里。 */
-@media (max-width: 1300px) {
+   实测"六个标签 + 修正列名笔误 + 五个导出按钮（含质量报告）"这一行的自然宽度是
+   **991px**（2026-10-02 加重量的：五个标签时是 876px，第六个「IsoplotR 谐和图」
+   是个长文案，多出 115px）。量法用 G:/_isohtml/mkinject.py 的 measure 用例
+   （把 .tabs 设成 width:max-content 再读宽度，与视口无关），
+   脚本 G:/_isohtml/measure_tabrow.py 顺带把"每个视口下是否溢出"也打出来。
+
+   非工具栏占掉的宽度实测恒为 **372px**（视口 1600/1440/1366 三点一致：
+   avail = 视口 - 372）。所以不换行需要 视口 ≥ 991 + 372 = 1363px。
+
+   ★ 为什么断点必须是 1420 而不是原来的 1300：基础样式是
+   `flex-wrap: nowrap` + `overflow-x: auto`，**不换行时超出就横向裁掉**
+   （1301–1362 这一段会正好切掉最右边的「质量报告」29px —— 那是这一版的主按钮）。
+   五个标签时 876+372=1248 < 1300，恰好没有这个坏带；加上第六个标签后
+   1363 > 1300，坏带就出现了。取 1420 留约 57px 余量（与上一版 1300 对 1248
+   留 52px 的松紧相当），同时 1440 宽的窗口仍是单行（余 77px）。
+   改按钮文案或增删按钮后，务必用那两个脚本重量一次并更新这里。 */
+@media (max-width: 1420px) {
   .tabs { flex-wrap: wrap; overflow: auto; row-gap: 0; }
   .tabs .spacer { flex: 1 1 100%; height: 0; }
   .tabs button { padding: 6px 10px; }
   .tabs .act { margin: 2px 0 5px; }
 }
+
+/* ---------- IsoplotR 标签页 ----------
+   这一页是**可选**的：默认什么都不加载，只有一个按钮。所以这里的样式只管
+   "结果长什么样"，不参与首屏。 */
+.iso-bar {
+  display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center;
+  padding: 8px 10px; background: #fff; border: 1px solid var(--line); border-radius: 8px;
+}
+.iso-bar label {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12.5px; color: var(--ink-2);
+}
+.iso-bar select {
+  font: inherit; font-size: 12.5px; padding: 2px 4px; max-width: 320px;
+  border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--ink);
+}
+.iso-bar .spacer { flex: 1 1 auto; }
+.iso-bar button {
+  padding: 4px 10px; font: inherit; font-size: 12.5px; white-space: nowrap;
+  border: 1px solid var(--line); border-radius: 6px; background: #fff;
+  color: var(--ink-2); cursor: pointer;
+}
+.iso-bar button.go { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.iso-bar button.go:hover:not(:disabled) { background: var(--accent); color: #fff; }
+.iso-bar button:disabled { color: #b9c6d4; border-color: #e6ebef; cursor: not-allowed; }
+.iso-msg {
+  margin: 10px 0 0; padding: 8px 10px; border-radius: 8px;
+  font-size: 12.5px; line-height: 1.65; background: var(--accent-2); color: var(--ink-2);
+}
+.iso-msg.warn { background: var(--warn-bg); color: var(--warn); }
+.iso-msg.err { background: var(--err-bg); color: var(--err); }
+.iso-msg b { color: inherit; }
+.iso-figwrap { margin: 10px 0 0; text-align: center; }
+.iso-figwrap img {
+  max-width: 100%; height: auto; background: #fff;
+  border: 1px solid var(--line); border-radius: 8px;
+}
+table.iso-sum { margin: 10px 0 0; border-collapse: collapse; font-size: 12.5px; }
+table.iso-sum th, table.iso-sum td {
+  border-bottom: 1px solid #eaeff3; padding: 3px 10px 3px 0; text-align: left;
+  vertical-align: top;
+}
+table.iso-sum td.v { font-family: var(--mono); text-align: right; padding-right: 14px; white-space: nowrap; }
+table.iso-sum td.note { color: var(--ink-3); font-size: 11.5px; }
+table.iso-sum tr.head td { font-weight: 600; color: var(--ink-2); border-bottom-color: var(--line); }
+.iso-notes { margin: 10px 0 0; font-size: 12px; color: var(--ink-2); line-height: 1.7; }
+.iso-notes ul { margin: 4px 0 0; padding-left: 18px; }
 </style>
 </head>
 <body>
@@ -549,6 +603,7 @@ footer.foot .grow { flex: 1 1 auto; }
     <button data-tab="cps">Mean_Cps</button>
     <button data-tab="all">result_all</button>
     <button data-tab="age">年龄表</button>
+    <button data-tab="iso" title="用 IsoplotR 画谐和图 / 拟合 discordia 交点年龄。这是本软件里唯一需要联网的部分：点了里面的按钮才会去下载（首次约 16 MB），数据不出本机。">IsoplotR 谐和图</button>
     <button data-tab="log">日志</button>
     <span class="spacer"></span>
     <label style="font-size:12px;color:var(--ink-2);white-space:nowrap"
@@ -575,6 +630,40 @@ footer.foot .grow { flex: 1 1 auto; }
     <div class="pane" id="pane-age">
       <div class="empty">还没有结果。</div>
     </div>
+    <div class="pane" id="pane-iso">
+      <div class="iso-bar">
+        <label>图型
+          <select id="iso-type"></select>
+        </label>
+        <label>样品
+          <select id="iso-sample"></select>
+        </label>
+        <label>拟合
+          <select id="iso-age"></select>
+        </label>
+        <label>普通铅
+          <select id="iso-cpb"></select>
+        </label>
+        <span class="spacer"></span>
+        <button class="go" id="btn-iso-run" disabled>加载 IsoplotR 并作图</button>
+        <button id="btn-iso-svg" disabled>另存 SVG</button>
+      </div>
+      <div class="iso-msg" id="iso-msg">
+        这一页把当前结果交给 <b>IsoplotR</b>（Pieter Vermeesch 的 R 语言年代学工具箱）
+        画谐和图，并可选地拟合谐和年龄或 discordia 交点年龄。
+        这是本软件里<b>唯一需要联网</b>的部分：点上面那个按钮才会去下载
+        webR（WebAssembly 版 R）与 IsoplotR 包，<b>首次约 16 MB、约 1 分钟</b>，
+        之后走浏览器缓存。<b>数据不出本机</b>—— 只在本页内存里交给 wasm 里的 R。
+      </div>
+      <div class="iso-figwrap"><img id="iso-fig" alt="" style="display:none"></div>
+      <table class="iso-sum" id="iso-sum" style="display:none"></table>
+      <div class="iso-notes" id="iso-notes"></div>
+      <p class="hint" style="margin-top:10px">
+        口径提醒：本软件的年龄表里 <code>2s</code> 是 <b>2σ</b>；
+        IsoplotR 的上表 <code>1σ</code> 是 <b>1σ 标准误</b>，
+        而画在图上的是 <b>95% 置信区间</b>（≈1.96σ）。三个数不要直接对着比。
+      </p>
+    </div>
     <div class="pane" id="pane-log">
       <pre id="log"></pre>
     </div>
@@ -585,7 +674,7 @@ footer.foot .grow { flex: 1 1 auto; }
 <footer class="foot">
   <span id="buildinfo">构建信息读取中…</span>
   <span class="grow"></span>
-  <span>单文件 · 离线 · 不上传任何数据</span>
+  <span>单文件 · 离线（IsoplotR 标签页除外）· 不上传任何数据</span>
 </footer>
 
 <div id="toast"></div>
@@ -597,19 +686,21 @@ footer.foot .grow { flex: 1 1 auto; }
     <p>它把 Isoclock 桌面版（<code>Isoclock2.0.py</code>）的两段核心数值计算——<b>Thermo 数据的
       读取/积分/还原</b>与<b>标样校正与年龄计算</b>——原样搬到了浏览器里，界面重写，
       数字一个不改。设计目标是<b>单文件、离线、零依赖</b>：把这一份 HTML 拷到任何地方双击就能用，
-      不上传数据、不联网。</p>
+      不上传数据、不联网。<b>唯一例外</b>是可选的"IsoplotR 谐和图"标签页
+      —— 那一页要联网（点了它的按钮才下载），其余全部功能离线可用。</p>
 
     <h3>结果可信到什么程度</h3>
     <p>同一批数据下，网页版的输出与桌面版<b>逐位相同</b>（bit-for-bit，包括浮点最后一位）。
-      这不是估计，是跑出来的：<b data-count="tests">336 项</b> Node 端自动比对
-      （<b data-count="suites">13 套</b> <code>webgui/test_*.js</code>：数值内核、
+      这不是估计，是跑出来的：<b data-count="tests">402 项</b> Node 端自动比对
+      （<b data-count="suites">14 套</b> <code>webgui/test_*.js</code>：数值内核、
       Thermo/Agilent 解析、积分窗口、两个 CSV 的<b>逐字节</b>输出、
       年龄层 51 列 × 19 组参数、<b data-count="suite:test_agilent_e2e.js">20 项</b> Agilent 端到端、
       <b data-count="suite:test_thermo_compat.js">47 项</b> Thermo 兼容读取、
       <b data-count="suite:test_qc.js">63 项</b> 质量统计、
       <b data-count="suite:test_report.js">50 项</b> 报告组装、
-      <b data-count="suite:test_demo_real.js">22 项</b> 内置真实示例数据）
-      ＋<b data-count="selftest">42 项</b>本页面内自检（走的是真按钮那条路）。<br>
+      <b data-count="suite:test_demo_real.js">22 项</b> 内置真实示例数据、
+      <b data-count="suite:test_isoplotr.js">66 项</b> IsoplotR 接入层）
+      ＋<b data-count="selftest">54 项</b>本页面内自检（走的是真按钮那条路）。<br>
       上面这些数不是手写的：<code>docs/make_badges.py</code> 每次都会把测试真跑一遍，
       <b>连逐套的项数也一起核</b>，对不上就让 CI 红。真正手写的是这一句解释。</p>
       唯一一处曾经对不上的地方是 <code>exp</code> / <code>log</code>：宿主 C 运行时与浏览器的
@@ -655,6 +746,17 @@ footer.foot .grow { flex: 1 1 auto; }
         里面有标样 QC、样品加权平均与 MSWD、异常与警告清单、以及每条判据的出处。
         <b>这一块是原程序没有的</b>——桌面版只输出逐点年龄，从不做归组统计；
         报告里也写明了这一点，引用时请区别对待。判据阈值都是经验值，可以在左侧⑥改。</li>
+      <li><b>新增"IsoplotR 谐和图"标签页</b>：把当前结果交给 <b>IsoplotR</b>
+        （R 语言，通过 WebAssembly 在浏览器里跑）画 Wetherill / Tera-Wasserburg 谐和图，
+        并可拟合谐和年龄、discordia 上/下交点年龄与 MSWD。<b>这一块也是原程序没有的</b>
+        —— 桌面版只到 51 列年龄表为止，从不画谐和图。
+        <b>它是本软件里唯一需要联网的功能</b>：不点那一页的按钮就不会下载任何东西
+        （首次约 16 MB），数据不出本机。口径上也说明白：本软件的 <code>2s</code> 是
+        <b>2σ</b>，IsoplotR 表里的 <code>1σ</code> 是 <b>1σ 标准误</b>，
+        图上印的是 <b>95% 置信区间</b>，三者不要直接对着比。
+        那一页还会把本次的谐和年龄与<b>本软件自己的加权平均</b>并排印出来
+        —— 两条完全独立的路径，对得上才说明接进来的不是个摆设
+        （对照逻辑与判据见 <code>webgui/test_isoplotr.js</code> 的 §G）。</li>
       <li>原桌面版的 <b>Agilent</b> 流程要求先选一份 Excel 清单（LIST）来定样品名；
         网页版把这份清单换成<b>两列 CSV/TSV</b>（见左侧①"样品名清单"）。
         <b>不提供清单也能跑</b>：那时样品名退化为取<b>文件名第一个点之前</b>那段
@@ -680,7 +782,8 @@ footer.foot .grow { flex: 1 1 auto; }
       方便无头浏览器读取。</p>
     <p><b>这一份单文件是怎么来的</b>：源码在 <code>webgui/</code> 下（<code>src/</code> 是数值模块
       ——每个模块都跟桌面版逐位比对过；<code>ui/</code> 是界面与自检；
-      <code>test_*.js</code> 是那 314 项比对）。本文件由
+      <code>test_*.js</code> 是上面那一批逐位比对，项数与套数由脚本每次实跑后核对，
+      所以这里不写死数字）。本文件由
       <code>python webgui/build_ui.py</code> 拼成，改动请改源头再重新构建，
       不要直接编辑本文件。构建脚本自己也会检查：占位符有没有残留、模块有没有漏、
       顶层有没有重名——重名这一条是踩过坑的（几个模块合并进同一个 script 块时，
@@ -706,15 +809,15 @@ footer.foot .grow { flex: 1 1 auto; }
    本文件由 webgui/build_ui.py 拼成，请勿手改。要改就改 ui/ 与 src/ 下的
    源头，然后重新运行：python webgui/build_ui.py
 
-   生成时间：2026-10-02 17:50:37（取全部源码里最新的那次改动时间，
+   生成时间：2026-10-02 22:28:27（取全部源码里最新的那次改动时间，
              所以同样的源码永远得到同样的文件）
 
-   模块指纹：style.css=ce62ca292834 src/fp.js=0ec13124f10d src/math.js=ed93964b9ba1 src/thermo.js=1596a3593c89 src/window.js=7e8dfba81ca9 src/report.js=2e5ac3aa5cb8 src/pipeline.js=6a7f362158c5 src/age.js=bfcb91404ec9 src/qc.js=7a96b7f3fc51 src/demo_real.js=2c445b347618 ui/report.js=4fff30a07891 ui/selftest.js=7a274ad15ac4 ui/app.js=e0f7b7fc0dff ui/app.html=90a953e0a324
-   源码指纹：b976682dd885（页脚显示的就是它，与本脚本末尾打印的那一行同值）
+   模块指纹：style.css=23f279d85d68 src/fp.js=0ec13124f10d src/math.js=ed93964b9ba1 src/thermo.js=1596a3593c89 src/window.js=7e8dfba81ca9 src/report.js=2e5ac3aa5cb8 src/pipeline.js=6a7f362158c5 src/age.js=bfcb91404ec9 src/qc.js=7a96b7f3fc51 src/demo_real.js=2c445b347618 ui/report.js=b8d0f3beeb76 ui/isoplotr.js=5ec26fdf7089 ui/selftest.js=84d740cad8e4 ui/app.js=4765a11d147c ui/app.html=0a3ee9403307
+   源码指纹：a1bb38d09853（页脚显示的就是它，与本脚本末尾打印的那一行同值）
   ==========================================================================
 -->
 <script>
-window.__build = { built: "2026-10-02 17:50:37", fingerprint: "style.css=ce62ca292834 src/fp.js=0ec13124f10d src/math.js=ed93964b9ba1 src/thermo.js=1596a3593c89 src/window.js=7e8dfba81ca9 src/report.js=2e5ac3aa5cb8 src/pipeline.js=6a7f362158c5 src/age.js=bfcb91404ec9 src/qc.js=7a96b7f3fc51 src/demo_real.js=2c445b347618 ui/report.js=4fff30a07891 ui/selftest.js=7a274ad15ac4 ui/app.js=e0f7b7fc0dff ui/app.html=90a953e0a324", id: "b976682dd885" };
+window.__build = { built: "2026-10-02 22:28:27", fingerprint: "style.css=23f279d85d68 src/fp.js=0ec13124f10d src/math.js=ed93964b9ba1 src/thermo.js=1596a3593c89 src/window.js=7e8dfba81ca9 src/report.js=2e5ac3aa5cb8 src/pipeline.js=6a7f362158c5 src/age.js=bfcb91404ec9 src/qc.js=7a96b7f3fc51 src/demo_real.js=2c445b347618 ui/report.js=b8d0f3beeb76 ui/isoplotr.js=5ec26fdf7089 ui/selftest.js=84d740cad8e4 ui/app.js=4765a11d147c ui/app.html=0a3ee9403307", id: "a1bb38d09853" };
 </script>
 
 <script>
@@ -4215,6 +4318,654 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_QC;
 
 <script>
 /* ==========================================================================
+ *  isoplotr.js —— 可选的 IsoplotR 谐和图模块
+ *
+ *  这是本软件里**唯一**需要联网的部分，也是唯一不在"单文件 754 KB、离线可开"
+ *  这句话覆盖范围内的部分。所以它的设计原则与别的模块相反：
+ *
+ *      · 平时完全不加载 —— 页面上只是一个标签页与一个按钮；不点它，
+ *        不下载任何字节，也不影响"离线可用"。
+ *      · 点了才去 CDN 取 webR（WebAssembly 版 R）与 IsoplotR（R 包），
+ *        首次合计约 16 MB（浏览器缓存之后就只有 IsoplotR 那 0.7 MB 的重装）。
+ *      · 数据**不出本机**：只在本页的浏览器内存里传给 wasm 里的 R。
+ *
+ *  为什么要有它：report.js 里原本写着"不做谐和图，那是另一个工具的事"，
+ *  而 docs/index.src.html 又说谐和图"这套软件最后要交代的就是这张图"。
+ *  这个模块就是把那个缺口补上 —— 自己重写一遍 Ludwig(1998) 的 discordia
+ *  不现实（那正是 IsoplotR 十年积累的地方），接进来才诚实。
+ *
+ *  ----------------------------------------------------------------------
+ *  与 IsoplotR 的对接口径（全部本机实测，不是查文档抄的）
+ *  ----------------------------------------------------------------------
+ *  ① 用 read.data 的 method="U-Pb", format=1
+ *        format=1 的列定义是：X=07/35, err[X], Y=06/38, err[Y] (, rho[X,Y])
+ *      —— 正好是 age.js 第 36/37/38/39/40 列（0 基），一列不多一列不少。
+ *
+ *      **不要用 format=3。** 它多要一个 Z=07/06，而 Z 与 X、Y 是冗余的
+ *      （X = Y·Z·137.818），IsoplotR 会据此判断我们给的相关系数"不可能"，
+ *      把它**换掉**并打一条警告：
+ *          "Redundant ratios of U-Pb data format lead to impossible
+ *           correlation coefficients. These were replaced with alternative
+ *           values assuming zero Tera-Wasserburg correlations."
+ *      实测后果（内置 49 个真实样品，45 个可用点，type=1, show.age=1）：
+ *          format=1 → 164.086 Ma，MSWD(combined) 109.94
+ *          format=3 → 164.974 Ma，MSWD(combined) 181.92
+ *          最大相对差 65.5%
+ *      也就是说 format=3 会把用户真实的误差相关性丢掉 —— 误差椭圆的形状是错的。
+ *
+ *  ② ierr=2 就是"2σ 绝对"，与 age.js 的 '2s' 列同一个口径，**不用折半**。
+ *      （ierr：1=1σ 绝对、2=2σ 绝对、3=1σ 相对%、4=2σ 相对%。）
+ *
+ *  ③ rho 必须带上。Isoclock 的 rho 列就是 ρ(²⁰⁷Pb/²³⁵U, ²⁰⁶Pb/²³⁸U)：
+ *     它由 ρ = (w²+s²-o²)/(2ws) 从三个比值的相对误差反解出来（age.js 的
+ *     rhoOf），正是 IsoplotR 要的那个量。真实数据上它落在 0.05~0.92，
+ *     不传就按 0 处理，椭圆会变成一个与真实形状不符的轴对齐椭圆。
+ *
+ *  ④ 结果字段（`age()` 与 `concordia()` 的返回值结构完全不同，别混）：
+ *        concordia(show.age=1) → $age = c(t=, s[t]=, disp[t]=)，
+ *                                $mswd/$p.value/$df 各有 equivalence/concordance/combined
+ *        concordia(show.age≥2) → $par + $err（err 有两行：s=1σ、disp=1σ·√MSWD），
+ *                                $mswd/$p.value/$df 是标量
+ *      **没有 $err 这种东西挂在 age 上** —— 这里猜错过一次。
+ *
+ *  ⑤ 图上印的数与返回值口径不同：concordia() 默认 oerr=3，图上印的是
+ *     **95% 置信区间**（1.96σ），而 $err["s",] 是 1σ 标准误。实测
+ *     AY-4：$age["s[t]"]=0.4970，图上印 0.974 —— 差 1.96 倍。
+ *     我们的汇总表两个都写出来，并注明各自口径。
+ *
+ *  ⑥ show.age≥2 的 discordia 拟合**会真失败**，不是理论上会：
+ *         · AY-4（14 个近谐和点）→ "non-finite value supplied by optim"
+ *         · SRM 612（2 点）      → "f() values at end points not of opposite sign"
+ *         · 单点                  → "Cannot fit a straight line through these data"
+ *     根因是地质的：一组本来谐和的点画不出有意义的 discordia（上交点趋于无穷）。
+ *     所以整段拟合包在 tryCatch 里：失败就退回只画点，并把 R 的原文带回界面。
+ *     这不是"容错"，是不许把失败藏起来。
+ *
+ *  ⑦ 体积与耗时（本机无头 Edge，走真 CDN，实测）：
+ *        import webr.mjs          0.7 s
+ *        init（R.wasm 12.3 MB gz）47.4 s
+ *        installPackages(IsoplotR) 10.8 s
+ *        首次合计                 ≈ 59 s      ← 界面必须如实说明，不能假装很快
+ *        之后每次作图：show.age=1 约 0.5~1.3 s、show.age=2 约 3.3 s
+ *      VFS 里 IsoplotR 0.77 MB、MASS 1.05 MB。
+ *
+ *  ⑧ 入口必须是 CDN 的 `webr.mjs`，**不要**用 npm 包里的 `webr.mjs`：
+ *         https://webr.r-wasm.org/v0.6.0/webr.mjs  sha256 4c04d324…  ← 浏览器构建
+ *         npm webr@0.6.0  dist/webr.js              sha256 4c04d324…  ← 同一份字节
+ *         npm webr@0.6.0  dist/webr.mjs             sha256 09e64017…  ← 给打包器用的
+ *      官方 CDN 把浏览器构建命名成了 .mjs；npm 里那个 .mjs 第一行就是
+ *      `import { createRequire } from 'module'`，浏览器直接加载会报
+ *      "Failed to resolve module specifier"。（这两个名字曾经把整个可行性判断
+ *      带偏过一次，所以在这里钉死。）
+ *
+ *  ⑨ `file://` 双击打开也能用（实测 0.7 s import / 49.2 s init）：
+ *     webR 检测到跨源时走 XHR + Blob URL 建 worker，CDN 的
+ *     `Access-Control-Allow-Origin: *` 允许 file:// 读取。原先担心
+ *     `location.origin` 是 "null" 会让它内部 `new URL(baseUrl, origin)`
+ *     抛异常 —— 实测 Edge 下 `location.origin` 是 `"file://"`，不抛。
+ *     测试时**不要**给浏览器加 `--disable-web-security`，那等于换了个浏览器。
+ *
+ *  ⑩ SVG 是自包含的：script 标签 0 个、style 标签 0 个、外链 0 个、
+ *     文字全部转成了字形轮廓（text 元素为 0，所以别靠数文字节点判断图是不是空的）。
+ *     但它用 symbol 元素 + id="glyph0-1" 定义字形 —— 两张图内联进同一份文档会
+ *     id 撞车。所以一律以 data URI 塞进 img 元素，天然隔离。
+ *     ⚠ 这一段刻意不写出尖括号的标签名：build_ui.py 会数产物里 script 标签的
+ *       开闭数量，而源码的**注释里**写一个尖括号标签名就会被算进去，
+ *       构建直接报"数量对不上"。
+ *
+ *  ⑪ 生成的 R 脚本里，`if (...) X` 与后面的 `else Y` **必须写在同一行**。
+ *     R 在顶层把 `f1 <- function(x) if (cond) "NA"` 判为一个**完整语句**，
+ *     下一行开头的 `else` 于是成了"没有 if 的 else"，整段脚本一行都不执行：
+ *         Error in parse(text = expr) : :4:3: unexpected 'else'
+ *     表现是"点按钮没反应、图不出、日志里只有一句 parse 错"。
+ *     这一条单测挡不住（Node 里没有 R），所以在渲染路径上也加了兜底：
+ *     R 回来的文本里带 error= 就会显示到界面上，不会静默。
+ *
+ *  ⑫ ρ 的判据必须作用在"**真正写出去的那个数**"上（这是接进来之后唯一
+ *     一个"图能出、数看着也正常、但其实全错"的坑，2026-10-02 实测）：
+ *       年龄表里 AY-4 有两个点 ρ = 0.99999999999999889 / 0.99999999999999933。
+ *       按原始值判 `|ρ| < 1` ⇒ 放行；写文件时按 10 位有效数字 ⇒ "1.000000000"
+ *       ⇒ R 收到的相关系数**精确等于 1** ⇒ 协方差矩阵退化
+ *       ⇒ concordia(show.age=1) 报 `L-BFGS-B needs finite values of 'fn'`，
+ *         而 badRho 计数是 0，界面上没有任何提示。
+ *     修法是三处用同一个数：先 asWritten() 舍到 10 位有效数字 → 用它判合法性
+ *     → 写出去的就是它（见 SIGDIG / rowUsable 的 cells）。
+ *     ρ=1 不是"测坏了"，而是原实现 rhoOf 里那个 min(|t|, w/s) 夹逼饱和到 1
+ *     （w/s 在两个比值相对误差相当时就是 1）—— 年龄表也照印，所以这是**原实现
+ *     的口径**，不是我们引入的。IsoplotR 那边 ρ=1 就是非法输入，只能剔掉并
+ *     如实报数；界面上会写明剔了几个、为什么。
+ * ========================================================================== */
+(function () {
+  'use strict';
+
+  /* ------------------------------------------------------------------
+   *  常量
+   * ------------------------------------------------------------------ */
+  var CDN = 'https://webr.r-wasm.org/v0.6.0/';
+  var WEBR_ENTRY = CDN + 'webr.mjs';
+  var PKG = 'IsoplotR';
+
+  //  age.js 的 51 列行布局（0 基）。这几个列号是读 src/age.js 的 row 数组数出来的，
+  //  并用内置的 49 个真实样品核过：n=49 行里 [33][34][36][37][38][39][40]
+  //  各有 45 个有限值，缺的 4 行就是产物里 flaws.nanRows 声明的那几个。
+  var COL = { file: 0, name: 1, Z: 33, sZ: 34, X: 36, sX: 37, Y: 38, sY: 39, rho: 40 };
+
+  //  read.data(format=1) 的表头。顺序即列序，改了就是另一个 format。
+  var HEADER = 'Pb207U235,errPb207U235,Pb206U238,errPb206U238,rhoXY';
+  var HEADER_SPEC = 'X=07/35, err[X], Y=06/38, err[Y] (, rho[X,Y])';
+
+  //  图形与拟合选项（值就是 IsoplotR 的参数值，界面上的下拉直接拿它当 value）
+  var TYPES = [
+    { v: 1, label: 'Wetherill（²⁰⁶Pb/²³⁸U – ²⁰⁷Pb/²³⁵U）',
+      note: '最常用。纵轴 ²⁰⁶Pb/²³⁸U、横轴 ²⁰⁷Pb/²³⁵U —— 与图解版里那几张朝向一致。' },
+    { v: 2, label: 'Tera-Wasserburg（²³⁸U/²⁰⁶Pb – ²⁰⁷Pb/²⁰⁶Pb）',
+      note: '不校正普通铅时的标准画法。' }
+  ];
+
+  var AGES = [
+    { v: 0, label: '只画图（不拟合）',
+      note: '最快，也不会失败 —— 只有点、误差椭圆与谐和线。' },
+    { v: 1, label: '谐和年龄（concordia age）',
+      note: '把数据当作一组谐和点做最大似然拟合，出年龄与 MSWD。' },
+    { v: 2, label: 'discordia 交点（Ludwig 1998）',
+      note: '拟合一条割线，出上/下交点年龄。数据本身谐和时会失败。' },
+    { v: 3, label: 'discordia 交点（忽略分析误差）',
+      note: '同上，但不看分析误差，只看几何。' },
+    { v: 4, label: 'discordia 交点（含过离散项）',
+      note: '在 2 的基础上加一个地质离散度项 w。' }
+  ];
+
+  var CPB = [
+    { v: 0, label: '不校正普通铅' },
+    { v: 1, label: '用设定的普通铅比值（²⁰⁷Pb/²⁰⁶Pb = 1.106）' },
+    { v: 2, label: '用等时线截距作普通铅' },
+    { v: 3, label: 'Stacey–Kramers 两阶段模型' }
+  ];
+
+  /* ------------------------------------------------------------------
+   *  纯函数（可在 node 里单测，不碰网络）
+   * ------------------------------------------------------------------ */
+
+  /** 数值化：空串 / null / 非数字一律 NaN（注意 +'' 是 0，不能直接用 +）。 */
+  function numOr(v) {
+    if (v === '' || v === null || v === undefined) return NaN;
+    var n = typeof v === 'number' ? v : Number(v);
+    return isFinite(n) ? n : NaN;
+  }
+
+  /**
+   * 送进 CSV 的有效数字位数。
+   *
+   * ⚠ 这个常数是**判据的一部分**，不能只当成"打印格式"。
+   * 踩过的坑（2026-10-02，实测）：年龄表里 AY-4 有两个点的
+   *     ρ = 0.99999999999999889 / 0.99999999999999933
+   * 过滤时按**原始值**判 `|ρ| < 1` ⇒ 放行；写文件时按 10 位有效数字
+   * 截成字符串 ⇒ "1.000000000" ⇒ R 拿到的相关系数**精确等于 1**
+   * ⇒ 协方差矩阵退化 ⇒ concordia(show.age=1) 报
+   *     L-BFGS-B needs finite values of 'fn'
+   * 而且 badRho 计数是 0，界面上一点提示都没有。
+   * 结论：**判据必须作用在真正交出去的那个数上**，所以这里先舍入、
+   * 再用舍入后的值判、最后把同一个字符串写出去（三处同一个数）。
+   */
+  var SIGDIG = 10;
+
+  /** 一个数"写进 CSV 时会变成什么"（数），供判据使用。 */
+  function asWritten(v) {
+    var n = numOr(v);
+    return isFinite(n) ? Number(n.toPrecision(SIGDIG)) : NaN;
+  }
+
+  /**
+   * 按样品统计点数。
+   *
+   * 返回 [{ name, rows, usable }]：
+   *   rows   —— 该样品在年龄表里占几行
+   *   usable —— 其中有多少行能进 IsoplotR 的表
+   *             （三比值都有限、sX/sY > 0、且**写出去之后**的 |ρ| < 1）
+   * 两个数分开报，是因为"这个样品有 15 行"与"这个样品能拟合 14 点"是两件事，
+   * 界面上要显示的是后者 —— 否则用户会对着一个点不动的按钮猜为什么。
+   */
+  function sampleNames(rows) {
+    var seen = {}, order = [];
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      if (!r) continue;
+      var nm = String(r[COL.name] === undefined ? '' : r[COL.name]).trim();
+      if (!nm) continue;
+      if (!seen[nm]) { seen[nm] = { name: nm, rows: 0, usable: 0 }; order.push(nm); }
+      seen[nm].rows++;
+      if (rowUsable(r).ok) seen[nm].usable++;
+    }
+    return order.map(function (k) { return seen[k]; });
+  }
+
+  /**
+   * 一行够不够格进表。返回 { ok, why, cells }，why 只用于统计口径。
+   *
+   * `cells` 是**实际要写出去的 5 个字符串**，由本函数一次算定 ——
+   * 这样"判它合不合法"与"写出去的是什么"就是同一个数，不可能再错位。
+   */
+  function rowUsable(r) {
+    var X = asWritten(r[COL.X]), sX = asWritten(r[COL.sX]);
+    var Y = asWritten(r[COL.Y]), sY = asWritten(r[COL.sY]);
+    var rho = asWritten(r[COL.rho]);
+    if (!(isFinite(X) && isFinite(sX) && isFinite(Y) && isFinite(sY))) {
+      return { ok: false, why: 'missing' };
+    }
+    if (!isFinite(rho)) return { ok: false, why: 'norho' };
+    //  |ρ| ≥ 1 的协方差矩阵不是正定的，IsoplotR 建椭圆时会炸。
+    //  宁可在这里剔掉并**如实报数**，也不要送给它一个非法矩阵。
+    //  注意 rho 已经过 asWritten：判的就是"写出去之后"的值（见 SIGDIG 那段）。
+    if (Math.abs(rho) >= 1) return { ok: false, why: 'badrho' };
+    if (sX <= 0 || sY <= 0) return { ok: false, why: 'badsigma' };
+    return { ok: true, why: '',
+             cells: [X, sX, Y, sY, rho].map(function (v) {
+               return v.toPrecision(SIGDIG);
+             }) };
+  }
+
+  /**
+   * 把年龄表的行转成 IsoplotR 的 format=1 表。
+   *
+   * opts: { sample: '*' | 样品名 }
+   * 返回 { lines, n, skipped, badRho, rhoFiles, sample, header, headerSpec }
+   *   lines[0] 是表头，其余每行 5 个数（X, errX, Y, errY, rho）
+   *   rhoFiles —— 因 ρ 写出即 ±1 而被剔掉的那几行的**文件名**。
+   *   光有计数不够用：用户看到"剔了 2 行"第一反应是"哪两行、要不要紧"，
+   *   而他能拿来核对的就是文件名。
+   */
+  function buildTable(rows, opts) {
+    opts = opts || {};
+    var want = (opts.sample === undefined || opts.sample === null
+      || opts.sample === '' || opts.sample === '*') ? null : String(opts.sample).trim();
+    var lines = [HEADER];
+    var n = 0, skipped = 0, badRho = 0, others = 0, rhoFiles = [];
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      if (!r) continue;
+      if (want !== null && String(r[COL.name] === undefined ? '' : r[COL.name]).trim() !== want) {
+        others++;
+        continue;
+      }
+      var u = rowUsable(r);
+      if (!u.ok) {
+        if (u.why === 'badrho') {
+          badRho++;
+          rhoFiles.push(String(r[COL.file] === undefined ? '' : r[COL.file]));
+        } else skipped++;
+        continue;
+      }
+      //  cells 是 rowUsable 算定的、且已经过合法性判定的那 5 个字符串。
+      //  这里**直接用它**，不再自己 toPrecision 一遍 —— 两份格式化就是两份
+      //  可能对不上的数（这正是 SIGDIG 那段记的坑）。
+      lines.push(u.cells.join(','));
+      if (u.why === '') n++;
+    }
+    return { lines: lines, n: n, skipped: skipped, badRho: badRho, rhoFiles: rhoFiles,
+             others: others, sample: want === null ? '*' : want,
+             header: HEADER, headerSpec: HEADER_SPEC };
+  }
+
+  /** 一个 R 字符串字面量（CSV 行只含数字与逗号，转义只是保险）。 */
+  function rStr(s) {
+    return '"' + String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
+  }
+
+  /** 虚拟文件系统里的路径要挡一下，免得把内容拼进 R 代码里。 */
+  function safePath(p) {
+    if (!/^[A-Za-z0-9_\/.\-]+$/.test(String(p))) {
+      throw new Error('路径含非法字符：' + p);
+    }
+    return String(p);
+  }
+
+  /**
+   * 生成 R 代码。这是**唯一**一处与 IsoplotR 打交道的地方，所以口径全写在这里：
+   *   format=1 + ierr=2 + header=TRUE  ← 见文件头 ①②
+   *   整段包在 tryCatch 里，失败退回 show.age=0 并带回原文 ← 见文件头 ⑥
+   *   结果摘成 key=value 纯文本，界面自己解析，不依赖 R 对象序列化
+   */
+  function rCode(a) {
+    var csv = safePath(a.csv), svg = safePath(a.svg);
+    var ty = (a.type === undefined || a.type === null) ? 1 : Number(a.type);
+    var sa = (a.showAge === undefined || a.showAge === null) ? 0 : Number(a.showAge);
+    var cp = (a.commonPb === undefined || a.commonPb === null) ? 0 : Number(a.commonPb);
+    var w = a.w || 7, h = a.h || 6, ps = a.ps || 11;
+    var sigdig = (a.sigdig === undefined || a.sigdig === null) ? 3 : Number(a.sigdig);
+
+    //  这些值会原样进 R 代码，所以必须是纯数字
+    [ty, sa, cp, w, h, ps, sigdig].forEach(function (v) {
+      if (!isFinite(v)) throw new Error('作图参数不是数字');
+    });
+
+    var L = [];
+    L.push('suppressPackageStartupMessages(library(' + PKG + '))');
+    L.push('d <- read.data(' + rStr(csv) + ', method="U-Pb", format=1, ierr=2, header=TRUE)');
+    //  ⚠ 这个函数定义**必须写在一行里**。拆成两行会踩 R 的经典坑：
+    //    `f1 <- function(x) if (cond) "NA"` 本身就已经是**完整的语句**，
+    //    下一行开头的 `else` 于是变成"没有 if 的 else" ——
+    //    报错长这样：`Error in parse(text = expr): :4:3: unexpected 'else'`，
+    //    而且整段脚本**一行都不会执行**（连图都不出）。实测撞过。
+    L.push('f1 <- function(x) if (length(x) != 1 || !is.finite(x)) "NA" else '
+      + 'format(signif(x, 8), scientific = FALSE, trim = TRUE)');
+    L.push('kv <- c(paste0("n=", nrow(d$x)))');
+    L.push('msg <- ""');
+    L.push('o <- NULL');
+    L.push('svg(' + rStr(svg) + ', width=' + w + ', height=' + h + ', pointsize=' + ps + ')');
+    L.push('o <- tryCatch(concordia(d, type=' + ty + ', show.age=' + sa
+      + ', common.Pb=' + cp + ', sigdig=' + sigdig + '),');
+    L.push('              error = function(e) { msg <<- conditionMessage(e); NULL })');
+    L.push('dev.off()');
+    //  失败也要给一张图：退回只画点（show.age=0）。不能把面板留空。
+    L.push('if (is.null(o) && ' + sa + ' > 0) {');
+    L.push('  msg <- paste0("拟合失败，已退回只画点：", msg)');
+    L.push('  svg(' + rStr(svg) + ', width=' + w + ', height=' + h + ', pointsize=' + ps + ')');
+    L.push('  try(concordia(d, type=' + ty + ', show.age=0, common.Pb=' + cp
+      + ', sigdig=' + sigdig + '), silent = TRUE)');
+    L.push('  dev.off()');
+    L.push('}');
+    //  错误原文里可能有换行 —— [[:space:]] 不需要反斜杠转义，比 [\r\n] 稳
+    L.push('kv <- c(kv, paste0("error=", gsub("[[:space:]]+", " ", msg)))');
+    L.push('if (!is.null(o)) {');
+    L.push('  if (!is.null(o$par)) for (k in names(o$par)) {');
+    L.push('    kv <- c(kv, paste0("par:", k, "=", f1(o$par[[k]])))');
+    L.push('    if (!is.null(o$err) && k %in% colnames(o$err)) {');
+    L.push('      if ("s"    %in% rownames(o$err)) kv <- c(kv, paste0("s:",    k, "=", f1(o$err["s",    k])))');
+    L.push('      if ("disp" %in% rownames(o$err)) kv <- c(kv, paste0("disp:", k, "=", f1(o$err["disp", k])))');
+    L.push('    }');
+    L.push('  }');
+    L.push('  if (!is.null(o$age))     for (k in names(o$age))     kv <- c(kv, paste0("age:", k, "=", f1(o$age[[k]])))');
+    //  ⚠ mswd / p.value / df 的形态**随 show.age 变**：
+    //    show.age=1 → 是有名字的向量（equivalence / concordance / combined）
+    //    show.age≥2 → 是**标量**（names() 是 NULL）
+    //  最初只写了 `for (k in names(...))`，于是 show.age≥2 时这三个数一个都取不回来：
+    //  discordia 的交点年龄出来了，MSWD 却是空的 —— 而 MSWD 恰恰是判断
+    //  "点是不是真在一条线上"的唯一依据（实测：全部 43 点 t[l]=161.83 Ma，
+    //  但 MSWD 有多大看不到）。所以下面按"长度是不是 1"分两路走：
+    //  标量出 `mswd=`，向量出 `mswd:combined=`。
+    L.push('  putv <- function(pre, v) {');
+    L.push('    if (is.null(v)) return(invisible(NULL))');
+    L.push('    if (length(v) == 1) return(kv <<- c(kv, paste0(pre, "=", f1(v))))');
+    L.push('    for (k in names(v)) kv <<- c(kv, paste0(pre, ":", k, "=", f1(v[[k]])))');
+    L.push('  }');
+    L.push('  putv("mswd", o$mswd)');
+    L.push('  putv("p", o$p.value)');
+    L.push('  putv("df", o$df)');
+    L.push('  if (!is.null(o$model))   kv <- c(kv, paste0("model=", f1(o$model)))');
+    L.push('}');
+    L.push('paste(kv, collapse="\\n")');
+    return L.join('\n');
+  }
+
+  /**
+   * 解析 R 回来的 key=value 文本。
+   * 键形如 n / error / model / par:t[l] / s:t[l] / disp:t[l] / age:t /
+   * age:s[t] / mswd:combined / p:combined / df:combined。
+   * NA 与空串都变成 NaN —— 界面靠 isFinite 判断"这项有没有"。
+   */
+  function parseResult(text) {
+    var out = { n: NaN, error: '', model: NaN,
+                par: {}, s: {}, disp: {}, age: {}, mswd: {}, p: {}, df: {} };
+    var lines = String(text === null || text === undefined ? '' : text).split('\n');
+    for (var i = 0; i < lines.length; i++) {
+      var ln = lines[i];
+      if (!ln) continue;
+      var eq = ln.indexOf('=');
+      if (eq < 0) continue;
+      var k = ln.slice(0, eq), v = ln.slice(eq + 1);
+      var col = k.indexOf(':');
+      if (col < 0) {
+        if (k === 'error') { out.error = v === 'NA' ? '' : v; }
+        else {
+          var nv = (v === 'NA' || v === '') ? NaN : Number(v);
+          if (k in out && typeof out[k] === 'number') out[k] = nv;
+          else out[k] = nv;
+        }
+        continue;
+      }
+      var bucket = k.slice(0, col), name = k.slice(col + 1);
+      if (!out[bucket] || typeof out[bucket] !== 'object') out[bucket] = {};
+      out[bucket][name] = (v === 'NA' || v === '') ? NaN : Number(v);
+    }
+    return out;
+  }
+
+  /** 95% 置信区间的倍数。IsoplotR 的 oerr=3 用的就是正态 0.975 分位。 */
+  var Z95 = 1.959964;
+
+  function fnum(v, d) {
+    if (!isFinite(v)) return '—';
+    var a = Math.abs(v);
+    if (a === 0) return '0';
+    if (a >= 1e5 || a < 1e-4) return v.toExponential(3);
+    return v.toFixed(d === undefined ? (a < 1 ? 3 : (a < 100 ? 2 : 1)) : d);
+  }
+
+  /**
+   * 把解析结果整理成界面要显示的几行。
+   *
+   * 口径（这里最容易出错，所以每一行都带着自己的口径字样）：
+   *   · 图上印的数 —— concordia() 默认 oerr=3，是 **95% 置信区间**（1.96σ）
+   *   · $err["s",] / $age["s[t]"] —— **1σ** 标准误
+   *   · $err["disp",] / $age["disp[t]"] —— 1σ 再乘 √MSWD（过离散修正后）
+   *   · Isoclock 年龄表里的 2s 是 **2σ**，所以与这里的 1σ 差 2 倍，别直接比
+   */
+  function summarise(res, opts) {
+    opts = opts || {};
+    var ty = Number(opts.type || 1), sa = Number(opts.showAge === undefined ? 0 : opts.showAge);
+    var rows = [], notes = [];
+
+    rows.push({ k: '数据点数', v: isFinite(res.n) ? String(res.n) : '—',
+                note: '交给 IsoplotR 的行数' });
+
+    if (sa === 1) {
+      var t = res.age.t, s = res.age['s[t]'], dp = res.age['disp[t]'];
+      if (isFinite(t)) {
+        rows.push({ k: '谐和年龄', v: fnum(t, 2) + ' Ma' });
+        rows.push({ k: '　1σ', v: isFinite(s) ? '± ' + fnum(s) + ' Ma' : '—',
+                    note: 'o$age["s[t]"]' });
+        rows.push({ k: '　过离散修正后 1σ', v: isFinite(dp) ? '± ' + fnum(dp) + ' Ma' : '—',
+                    note: '1σ × √MSWD' });
+        rows.push({ k: '　95% 置信区间', v: isFinite(s) ? '± ' + fnum(s * Z95) + ' Ma' : '—',
+                    note: '≈1.96σ —— 图上印的就是这个' });
+      }
+      var ms = ['equivalence', 'concordance', 'combined'];
+      var zh = { equivalence: '等价', concordance: '谐和', combined: '合并' };
+      ms.forEach(function (k) {
+        if (isFinite(res.mswd[k])) {
+          rows.push({ k: '　MSWD（' + zh[k] + '）', v: fnum(res.mswd[k], 3) });
+        }
+      });
+      ms.forEach(function (k) {
+        if (isFinite(res.p[k])) {
+          rows.push({ k: '　p 值（' + zh[k] + '）', v: fnum(res.p[k], 3) });
+        }
+      });
+      ms.forEach(function (k) {
+        if (isFinite(res.df[k])) {
+          rows.push({ k: '　自由度（' + zh[k] + '）', v: String(res.df[k]) });
+        }
+      });
+      notes.push('谐和年龄把数据当作一组**谐和**点来拟合；若数据真丢了铅，'
+        + '这个年龄会被拉偏，那时才该看 discordia 交点。');
+    } else if (sa >= 2) {
+      var keys = Object.keys(res.par);
+      keys.forEach(function (k) {
+        if (!isFinite(res.par[k])) return;
+        var label = k;
+        if (k === 't[l]') label = ty === 1 ? '下交点年龄' : '下交点年龄';
+        else if (k === 't[u]') label = '上交点年龄';
+        else if (k === 't') label = (ty === 2 ? '下交点年龄' : '交点年龄');
+        else if (k === 'a0') label = '²⁰⁷Pb/²⁰⁶Pb 截距';
+        else if (k === 'b0') label = '²⁰⁶Pb/²⁰⁴Pb 截距';
+        else if (k === 'w') label = '过离散项 w';
+        var isAge = (k === 't' || k === 't[l]' || k === 't[u]');
+        //  年龄的位数分档：<1000 Ma 给到 0.01 Ma（交点年龄的有效位本来就在这个量级），
+        //  ≥1000 Ma 给到 0.1 Ma。统一 toFixed(3) 会印出 "5213.916 Ma" 这种假精度。
+        var vd = isAge ? (Math.abs(res.par[k]) >= 1000 ? 1 : 2) : 3;
+        rows.push({ k: label, v: fnum(res.par[k], vd) + (isAge ? ' Ma' : '') });
+        if (isFinite(res.s[k])) {
+          rows.push({ k: '　1σ', v: '± ' + fnum(res.s[k], 3) + (isAge ? ' Ma' : ''),
+                      note: 'o$err["s",]' });
+        }
+        if (isFinite(res.s[k])) {
+          rows.push({ k: '　95% 置信区间', v: '± ' + fnum(res.s[k] * Z95, 3) + (isAge ? ' Ma' : ''),
+                      note: '图上印的是这个' });
+        }
+      });
+      if (isFinite(res.mswd.combined)) {
+        rows.push({ k: 'MSWD', v: fnum(res.mswd.combined, 3) });
+      } else if (isFinite(res.mswd)) {
+        rows.push({ k: 'MSWD', v: fnum(res.mswd, 3) });
+      }
+      if (isFinite(res.p.combined)) rows.push({ k: 'p 值', v: fnum(res.p.combined, 3) });
+      else if (isFinite(res.p)) rows.push({ k: 'p 值', v: fnum(res.p, 3) });
+      if (isFinite(res.df.combined)) rows.push({ k: '自由度', v: String(res.df.combined) });
+      else if (isFinite(res.df)) rows.push({ k: '自由度', v: String(res.df) });
+      notes.push('交点年龄假设数据沿一条割线分布（铅丢失/普通铅两端混合）。'
+        + '**混了不同样品的整批数据不要看这个数** —— 它只是几何外推。');
+      notes.push('MSWD 明显大于 1（或 p 值远小于 0.05）说明点不在一条线上，'
+        + '交点年龄不可信；这时改用 show.age=4（含过离散项）看它会宽多少。');
+    }
+
+    if (res.error) notes.push('IsoplotR 报错：' + res.error);
+    if (isFinite(res.n) && res.n < 3 && sa >= 2) {
+      notes.push('只有 ' + res.n + ' 个点，discordia 拟合在几何上就不成立。');
+    }
+    return { rows: rows, notes: notes, ok: !res.error && !(isNaN(res.n)) };
+  }
+
+  /** SVG 文本 → data URI（用 <img> 隔离，避免两张图的内联 id 撞车）。 */
+  function svgDataUri(svg) {
+    return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(String(svg));
+  }
+
+  /* ------------------------------------------------------------------
+   *  加载与作图（要联网，不放进单测）
+   * ------------------------------------------------------------------ */
+
+  var st = { webR: null, loading: null, ready: false, isoplotr: '', rver: '', t0: 0 };
+
+  function now() { return (window.performance || Date).now(); }
+
+  function elapsed() { return st.t0 ? ((now() - st.t0) / 1000).toFixed(1) + ' s' : ''; }
+
+  /**
+   * 把 R 的字符串向量写进虚拟文件系统。
+   * R 只认 c("a","b")，不认 JSON 数组 —— 这个坑踩过一次（unexpected '['）。
+   */
+  function putLines(webR, path, lines) {
+    var rvec = 'c(' + lines.map(function (l) { return rStr(l); }).join(', ') + ')';
+    return webR.evalRVoid('writeLines(' + rvec + ', ' + rStr(safePath(path)) + ')');
+  }
+
+  /**
+   * 按需加载 webR + IsoplotR。同一个页面只加载一次（后续调用复用同一个 Promise）。
+   * onProgress(text) 会被反复调用，文本里带耗时，方便界面显示"到底卡在哪一步"。
+   */
+  function load(onProgress) {
+    var say = function (s) { if (onProgress) onProgress(s); };
+    if (st.ready) return Promise.resolve(st.result);
+    if (st.loading) return st.loading;
+    st.t0 = now();
+
+    st.loading = Promise.resolve().then(function () {
+      say('正在从 CDN 取 webR 运行时（' + WEBR_ENTRY + '）…');
+      //  动态 import：不点这个按钮，浏览器就不会下载它的任何一个字节。
+      //  入口必须是 CDN 的 webr.mjs（就是 npm 里的 webr.js 那份浏览器构建），
+      //  细节见文件头的 ⑧。
+      return import(/* webpackIgnore: true */ WEBR_ENTRY);
+    }).then(function (mod) {
+      if (!mod || typeof mod.WebR !== 'function') {
+        throw new Error('CDN 回来的模块里没有 WebR —— 入口可能被换成了打包器用的那份 webr.mjs');
+      }
+      say('webR 模块已到（' + elapsed() + '），正在初始化 R 运行时'
+        + '（首次要下载约 12 MB 的 R.wasm，耐心等）…');
+      st.webR = new mod.WebR();
+      return st.webR.init();
+    }).then(function () {
+      return st.webR.evalRString('R.version.string');
+    }).then(function (v) {
+      st.rver = String(v).replace('R version ', '').replace(/\s*\(.*\)\s*$/, '');
+      say('R ' + st.rver + ' 已就绪（' + elapsed() + '），正在安装 ' + PKG
+        + ' 包（约 0.7 MB）…');
+      return st.webR.installPackages([PKG]);
+    }).then(function () {
+      //  installPackages 只装不挂 —— 不 library() 的话后面每一个函数都报
+      //  "could not find function"（踩过：整页只剩这一条报错）。
+      return st.webR.evalRVoid('suppressPackageStartupMessages(library(' + PKG + '))');
+    }).then(function () {
+      return st.webR.evalRString('as.character(packageVersion("' + PKG + '"))');
+    }).then(function (v) {
+      st.isoplotr = String(v).trim();
+      st.ready = true;
+      st.result = { r: st.rver, isoplotr: st.isoplotr, seconds: (now() - st.t0) / 1000 };
+      say('IsoplotR ' + st.isoplotr + ' 已就绪（总耗时 ' + elapsed()
+        + '）。之后的作图会在浏览器缓存里，快得多。');
+      return st.result;
+    }).catch(function (e) {
+      st.loading = null;                  // 允许重试
+      throw e;
+    });
+    return st.loading;
+  }
+
+  /**
+   * 出一张图。会先确保运行时已加载。
+   * 返回 { svg, raw, result, summary, seconds }
+   */
+  function render(table, opts, onProgress) {
+    opts = opts || {};
+    var say = function (s) { if (onProgress) onProgress(s); };
+    return load(onProgress).then(function () {
+      say('正在作图（' + table.n + ' 个点，' + AGES.filter(function (a) {
+        return a.v === Number(opts.showAge || 0);
+      }).map(function (a) { return a.label; })[0] + '）…');
+      var stamp = 'iso' + Date.now();
+      var csv = '/tmp/' + stamp + '.csv';
+      var svg = '/tmp/' + stamp + '.svg';
+      return putLines(st.webR, csv, table.lines).then(function () {
+        var t = now();
+        return st.webR.evalRString(rCode({
+          csv: csv, svg: svg,
+          type: opts.type, showAge: opts.showAge, commonPb: opts.commonPb,
+          w: opts.w, h: opts.h, ps: opts.ps, sigdig: opts.sigdig
+        })).then(function (raw) { return { raw: raw, ms: now() - t }; });
+      }).then(function (o) {
+        return st.webR.FS.readFile(svg).then(function (buf) {
+          //  ⚠ 浏览器里 FS.readFile 回来的是 Uint8Array，不是字符串（踩过：
+          //     下一步 svg.match is not a function）
+          var text = (typeof buf === 'string') ? buf : new TextDecoder().decode(buf);
+          var result = parseResult(o.raw);
+          var summary = summarise(result, { type: opts.type, showAge: opts.showAge });
+          say('图已出（' + (o.ms / 1000).toFixed(1) + ' s，' + Math.round(text.length / 1024) + ' KB）'
+            + (result.error ? ' —— 但拟合失败了，见下方说明' : ''));
+          return { svg: text, raw: o.raw, result: result, summary: summary,
+                   seconds: o.ms / 1000 };
+        });
+      });
+    });
+  }
+
+  var API = {
+    CDN: CDN, WEBR_ENTRY: WEBR_ENTRY, PKG: PKG,
+    COL: COL, HEADER: HEADER, HEADER_SPEC: HEADER_SPEC, SIGDIG: SIGDIG,
+    TYPES: TYPES, AGES: AGES, CPB: CPB, Z95: Z95,
+    numOr: numOr, asWritten: asWritten, rowUsable: rowUsable, sampleNames: sampleNames,
+    buildTable: buildTable, rCode: rCode, parseResult: parseResult,
+    summarise: summarise, svgDataUri: svgDataUri, fnum: fnum, rStr: rStr,
+    load: load, render: render,
+    isReady: function () { return st.ready; },
+    runtime: function () { return st.ready ? st.result : null; },
+    _state: st
+  };
+
+  if (typeof window !== 'undefined') window.DS_ISOPLOTR = API;
+  if (typeof module !== 'undefined' && module.exports) module.exports = API;
+})();
+</script>
+<script>
+/* ==========================================================================
  *  ui/report.js —— 把一次计算的结果整理成一份**可离线打开的 HTML 报告**
  *
  *  为什么是"导出文件"而不是页面里的一个标签页：报告是拿给别人看的
@@ -4595,8 +5346,15 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_QC;
   function sectionLimits(info) {
     return '<h2>7 · 这份报告不做什么，以及已知的口径问题</h2>'
       + '<ul class="limits">'
-      + '<li><b>不做谐和图（concordia）</b>，也不做普通铅的逐点诊断图。'
-      + '要判断铅丢失与普通铅，得看谐和图 —— 那是另一个工具的事。</li>'
+      + '<li><b>这份报告里不含谐和图</b>：报告要能离线双击打开，'
+      + '所以不带任何 R 运行时，也不联网。谐和图与普通铅投影请到软件的'
+      + '「IsoplotR 谐和图」标签页去做 —— 那一页的图和数是 <b>IsoplotR</b>'
+      + '（Pieter Vermeesch 的 R 包）算的，首次使用要从 CDN 现装约 16 MB，'
+      + '需要联网；装好后浏览器会缓存。它与桌面版 Isoclock 是两套独立实现，'
+      + '两者的年龄口径不同（见该页的并排对照），不要直接互证。</li>'
+      + '<li><b>不做普通铅的逐点诊断图</b>（如 <code>²⁰⁶Pb/²⁰⁴Pb</code> 对'
+      + '<code>²⁰⁷Pb/²⁰⁶Pb</code> 的相关图）。上面那张谐和图上可以用'
+      + '「普通铅」下拉切换投影方式，但那是图上的投影，<b>不改任何年龄数值</b>。</li>'
       + '<li><b>不自动剔除任何测点</b>。离群候选只列出来，删不删由你决定。</li>'
       + '<li><b>加权平均、MSWD、判据阈值都是网页版新增的</b>，'
       + '不是桌面版 Isoclock 的输出。原程序只输出逐点年龄，从不做归组统计。'
@@ -5283,6 +6041,139 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_QC;
     t('无清单时样品名互不相同（不会塌成一个样品）', agFiles.every(function (f) {
       return pmNo[f.file].sampleFrom === 'file';
     }), 'sampleFrom 全为 file');
+
+    /* --- 14. IsoplotR 那一页的接线 ---
+       这一套**不验联网**（无头 CI 里没有网，也不是这条链的职责）。
+       验的是"不联网也该对"的那几件事：模块打进来了、控件填上了、
+       给 IsoplotR 的表是按 format=1 的列序、禁用了必然失败的选项、
+       以及 Page 上没有没换掉的模板标记。真正跑 R 的部分由
+       webgui/test_isoplotr.js（纯函数）与 G:/_isohtml/isoplotr/ 下的
+       浏览器探针记录负责。 */
+    var ISO = window.DS_ISOPLOTR;
+    t('IsoplotR 模块已打包进来（ui/isoplotr.js）',
+      !!(ISO && typeof ISO.buildTable === 'function' && typeof ISO.svgDataUri === 'function'),
+      ISO ? (ISO.WEBR_ENTRY + ' ｜ 导出 ' + Object.keys(ISO).length + ' 项')
+          : '没找到 window.DS_ISOPLOTR');
+    var isoTab = document.querySelector('.tabs button[data-tab="iso"]');
+    t('标签栏里有「IsoplotR 谐和图」这一页',
+      !!isoTab && !!$('pane-iso'), isoTab ? isoTab.textContent.trim() : '没有这个按钮');
+    t('三个下拉都填满了（图型 / 拟合 / 普通铅）',
+      $('iso-type').options.length === (ISO ? ISO.TYPES.length : 0)
+      && $('iso-age').options.length === (ISO ? ISO.AGES.length : 0)
+      && $('iso-cpb').options.length === (ISO ? ISO.CPB.length : 0),
+      $('iso-type').options.length + ' / ' + $('iso-age').options.length
+      + ' / ' + $('iso-cpb').options.length + ' 项');
+
+    var arIso = ui.state.ageResult;
+    t('有结果时「加载 IsoplotR 并作图」可用；没结果时禁用',
+      !!arIso && $('btn-iso-run').disabled === false,
+      arIso ? ('当前 ' + arIso.rows.length + ' 行结果，按钮 enabled=' +
+        !$('btn-iso-run').disabled) : '还没有结果');
+
+    var tabIso = ISO ? ISO.buildTable(arIso ? arIso.rows : [], {}) : null;
+    t('给 IsoplotR 的表按 format=1 的列序，且表头就是那五列',
+      !!tabIso && tabIso.lines[0] === 'Pb207U235,errPb207U235,Pb206U238,errPb206U238,rhoXY',
+      tabIso ? tabIso.lines[0] : '—');
+    t('表里的点数与年龄表里能用的行数一致（不是把 NaN 行也塞进去）',
+      !!tabIso && tabIso.n > 0
+      && tabIso.n === (arIso ? arIso.rows.filter(function (r) {
+        return ISO.rowUsable(r).ok;
+      }).length : -1),
+      tabIso ? (tabIso.n + ' 点，剔除 ' + tabIso.skipped + ' 行') : '—');
+    t('表里第 1 行第 1 个数 = 年龄表那一行的第 36 列（列号没数错）',
+      (function () {
+        if (!tabIso || !arIso) return false;
+        var first = arIso.rows.filter(function (r) { return ISO.rowUsable(r).ok; })[0];
+        return !!first && tabIso.lines[1].split(',')[0] === Number(first[36]).toPrecision(10);
+      })(), '取错列（比如取了 2s 那列）这里立刻红');
+
+    /*  这一条是本模块最贵的一个坑的守卫：判据必须作用在**写出去的那个数**上。
+        年龄表里 ρ 可以到 0.99999999999999889，按原始值判 |ρ|<1 就放行了，
+        而写出格式是 10 位有效数字 ⇒ "1.000000000" ⇒ R 收到精确的 1
+        ⇒ 协方差矩阵退化 ⇒ 拟合静默失败（只报一句 L-BFGS-B）。 */
+    t('表里每一行的 ρ（写出去的第 5 列）都严格小于 1',
+      !!tabIso && tabIso.lines.slice(1).length > 0
+      && tabIso.lines.slice(1).every(function (l) {
+        var v = Number(l.split(',')[4]);
+        return isFinite(v) && Math.abs(v) < 1;
+      }),
+      tabIso ? ('剔掉 ' + tabIso.badRho + ' 行 ρ 写出去就是 ±1'
+        + (tabIso.rhoFiles && tabIso.rhoFiles.length
+          ? '：' + tabIso.rhoFiles.join('、') : '')) : '—');
+
+    //  样品下拉：切到那一页时要按当前结果重建
+    ui.selectTab('iso');
+    var sopts = $('iso-sample').options;
+    t('切到该页后，样品下拉按当前结果重建（第一项是"全部样品"）',
+      sopts.length >= 2 && /^全部样品（\d+ 个可用点）$/.test(sopts[0].textContent),
+      sopts.length + ' 项，第一项「' + (sopts[0] ? sopts[0].textContent : '') + '」');
+
+    t('单点样品的 discordia 选项被禁用（IsoplotR 对 <3 点必然报错）',
+      (function () {
+        if (!ISO || !arIso) return false;
+        var groups = ISO.sampleNames(arIso.rows);
+        var one = groups.filter(function (g) { return g.usable === 1; })[0];
+        if (!one) return false;                     // 合成夹具里没有单点样品就跳过
+        $('iso-sample').value = one.name;
+        $('iso-sample').dispatchEvent(new Event('change'));
+        var sel = $('iso-age');
+        var dis = 0, tot = 0;
+        for (var i = 0; i < sel.options.length; i++) {
+          if (Number(sel.options[i].value) >= 2) { tot++; if (sel.options[i].disabled) dis++; }
+        }
+        var back = Number(sel.value) < 2;           // 而且自动退回到不会失败的那一项
+        $('iso-sample').value = '*';
+        $('iso-sample').dispatchEvent(new Event('change'));
+        return tot > 0 && dis === tot && back;
+      })(), '只有一个可用点时，discordia 那三个选项应当全被禁掉');
+
+    t('本软件自己的加权平均能被取到（交叉验证那一行要用）',
+      (function () {
+        if (!ISO || !ui.state.cfg) return false;
+        var own = ui.isoOwnMean(ui.state.cfg.stdName);
+        return !!own && isFinite(own.mean) && own.n > 0;
+      })(), (function () {
+        var own = ui.isoOwnMean(ui.state.cfg ? ui.state.cfg.stdName : null);
+        return own ? (own.key + ' = ' + own.mean.toFixed(3) + ' Ma，' + own.n + ' 点') : '取不到';
+      })());
+
+    /*  这条查的是"页面上有没有没换掉的模板标记"。两个坑都踩过：
+        ① 待查串若写成字面量，查的就是本文件自己（自指）⇒ 按字符拼出来；
+        ② 内联脚本里的 JSDoc 有若干处"@returns"后接双花括号的写法，
+           它在 body.innerHTML 里但**不渲染**、读者看不见 ⇒ 只看 innerHTML 必假警报。
+        所以改成"扫 body 下所有文字节点与属性值，但跳过 SCRIPT/STYLE 两类的文字"
+        —— 这样隐藏面板里的残留也照样能抓到。
+        （本注释里也不能出现尖括号包住的 script 字样：build_ui.py 会把它当成
+          真的标签数进去，上一轮就是这么被拦下的。） */
+    var NEEDLE = '{' + '{';
+    var leftover = (function () {
+      var hits = [];
+      var notText = /^(SCRIPT|STYLE)$/;
+      var walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+        acceptNode: function (n) {
+          var p = n.parentNode;
+          if (p && p.nodeType === 1 && notText.test(p.tagName)) return NodeFilter.FILTER_REJECT;
+          return NodeFilter.FILTER_ACCEPT;
+        }
+      });
+      while (walk.nextNode()) {
+        var s = String(walk.currentNode.nodeValue || '');
+        if (s.indexOf(NEEDLE) >= 0) hits.push('文字「' + s.slice(0, 40) + '」');
+      }
+      var all = document.body.querySelectorAll('*');
+      for (var e = 0; e < all.length; e++) {
+        var at = all[e].attributes;
+        for (var a = 0; a < at.length; a++) {
+          var v = String(at[a].value || '');
+          if (v.indexOf(NEEDLE) >= 0) hits.push('属性 ' + at[a].name + '="' + v.slice(0, 40) + '"');
+        }
+      }
+      return hits;
+    })();
+    t('页面上没有没换掉的模板标记（双花括号会把标记原样印给读者）',
+      leftover.length === 0,
+      leftover.length ? leftover.slice(0, 3).join(' ｜ ')
+        : '全文与属性都扫过；踩过：首页真的把 PAGEKB 标记印出来过');
 
     return { done: true, pass: pass, fail: fail, results: out,
       ages: ages.map(function (a) { return ui.fmtNum(a); }) };
@@ -5993,6 +6884,9 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_QC;
     });
     if (state.selected) showPlot(state.selected);
     selectTab('age');
+    //  这一遍的年龄表变了 → IsoplotR 那一页的样品清单与可用点数跟着重算。
+    //  放在最后：它只读 state.ageResult，不参与计算链。
+    refreshIsoControls();
     toast('算完了：' + ageRes.rows.length + ' 行年龄');
   }
 
@@ -6557,6 +7451,266 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_QC;
   }
 
   /* ======================================================================
+   *  IsoplotR 谐和图（可选模块）
+   *
+   *  这是整个页面里**唯一**需要联网的部分，所以接线的原则与别处相反：
+   *    · 页面加载时只往三个下拉框里填文案，一个字节都不下载；
+   *    · 只有点了"加载 IsoplotR 并作图"才去 CDN 取运行时；
+   *    · 取回来的图以 data URI 塞进 <img>，不走内联 —— IsoplotR 的 SVG 用
+   *      <symbol id="glyph0-1"> 定义字形，两张图内联进同一份文档必然撞 id；
+   *    · 任何失败都把原文摊在面板上（R 的报错、网络错、CDN 改版都算），不吞。
+   *
+   *  为什么要有这一页：report.js 里原本写着"不做谐和图，那是另一个工具的事"，
+   *  而 docs 里又说谐和图"这套软件最后要交代的就是这张图"。自己重写一遍
+   *  Ludwig(1998) 的 discordia 不现实，接 IsoplotR 进来才诚实。
+   * ==================================================================== */
+  var ISO = window.DS_ISOPLOTR;
+
+  function isoMsg(text, cls) {
+    var el = $('iso-msg');
+    if (!el) return;
+    el.innerHTML = text;
+    el.className = 'iso-msg' + (cls ? ' ' + cls : '');
+  }
+
+  /** 往一个 <select> 里填选项（value 用字符串，读的时候再转数字）。 */
+  function isoFill(sel, list, keep) {
+    if (!sel) return;
+    var want = (keep === undefined) ? sel.value : String(keep);
+    sel.innerHTML = '';
+    list.forEach(function (o) {
+      var op = document.createElement('option');
+      op.value = String(o.v);
+      op.textContent = o.label;
+      if (o.note) op.title = o.note;
+      sel.appendChild(op);
+    });
+    var hit = -1;
+    for (var i = 0; i < sel.options.length; i++) {
+      if (sel.options[i].value === want) { hit = i; break; }
+    }
+    sel.selectedIndex = hit >= 0 ? hit : 0;
+  }
+
+  /** 当前选中的样品能进表几个点（决定"拟合"里哪些选项可用）。 */
+  function isoUsableCount(groups, sample) {
+    if (!groups || !groups.length) return 0;
+    for (var i = 0; i < groups.length; i++) {
+      if (groups[i].name === sample) return groups[i].usable;
+    }
+    //  '全部'：把所有分组的可用点加起来
+    var n = 0;
+    for (var j = 0; j < groups.length; j++) n += groups[j].usable;
+    return n;
+  }
+
+  /**
+   * 把当前结果的状态同步到这一页的控件上。
+   * 每次切到这个标签页、以及每次算完一遍之后都会调一次。
+   */
+  function refreshIsoControls() {
+    if (!ISO || !$('iso-type')) return;
+    if (!$('iso-type').options.length) {
+      isoFill($('iso-type'), ISO.TYPES, 1);
+      isoFill($('iso-age'), ISO.AGES, 1);
+      isoFill($('iso-cpb'), ISO.CPB, 0);
+    }
+    var ar = state.ageResult;
+    var btn = $('btn-iso-run');
+    if (!ar || !ar.rows || !ar.rows.length) {
+      $('iso-sample').innerHTML = '<option value="*">（还没有结果）</option>';
+      btn.disabled = true;
+      return;
+    }
+
+    var groups = ISO.sampleNames(ar.rows);
+    var usable = groups.map(function (g) { return g; });
+    var total = usable.reduce(function (a, g) { return a + g.usable; }, 0);
+    var opts = [{ v: '*', label: '全部样品（' + total + ' 个可用点）' }];
+    usable.sort(function (a, b) { return (b.usable - a.usable) || (a.name < b.name ? -1 : 1); });
+    usable.forEach(function (g) {
+      opts.push({ v: g.name, label: g.name + '（' + g.usable + ' / ' + g.rows + ' 点可用）' });
+    });
+    var keep = $('iso-sample').value || '*';
+    isoFill($('iso-sample'), opts, keep);
+    btn.disabled = false;
+    refreshIsoAgeOptions();
+  }
+
+  /**
+   * discordia（show.age ≥ 2）在点数太少时会**必然失败**（IsoplotR 的原话：
+   * "Cannot fit a straight line through these data"）。与其让用户点了再吃一个
+   * 报错，不如在这里就把选项禁掉并把原因写在旁边 —— 但也只是"禁掉默认路径"，
+   * 数据本身我们不替用户删。实测失败的三种情形见 isoplotr.js 的文件头 ⑥。
+   */
+  function refreshIsoAgeOptions() {
+    var ar = state.ageResult;
+    if (!ar || !$('iso-age')) return;
+    var groups = ISO.sampleNames(ar.rows);
+    var n = isoUsableCount(groups, $('iso-sample').value);
+    var sel = $('iso-age');
+    var notes = [];
+    for (var i = 0; i < sel.options.length; i++) {
+      var v = Number(sel.options[i].value);
+      var dis = (v >= 2 && n < 3);
+      sel.options[i].disabled = dis;
+      if (dis) notes.push('「' + sel.options[i].textContent + '」');
+    }
+    if (n < 3 && Number(sel.value) >= 2) sel.value = '1';
+    if (notes.length) {
+      sel.title = '当前只有 ' + n + ' 个可用点，' + notes.join('、')
+        + ' 需要至少 3 个点才能拟合一条线（IsoplotR 会直接报错）。';
+    } else {
+      sel.title = '';
+    }
+  }
+
+  /** 把 <select> 的当前值读成参数。 */
+  function isoOpts() {
+    return {
+      type: Number($('iso-type').value),
+      showAge: Number($('iso-age').value),
+      commonPb: Number($('iso-cpb').value),
+      sample: $('iso-sample').value
+    };
+  }
+
+  /**
+   * 本软件自己的加权平均（与质量报告同一套算法 —— QC.qcWavg）。
+   * 用来与 IsoplotR 的谐和年龄做**独立交叉验证**：两条路径的实现完全不同
+   * （一个是我们自己的加权平均 + MSWD，一个是 IsoplotR 的最大似然谐和拟合），
+   * 对得上才说明接进来的不是个摆设。
+   */
+  function isoOwnMean(sampleName) {
+    try {
+      if (!sampleName || sampleName === '*' || !state.ageResult || !state.cfg) return null;
+      var pick = QC.qcDefaultAge(state.cfg.method, '206Pb/238U');
+      var col = QC.qcAgeCol(state.cfg.method, pick.key, pick.corrected);
+      if (typeof col !== 'number' || col < 0) return null;
+      var groups = QC.qcGroupBySample(state.ageResult.rows);
+      for (var i = 0; i < groups.length; i++) {
+        if (groups[i].name !== sampleName) continue;
+        var w = QC.qcWavg(groups[i].rows.map(function (r) {
+          return { age: +r[col], s2: +r[col + QC.QC_ERR_OFFSET] };
+        }));
+        if (!w || !isFinite(w.mean)) return null;
+        return { mean: w.mean, se: w.se, mswd: w.mswd, n: w.n, key: pick.key,
+                 corrected: pick.corrected };
+      }
+      return null;
+    } catch (e) { return null; }
+  }
+
+  function isoRender() {
+    var ar = state.ageResult;
+    if (!ISO || !ar) return;
+    var o = isoOpts();
+    var tab = ISO.buildTable(ar.rows, { sample: o.sample });
+
+    if (tab.n < 1) {
+      isoMsg('选中的样品里没有能进表的点（三比值或 rho 缺）。', 'warn');
+      return;
+    }
+    var notes = [];
+    if (tab.skipped) notes.push(tab.skipped + ' 行因比值/误差缺失被剔除');
+    if (tab.badRho) {
+      notes.push(tab.badRho + ' 行因 <b>ρ 写成 10 位有效数字后正好是 ±1</b> 被剔除'
+        + '（ρ=1 的协方差矩阵是退化的，IsoplotR 会直接报 L-BFGS-B 失败；'
+        + '这不是数据坏了，是原实现的 ρ 夹逼饱和到 1）'
+        + (tab.rhoFiles && tab.rhoFiles.length
+          ? '：' + tab.rhoFiles.join('、') : ''));
+    }
+    if (tab.others) notes.push('另有 ' + tab.others + ' 行不属于所选样品');
+    var head = '正在处理 <b>' + tab.n + '</b> 个点'
+      + (o.sample === '*' ? '（全部样品）' : '（' + o.sample + '）')
+      + (notes.length ? '；' + notes.join('，') : '') + '。';
+
+    var svgText = null;
+    var btn = $('btn-iso-run');
+    btn.disabled = true;
+    $('btn-iso-svg').disabled = true;
+    isoMsg(head + '<br>正在加载…');
+
+    ISO.render(tab, {
+      type: o.type, showAge: o.showAge, commonPb: o.commonPb
+    }, function (s) {
+      isoMsg(head + '<br>' + s);
+    }).then(function (out) {
+      svgText = out.svg;
+      $('iso-fig').src = ISO.svgDataUri(svgText);
+      $('iso-fig').style.display = '';
+      $('btn-iso-svg').disabled = false;
+
+      //  汇总表
+      var html = '<tbody>';
+      out.summary.rows.forEach(function (r) {
+        html += '<tr><td>' + r.k + '</td><td class="v">' + r.v + '</td><td class="note">'
+          + (r.note || '') + '</td></tr>';
+      });
+      html += '</tbody>';
+      $('iso-sum').innerHTML = html;
+      $('iso-sum').style.display = '';
+
+      //  独立交叉验证：只在"单样品 + 谐和年龄 + 那个样品本软件也有加权平均"时给
+      var cross = '';
+      var own = (!out.result.error && o.showAge === 1) ? isoOwnMean(o.sample) : null;
+      if (own && isFinite(out.result.age.t)) {
+        var diff = out.result.age.t - own.mean;
+        cross = '交叉验证：同一组数据，<b>本软件的加权平均</b>（' + own.key
+          + (own.corrected ? '，校正后' : '') + '，' + own.n + ' 点，MSWD '
+          + ISO.fnum(own.mswd, 2) + '）给出 <b>' + ISO.fnum(own.mean, 2) + ' ± '
+          + ISO.fnum(own.se * 2, 2) + ' Ma（2σ）</b>，<b>IsoplotR 的谐和年龄</b>给出 <b>'
+          + ISO.fnum(out.result.age.t, 2) + ' ± ' + ISO.fnum(out.result.age['s[t]'] * 2, 2)
+          + ' Ma（2σ）</b> —— 两条实现完全不同的路径相差 <b>'
+          + ISO.fnum(Math.abs(diff), 2) + ' Ma</b>。';
+      }
+
+      //  说明（口径、失败原因、地质含义）
+      var nl = out.summary.notes.map(function (s) { return '<li>' + s + '</li>'; }).join('');
+      $('iso-notes').innerHTML = (cross ? '<p>' + cross + '</p>' : '')
+        + (nl ? '<ul>' + nl + '</ul>' : '');
+
+      var cls = out.result.error ? 'err' : '';
+      isoMsg(head + '<br>图已出（' + out.seconds.toFixed(1) + ' s，'
+        + Math.round(svgText.length / 1024) + ' KB）。'
+        + (out.result.error ? ' <b>但拟合失败了，已退回只画点 —— 见下方说明。</b>' : ''), cls);
+      logLine('IsoplotR：' + tab.n + ' 点，图型 ' + o.type + '，拟合 show.age='
+        + o.showAge + '，普通铅 ' + o.commonPb + '，' + out.seconds.toFixed(1) + ' s'
+        + (out.result.error ? '（拟合失败：' + out.result.error + '）' : ''), out.result.error ? 'w' : 'g');
+    }).catch(function (e) {
+      var m = String(e && e.message || e);
+      isoMsg(head + '<br><b>失败：</b>' + m + '<br>'
+        + '常见原因：没联网、公司网络拦了 webr.r-wasm.org、浏览器太旧（不支持 WebAssembly）。'
+        + '其余功能不受影响 —— 这一页本来就是可选的。', 'err');
+      logLine('!! IsoplotR 失败：' + m
+        + (e && e.stack ? '\n' + e.stack : ''), 'e');
+    }).then(function () {
+      btn.disabled = false;
+      refreshIsoAgeOptions();
+    });
+  }
+
+  function initIsoTab() {
+    if (!ISO) {
+      isoMsg('这一页需要 <code>ui/isoplotr.js</code>，但产物里没有它 —— '
+        + '请重新运行 <code>python webgui/build_ui.py</code>。', 'err');
+      return;
+    }
+    isoFill($('iso-type'), ISO.TYPES, 1);
+    isoFill($('iso-age'), ISO.AGES, 1);
+    isoFill($('iso-cpb'), ISO.CPB, 0);
+    $('btn-iso-run').addEventListener('click', isoRender);
+    $('btn-iso-svg').addEventListener('click', function () {
+      var img = $('iso-fig');
+      if (!img || !img.src) return;
+      var svg = decodeURIComponent(img.src.slice(img.src.indexOf(',') + 1));
+      download('isoplotr_谐和图.svg', svg, 'image/svg+xml;charset=utf-8');
+    });
+    $('iso-sample').addEventListener('change', refreshIsoAgeOptions);
+    refreshIsoControls();
+  }
+
+  /* ======================================================================
    *  标签页
    * ==================================================================== */
   function selectTab(name) {
@@ -6564,11 +7718,12 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_QC;
     for (var i = 0; i < btns.length; i++) {
       btns[i].className = btns[i].getAttribute('data-tab') === name ? 'on' : '';
     }
-    ['plot', 'cps', 'all', 'age', 'log'].forEach(function (k) {
+    ['plot', 'cps', 'all', 'age', 'iso', 'log'].forEach(function (k) {
       $('pane-' + k).className = 'pane' + (k === name ? ' on' : '')
         + (k === 'plot' ? ' center' : '');
     });
     if (name === 'plot' && state.selected) showPlot(state.selected);
+    if (name === 'iso') refreshIsoControls();   // 样品下拉要跟着当前结果走
   }
 
   /* ======================================================================
@@ -6857,6 +8012,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_QC;
     fillBuildInfo();
     fillDemoCount();
     renderQcDoc();          // ⑥ 里那些阈值说明取自 qc.js，不在 HTML 里重复一遍
+    initIsoTab();           // IsoplotR 那一页：只填下拉文案，不碰网络
     if (location.hash === '#selftest') {
       window.__selftest = { done: false, results: [] };
       setTimeout(function () {
@@ -6897,7 +8053,11 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_QC;
     displayHeader: displayHeader, typoColumns: typoColumns,
     updateListInfo: updateListInfo, resetPane: resetPane,
     fmtNum: fmtNum, ageCsv: ageCsv, exportJson: exportJson, download: download,
-    logLine: logLine, logClear: logClear, ISONAME: ISONAME, ISO_AGILENT: ISO_AGILENT
+    logLine: logLine, logClear: logClear, ISONAME: ISONAME, ISO_AGILENT: ISO_AGILENT,
+    //  IsoplotR 那一页：自检要能读它的控件状态，也要能直接调交叉验证那一段
+    initIsoTab: initIsoTab, refreshIsoControls: refreshIsoControls,
+    refreshIsoAgeOptions: refreshIsoAgeOptions, isoOpts: isoOpts,
+    isoOwnMean: isoOwnMean, isoRender: isoRender, isoMsg: isoMsg
   };
 })();
 </script>

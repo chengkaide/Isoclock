@@ -288,18 +288,72 @@ footer.foot .grow { flex: 1 1 auto; }
 @media (max-width: 860px) { footer.foot .grow + span { display: none; } }
 
 /* ---------- 窄窗口：工具栏换行 ----------
-   实测"标签 + 修正列名笔误 + 四个导出按钮 + 质量报告"这一行的自然宽度是
-   **876px**（这是加了"质量报告"按钮之后的数；之前没有它是 798px。
-   用 G:/_isohtml/mkinject.py 的 measure 用例重量：它把 .tabs 设成
-   width:max-content 再读实际宽度，与视口无关）。
-   右栏宽度 ≈ 视口 - 左栏(约 300px)。在 1284px 视口下实测只剩约 17px 余量，
-   太贴边了，所以断点取 1300px：视口 ≤1300 时让导出按钮整行换到第二行，
-   五个按钮全部可见；1300 以上单行放得下（1366px 视口约余 145px）。
-   仍留 overflow:auto 兜底，万一第二行还放不下也能横向滚。
-   改按钮文案或增删按钮后，务必用 measure 用例重量一次并更新这里。 */
-@media (max-width: 1300px) {
+   实测"六个标签 + 修正列名笔误 + 五个导出按钮（含质量报告）"这一行的自然宽度是
+   **991px**（2026-10-02 加重量的：五个标签时是 876px，第六个「IsoplotR 谐和图」
+   是个长文案，多出 115px）。量法用 G:/_isohtml/mkinject.py 的 measure 用例
+   （把 .tabs 设成 width:max-content 再读宽度，与视口无关），
+   脚本 G:/_isohtml/measure_tabrow.py 顺带把"每个视口下是否溢出"也打出来。
+
+   非工具栏占掉的宽度实测恒为 **372px**（视口 1600/1440/1366 三点一致：
+   avail = 视口 - 372）。所以不换行需要 视口 ≥ 991 + 372 = 1363px。
+
+   ★ 为什么断点必须是 1420 而不是原来的 1300：基础样式是
+   `flex-wrap: nowrap` + `overflow-x: auto`，**不换行时超出就横向裁掉**
+   （1301–1362 这一段会正好切掉最右边的「质量报告」29px —— 那是这一版的主按钮）。
+   五个标签时 876+372=1248 < 1300，恰好没有这个坏带；加上第六个标签后
+   1363 > 1300，坏带就出现了。取 1420 留约 57px 余量（与上一版 1300 对 1248
+   留 52px 的松紧相当），同时 1440 宽的窗口仍是单行（余 77px）。
+   改按钮文案或增删按钮后，务必用那两个脚本重量一次并更新这里。 */
+@media (max-width: 1420px) {
   .tabs { flex-wrap: wrap; overflow: auto; row-gap: 0; }
   .tabs .spacer { flex: 1 1 100%; height: 0; }
   .tabs button { padding: 6px 10px; }
   .tabs .act { margin: 2px 0 5px; }
 }
+
+/* ---------- IsoplotR 标签页 ----------
+   这一页是**可选**的：默认什么都不加载，只有一个按钮。所以这里的样式只管
+   "结果长什么样"，不参与首屏。 */
+.iso-bar {
+  display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center;
+  padding: 8px 10px; background: #fff; border: 1px solid var(--line); border-radius: 8px;
+}
+.iso-bar label {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12.5px; color: var(--ink-2);
+}
+.iso-bar select {
+  font: inherit; font-size: 12.5px; padding: 2px 4px; max-width: 320px;
+  border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--ink);
+}
+.iso-bar .spacer { flex: 1 1 auto; }
+.iso-bar button {
+  padding: 4px 10px; font: inherit; font-size: 12.5px; white-space: nowrap;
+  border: 1px solid var(--line); border-radius: 6px; background: #fff;
+  color: var(--ink-2); cursor: pointer;
+}
+.iso-bar button.go { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.iso-bar button.go:hover:not(:disabled) { background: var(--accent); color: #fff; }
+.iso-bar button:disabled { color: #b9c6d4; border-color: #e6ebef; cursor: not-allowed; }
+.iso-msg {
+  margin: 10px 0 0; padding: 8px 10px; border-radius: 8px;
+  font-size: 12.5px; line-height: 1.65; background: var(--accent-2); color: var(--ink-2);
+}
+.iso-msg.warn { background: var(--warn-bg); color: var(--warn); }
+.iso-msg.err { background: var(--err-bg); color: var(--err); }
+.iso-msg b { color: inherit; }
+.iso-figwrap { margin: 10px 0 0; text-align: center; }
+.iso-figwrap img {
+  max-width: 100%; height: auto; background: #fff;
+  border: 1px solid var(--line); border-radius: 8px;
+}
+table.iso-sum { margin: 10px 0 0; border-collapse: collapse; font-size: 12.5px; }
+table.iso-sum th, table.iso-sum td {
+  border-bottom: 1px solid #eaeff3; padding: 3px 10px 3px 0; text-align: left;
+  vertical-align: top;
+}
+table.iso-sum td.v { font-family: var(--mono); text-align: right; padding-right: 14px; white-space: nowrap; }
+table.iso-sum td.note { color: var(--ink-3); font-size: 11.5px; }
+table.iso-sum tr.head td { font-weight: 600; color: var(--ink-2); border-bottom-color: var(--line); }
+.iso-notes { margin: 10px 0 0; font-size: 12px; color: var(--ink-2); line-height: 1.7; }
+.iso-notes ul { margin: 4px 0 0; padding-left: 18px; }
