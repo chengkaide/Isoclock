@@ -985,6 +985,15 @@
    *  导出
    * ==================================================================== */
   function download(name, text, mime) {
+    // 桌面版壳（packaging/isoclock_desktop.py）里走**系统原生"另存为"**。
+    // 不用 blob + <a download>：WebView2 给 blob 下载的默认文件名是一串 GUID、
+    // 没有扩展名，用户拿到 `a1b2c3d4` 这种文件还得自己改名。原生对话框带正确
+    // 文件名与扩展名。浏览器里没有这个桥，所以行为与原来完全一致。
+    var api = window.pywebview && window.pywebview.api;
+    if (api && typeof api.save_as === 'function') {
+      api.save_as(name, text);
+      return;
+    }
     var blob = new Blob([text], { type: mime || 'text/plain;charset=utf-8' });
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
