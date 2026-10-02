@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""生成落地页顶部的徽章，并把它们写成**算出来的**，不是手写的。
+"""生成落地页顶部的徽章，并把正文里的 {{TOKEN}} 换成实算值。
 
 为什么要有这个脚本
 ------------------
@@ -7,14 +7,27 @@
 而 isoclock.html 当时已经是 290549 字节 —— 重建一次页面它就不对了，
 而且没有任何东西会报错。所以这里把徽章改成**由脚本从源头算出来再写进 HTML**：
 
-    python docs/make_badges.py            # 重算并写入
+    python docs/make_badges.py            # 重算并生成 index.html
     python docs/make_badges.py --check    # 只核对，不一致就非零退出（CI 用）
+
+两个文件的关系（**这是本目录最容易搞混的地方**）
+----------------------------------------------
+    docs/index.src.html   手写源。徽章块 + 正文里的 {{TOKEN}} 都在这里改。
+    docs/index.html       产物，也是 GitHub Pages 真正服务的那一份：
+                          徽章已物化、{{TOKEN}} 已换成实算值。
+
+为什么非得分两个：正文里的数（单文件多大、标样跑出多少）必须**每次重算**，
+不能手写；而标记留在文件里就会原样发到线上 —— 读者会在页面上看到 `{{PAGEKB}}`。
+（踩过一次：把宿主文件和产物合成一个，结果是线上页面里全是花括号。）
+规矩定成一句：**改内容改 index.src.html，然后跑本脚本。**
 
 数字的来源
 ----------
   * 文件体积     直接 `os.path.getsize()`，页面上按 KiB 显示，字节数放进 title
   * 比对项数     **真跑** webgui/test_*.js 再累加（这就是唯一真源；不引第二份数字）
   * 自检项数     取自产物页面的 #selftest 标题；没有浏览器时退回常量并在输出里说明
+  * 标样实测值   读 webgui/src/demo_real.js 的 stdMeasured（那是真管线量出来的）
+  * 帮助弹窗那三个数  对 webgui/ui/app.html 的 data-count 标记做一致性校验
 
 样式
 ----
@@ -39,7 +52,8 @@ for _stream in (sys.stdout, sys.stderr):
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
-INDEX = os.path.join(HERE, 'index.html')
+SRC = os.path.join(HERE, 'index.src.html')     # 手写源（徽章块 + {{TOKEN}} 都在这）
+INDEX = os.path.join(HERE, 'index.html')       # 产物：Pages 服务的就是这一份
 WEBGUI = os.path.join(ROOT, 'webgui')
 
 BEGIN = '<!-- BADGES:BEGIN 由 docs/make_badges.py 生成；改数字请改源头并重跑 -->'
@@ -277,10 +291,16 @@ def build_badges():
 
     st = selftest_items_from_browser()
     if st is None:
-        n_selftest, st_note = SELFTEST_ITEMS, '常量（没跑成无头浏览器，未现场核对）'
+        n_selftest, st_note = SELFTEST_ITEMS, '常量（本机没跑成无头浏览器，未现场核对）'
     else:
         n_selftest, _stok = st
         st_note = '无头浏览器现场读到'
+    #  ⚠ st_note **只能打印给人看，绝不能写进徽章的 tooltip**。
+    #  CI 跑在 ubuntu 上、通常没有 Edge，这里会退回常量，tooltip 于是和本地
+    #  生成的那份差一句话 —— 而 --check 是逐字比对的，结果就是"核对徽章没过期"
+    #  这一步在 CI 上永远红、本地永远绿。那种红比不检还糟：红久了就没人看了。
+    #  （真踩过：44b491a 那次 CI 失败，报的就是这一步。）
+    print('  页面内自检项数 %d —— %s' % (n_selftest, st_note))
 
     exe = os.path.join(ROOT, 'dist', 'IsoclockWeb.exe')
 
@@ -289,7 +309,7 @@ def build_badges():
         ('ok', '%d 项数值比对全绿' % n_pass,
          '%d 套 webgui/test_*.js，与桌面版逐位对照；本行由脚本实跑得出' % n_suite),
         ('ok', '%d 项页面内自检' % n_selftest,
-         '在产物页面里点真按钮跑；项数%s' % st_note),
+         '在产物页面里点真按钮跑（#selftest）；每次由脚本核这个数'),
         ('ok', '与桌面版逐位相同',
          '含浮点最后一位；由上面那批比对保证'),
         ('pu', '单文件 %s · 离线' % kib(page_bytes),
@@ -333,9 +353,14 @@ def main():
         print(' '.join(SUITES))
         return 0
 
-    html = io.open(INDEX, encoding='utf-8').read()
-    if BEGIN not in html or END not in html:
-        raise SystemExit('!! index.html 里找不到徽章标记，先手工放一对\n%s\n%s'
+    if not os.path.isfile(SRC):
+        raise SystemExit('!! 找不到源文件 %s\n'
+                         '       本站首页是「源 + 产物」两个文件：手写源叫 index.src.html，\n'
+                         '       产物 index.html 由本脚本从它生成（再由 GitHub Pages 提供服务）。'
+                         % SRC)
+    src = io.open(SRC, encoding='utf-8').read()
+    if BEGIN not in src or END not in src:
+        raise SystemExit('!! index.src.html 里找不到徽章标记，先手工放一对\n%s\n%s'
                          % (BEGIN, END))
 
     block, items, facts = build_badges()
@@ -345,50 +370,60 @@ def main():
     print('正文可引用的实算值：' + '、'.join(
         '%s=%s' % (k, v) for k, v in sorted(facts.items())))
 
-    i = html.index(BEGIN)
-    j = html.index(END) + len(END)
-    old = html[i:j]
-    #  ⚠ 写回的是 **`html[:i] + block + html[j:]`**，不是替换过 {{TOKEN}} 的那份。
-    #  踩过一次：早先直接写 want，第一次跑完正文里的 {{TESTS}} 就变成了"334"
-    #  这个字面量，于是**第二次运行再也刷不动正文**（substitute 找不到标记、
-    #  不报错，页面静静地停留在旧数字上）。保留标记，正文才能真正跟着实算走；
-    #  而徽章块是物化的，所以单看文件它本身就是个能打开的成品页。
-    new_url = html[:i] + block + html[j:]
-    #  两边都用**同一套 facts** 替换后再比 —— 这样比的是"要不要重写"，
-    #  而不是"标记还在不在"。substitute() 同时充当守卫：哪个标记没有实算值，
-    #  这里就抛错，构建停下来。
+    i = src.index(BEGIN)
+    j = src.index(END) + len(END)
+    #  ⚠ 先把徽章块贴回**源**（源里保留 {{TOKEN}}），再统一替换 —— 而不是把替换过的
+    #  结果写回源。踩过一次：早先直接写替换后的内容，第一次跑完正文里的 {{TESTS}}
+    #  就变成了 "334" 这个字面量，于是**第二次运行再也刷不动正文**（substitute
+    #  找不到标记、也不报错，页面静静地停在旧数字上）。源留标记、产物才替换，
+    #  正文才能真正跟着实算走。
+    new_url = src[:i] + block + src[j:]
+    #  substitute() 同时充当守卫：哪个标记没有实算值，这里就抛错，构建停下来。
     want = substitute(new_url, facts)
-    have = substitute(html, facts)
+
+    have = io.open(INDEX, encoding='utf-8').read() if os.path.isfile(INDEX) else None
     #  两种比对口径，**故意不一样**：
     #   · 核对（--check）用 comparable()：把"本机才测得到"的徽章（exe 体积）摘掉，
     #     否则 CI 上算出 8 枚、页面里存着 9 枚，永远不等；
     #   · 写入用严格相等：exe 徽章也在比。不这样的话，exe 重建后它的体积/tooltip
     #     会**永远停在旧值**（踩过：tooltip 停在 10245209，而文件已是 10245857），
     #     因为那一行压根没参与比对。
-    same_check = comparable(want) == comparable(have)
-    same_write = want == have
+    same_check = have is not None and comparable(want) == comparable(have)
+    same_write = have == want
 
     if a.check:
         if same_check:
-            print('\n--check：页面与实算一致（徽章 %d 个 + 正文标记 %d 种）。'
+            print('\n--check：产物与实算一致（徽章 %d 个 + 正文标记 %d 种）。'
                   % (len(items), len(facts)))
             return 0
-        print('\n--check：**页面已过期**，跑 `python docs/make_badges.py` 重算。')
-        if old.strip() != block.strip():
-            print('--- 页面上现在写的徽章 ---')
-            for ln in old.splitlines():
-                if '<span' in ln:
-                    print('   ' + ln.strip())
+        print('\n--check：**产物已过期**，跑 `python docs/make_badges.py` 重算。')
+        if have is not None:
+            #  产物里残留 {{…}} 正是"把花括号印给读者看"的那个毛病（线上出过一次）：
+            #  徽章物化了、正文标记却没人换。这里单独点出来，免得又靠肉眼发现。
+            left = sorted(set(re.findall(r'\{\{(\w+)\}\}', have)))
+            if left:
+                print('   产物里还留着未替换的标记：%s' % '、'.join(left))
+                print('   —— 这就是首页把 {{…}} 印给读者看的原因，重跑一次即可。')
+            k = have.find(BEGIN)
+            l = have.find(END)
+            if k >= 0 and l > k:
+                old = have[k:l + len(END)]
+                if old.strip() != block.strip():
+                    print('--- 产物上现在写的徽章 ---')
+                    for ln in old.splitlines():
+                        if '<span' in ln:
+                            print('   ' + ln.strip())
         return 1
 
     if same_write:
-        print('\n页面已经是最新，未改动。')
+        print('\n产物已经是最新，未改动。')
         return 0
-    io.open(INDEX, 'w', encoding='utf-8', newline='').write(new_url)
+    io.open(INDEX, 'w', encoding='utf-8', newline='').write(want)
     marks = re.findall(r'\{\{\w+\}\}', new_url)
-    print('\n已写入 %s（徽章物化；正文保留 %d 个标记 / %d 种，'
-          % (os.path.relpath(INDEX, ROOT), len(marks), len(set(marks))))
-    print('       每次跑本脚本按实算值替换它们，替换不了的标记会直接报错）')
+    print('\n已写入 %s（徽章物化 + 正文 %d 个标记全部按实算值替换）'
+          % (os.path.relpath(INDEX, ROOT), len(marks)))
+    print('       源 %s 里仍保留这 %d 个标记 / %d 种 —— 改内容改源，然后重跑本脚本。'
+          % (os.path.relpath(SRC, ROOT), len(marks), len(set(marks))))
     return 0
 
 

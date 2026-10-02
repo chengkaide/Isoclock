@@ -1,0 +1,20 @@
+# 换行符：只对"文件体积会进徽章"的目录钉成 LF。
+#
+# 为什么需要（不是洁癖）：落地页上的体积是**算出来**的，docs/make_badges.py
+# 量的是工作区里那个文件。而 Windows 默认 core.autocrlf=true，同一份内容
+# checkout 出来是 CRLF，比仓库里那份**每行多 1 个字节**：
+#   · webgui/isoclock.html  756 KB 的徽章就量它，多出上千字节就会变成 757 KB；
+#   · docs/guide.html       图解教程那枚 471 KB 同理。
+# 于是同一个徽章在 Windows 和 CI（ubuntu）上会算出两个数，CI 的 --check 就红 ——
+# 那种红最恶劣：本地永远绿，只在别人机器上红。
+# 钉成 LF 之后，两边量到的是同一个字节数。
+#
+# ⚠ 刻意**不写全局的 `* text=auto`**：实测那样会把 LICENSE、
+# Thermo_to_Agilent_Convertdata.py、requirements.txt 这几个上游文件
+# 在仓库里存着的 CRLF 一并改写（共 760 行），凭空多出一堆与上游的差异，
+# 以后跟上游对账时会很难看 —— 而它们跟徽章数字没有任何关系。
+#
+# 用 text=auto（而不是 text）是为了让 git 自己认二进制：这些目录里有 PNG，
+# 强制当文本转换会把图片弄坏。
+docs/**    text=auto eol=lf
+webgui/**  text=auto eol=lf

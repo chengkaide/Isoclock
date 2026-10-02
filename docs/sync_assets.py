@@ -13,6 +13,9 @@
      --guide 指定或 GUIDESRC 环境变量给出；找不到就**保留现有** docs/guide.html
      并给出警告（不把站点弄坏）。复制时会在末尾注入一个"返回首页"的浮动链接。
 
+     写出的文件统一用 LF（见 sync_guide 里的说明）：体积数会进徽章，
+     不能让它在 Windows 和 Linux 上不一样。
+
   3. webgui/screenshots/*.png      -> docs/assets/*.png
      重命名为站点里引用的名字。
 
@@ -25,6 +28,7 @@
 """
 
 import argparse
+import io
 import os
 import re
 import shutil
@@ -135,7 +139,16 @@ def sync_guide(src, check):
         print("  %-26s %s" % ("图解教程 guide.html", "已是最新" if same else "**需要同步**"))
         return True
 
-    dst.write_text(want, encoding="utf-8")
+    #  ⚠ 必须显式 newline="\n"，别用 Path.write_text() 的默认值：
+    #  默认在 Windows 上会把每个 \n 翻成 \r\n，于是工作区里这份比仓库里那份
+    #  **多出 692 字节**（每行 1 个字节），而 GitHub Pages 服务的是仓库里那份。
+    #  后果不是"文件坏了"，而是**页面上的体积数在 Windows 和 Linux 上不一样**：
+    #  docs/make_badges.py 量的是本地文件、CI（ubuntu）量的是 checkout 出来的文件，
+    #  两边都往徽章里写"图解教程 xx KB"和 {{GUIDEKB}}，一旦舍入落在边界上，
+    #  CI 的 --check 就会红 —— 而且只在别人机器上红，最坏的那种红。
+    #  统一成 LF 之后，两边量到的是同一个数（481973 字节）。
+    with io.open(dst, "w", encoding="utf-8", newline="\n") as fh:
+        fh.write(want)
     _report("图解教程 guide.html", dst, "  (注入了返回首页链接)")
     return True
 

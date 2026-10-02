@@ -224,10 +224,10 @@ footer .wrap{display:flex;gap:22px;flex-wrap:wrap;align-items:baseline}
   <div class="badges">
     <!-- BADGES:BEGIN 由 docs/make_badges.py 生成；改数字请改源头并重跑 -->
     <span class="b ok" title="13 套 webgui/test_*.js，与桌面版逐位对照；本行由脚本实跑得出">336 项数值比对全绿</span>
-    <span class="b ok" title="在产物页面里点真按钮跑（#selftest）；每次由脚本核这个数">41 项页面内自检</span>
+    <span class="b ok" title="在产物页面里点真按钮跑；项数无头浏览器现场读到">41 项页面内自检</span>
     <span class="b ok" title="含浮点最后一位；由上面那批比对保证">与桌面版逐位相同</span>
     <span class="b pu" title="isoclock.html = 774512 字节；零外链、零依赖，双击即用">单文件 756 KB · 离线</span>
-    <span class="b pu" title="guide.html = 481973 字节，56 张内联图">图解教程 471 KB</span>
+    <span class="b pu" title="guide.html = 482665 字节，56 张内联图">图解教程 471 KB</span>
     <span class="b" title="同一个页面装进系统自带的 WebView；Windows 出 exe，macOS 出 app">Windows / macOS 桌面程序</span>
     <span class="b" title="两种仪器导出都能读（Element 的 .fin 请用桌面版转换）">Thermo + Agilent</span>
     <span class="b" title="沿用上游 sndjgm/Isoclock 的许可证">Apache-2.0</span>
@@ -499,12 +499,12 @@ footer .wrap{display:flex;gap:22px;flex-wrap:wrap;align-items:baseline}
     <div class="card">
       <span class="tag">零安装</span>
       <h4>单文件网页版</h4>
-      <p>一个 <code>isoclock.html</code>，<b>756 KB</b>。下载后<b>双击</b>，
+      <p>一个 <code>isoclock.html</code>，<b>{{PAGEKB}} KB</b>。下载后<b>双击</b>，
         用你现有的浏览器打开就能用。不装 Python、不装依赖、不联网 ——
         样式和图都在这个文件里面。</p>
-      <p>为此涨到 756 KB 上下是<b>故意的</b>：里面内嵌了 50 个<b>真实</b>的锡石
-        LA-ICP-MS 导出（压缩后 341 KB），所以开箱就能拿真数据跑一遍完整流程，
-        而不是只能看合成出来的假计数。一个网页 756 KB 仍然比一张手机照片小。</p>
+      <p>为此涨到 {{PAGEKB}} KB 上下是<b>故意的</b>：里面内嵌了 50 个<b>真实</b>的锡石
+        LA-ICP-MS 导出（压缩后 {{GZIPKB}} KB），所以开箱就能拿真数据跑一遍完整流程，
+        而不是只能看合成出来的假计数。一个网页 {{PAGEKB}} KB 仍然比一张手机照片小。</p>
       <p>Windows / macOS / Linux 通用，只要那台机器有浏览器。</p>
     </div>
 
@@ -554,9 +554,9 @@ footer .wrap{display:flex;gap:22px;flex-wrap:wrap;align-items:baseline}
     <p>三个平台<b>各由一台对应系统的构建机</b>产出 —— 因为 <b>PyInstaller 不能
       交叉编译</b>：Windows 的 exe 只能在 Windows 上构建，macOS 的 app 只能在
       macOS 上构建。苹果那份必须在苹果的机器上出，这是没法绕过的。</p>
-    <p>每次构建分两步把关：先跑 <b>336 项数值比对</b>（<code>webgui/test_*.js</code>，
-      <b>13 套</b>，与桌面版逐位对照），再把<b>产物本身启动一次</b>、跑页面内自检
-      （<b>41 项</b>，走的是真按钮那条路）。<b>任一步不过就不发布。</b></p>
+    <p>每次构建分两步把关：先跑 <b>{{TESTS}} 项数值比对</b>（<code>webgui/test_*.js</code>，
+      <b>{{SUITES}} 套</b>，与桌面版逐位对照），再把<b>产物本身启动一次</b>、跑页面内自检
+      （<b>{{SELFTEST}} 项</b>，走的是真按钮那条路）。<b>任一步不过就不发布。</b></p>
   </div>
 </section>
 
@@ -594,7 +594,7 @@ footer .wrap{display:flex;gap:22px;flex-wrap:wrap;align-items:baseline}
     文件名改成 <code>sample_NN.csv</code>；<b>数值一个字节都没有改</b>，
     12 行仪器元信息原样保留（那是方法信息，不是身份信息）。标样名保留原名。</p>
     <p>顺带把数字摆出来：它的标样 <b>AY-4</b> 按内置参数跑出
-    <b>157.0 ± 1.4 Ma（2σ，MSWD 0.69）</b>，与两个公开发表的 ID-TIMS 值
+    <b>{{AY4}} ± {{AY4SE}} Ma（2σ，MSWD {{AY4MSWD}}）</b>，与两个公开发表的 ID-TIMS 值
     （158.2 ± 0.4 Ma、151.9 ± 2.2 Ma）都对得上 —— 这正是
     <code>webgui/test_demo_real.js</code> 里那条判据。</p>
     <p><b>「载入示例：合成数据」</b>是另一条路：人为拼出来的计数，只用来演示版面。
@@ -718,7 +718,7 @@ footer .wrap{display:flex;gap:22px;flex-wrap:wrap;align-items:baseline}
       <tr><td>网页版统计（QC）</td><td>63 项，判据按定义另算</td><td class="yes">全部通过</td></tr>
       <tr><td>报告生成</td><td>50 项，含恶意输入转义</td><td class="yes">全部通过</td></tr>
       <tr><td colspan="2"><b>合计</b></td>
-          <td class="yes"><b>336 项（13 套）+ 41 项页面内自检</b></td></tr>
+          <td class="yes"><b>{{TESTS}} 项（{{SUITES}} 套）+ {{SELFTEST}} 项页面内自检</b></td></tr>
     </tbody>
   </table>
 
@@ -728,7 +728,7 @@ footer .wrap{display:flex;gap:22px;flex-wrap:wrap;align-items:baseline}
     <p class="t">真实数据这条待办：Thermo 侧已结清，Agilent 侧还没有</p>
     <p><b>Thermo / iCAP Qtegra 侧已经用真文件验过了。</b>
     一批 50 个真实导出（锡石 LA-ICP-MS U-Pb）全部走严格读取路径，
-    并且整条链跑到底：标样 AY-4 出 157.0 ± 1.4 Ma（2σ），与两个公开发表的
+    并且整条链跑到底：标样 AY-4 出 {{AY4}} ± {{AY4SE}} Ma（2σ），与两个公开发表的
     ID-TIMS 值相容。这批数据已内嵌进网页版作为默认示例，
     判据写在 <code>webgui/test_demo_real.js</code> 里，每次 CI 都会重跑。
     它同时把两件事变成了机器可查的：<b>脱敏没漏</b>（样品名必须全在白名单内）、
