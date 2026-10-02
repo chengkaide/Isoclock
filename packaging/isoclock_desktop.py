@@ -233,6 +233,19 @@ def _run_selftest(window):
         lines.append('js_api=%s' % (api_keys or '(空)'))
     except Exception as exc:
         lines.append('js_api=ERROR %r' % exc)
+
+    # 自检不过时，把**具体哪几项**列出来。
+    # 只报 "36/37" 是没用的 —— 那是换了平台才出现的问题，
+    # 不点名就只能靠猜（CI 上就吃过这个亏）。
+    try:
+        bad = window.evaluate_js(
+            "JSON.stringify(((window.__selftest||{}).results||[])"
+            ".filter(function(r){return !r.ok;})"
+            ".map(function(r){return r.name + ' :: ' + (r.detail||'');}))")
+        if bad and bad not in ('[]', 'null'):
+            lines.append('selftest_fail=%s' % bad)
+    except Exception as exc:
+        lines.append('selftest_fail=ERROR %r' % exc)
     try:
         with open(RESULT_FILE, 'w', encoding='utf-8') as fh:
             fh.write('\n'.join(lines) + '\n')

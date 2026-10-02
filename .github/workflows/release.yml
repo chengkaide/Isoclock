@@ -32,6 +32,11 @@ jobs:
     # 标成可失败 —— 它挂了不该连带整个发布失败，用户还可以用 Rosetta 之外的办法
     # 自行在 Intel 机器上跑同一个脚本构建。
     continue-on-error: ${{ matrix.optional }}
+    # GitHub 的日志查看器是 UTF-8，固定成 UTF-8 才不会让中文构建信息变乱码。
+    # （脚本自己也会把 stdout 的 errors 放宽，双保险 —— 本地在英文版 Windows
+    # 的控制台上跑时，那一层才是真正起作用的那道。）
+    env:
+      PYTHONIOENCODING: utf-8
     strategy:
       fail-fast: false
       matrix:
@@ -47,9 +52,6 @@ jobs:
           python-version: '3.12'
 
       - name: 安装依赖
-        env:
-          # GitHub 的日志查看器是 UTF-8；显式指定免得中文构建信息变成乱码
-          PYTHONIOENCODING: utf-8
         run: |
           python -m pip install --upgrade pip
           # pillow 不只是 make_icon.py 要：macOS 上 PyInstaller 要用它把

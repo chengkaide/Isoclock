@@ -55,6 +55,16 @@ SRC = os.path.join(HERE, 'src')
 UI = os.path.join(HERE, 'ui')
 OUT = os.path.join(HERE, 'isoclock.html')
 
+# 这个脚本会打印中文、'•' 和 '→'。英文版 Windows 的控制台是 cp1252，
+# 编不出来就抛 UnicodeEncodeError 把构建打断（CI 上真踩过）。
+# 只放宽 errors、**保留控制台自身编码** —— 强行改成 utf-8 会让中文控制台
+# 显示成乱码；这里让编不出的字符退化成 '?'，构建照常完成。
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(errors='replace')
+    except Exception:
+        pass
+
 # ---------------------------------------------------------------- 输入清单
 STYLE = ('style.css', os.path.join(UI, 'style.css'))
 
