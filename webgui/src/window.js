@@ -6,11 +6,15 @@
  *  对齐它，否则同一批数据两边给出的默认窗口不同，结果就对不上，
  *  「两个实现相互对照」也就失去意义。
  *
- *  【原样保留，不顺手修】以下几处看着别扭，但都是既有行为：
+ *  【与本移植一致，不顺手改】以下几处看着别扭，但都保持既有行为：
  *
- *   1. 决定 s0/s1 的循环里 `posi=0` / `posj=0` 每次迭代都被重置，所以
- *      **只有 starts/ends 的最后一个元素起作用**，其余迭代白跑。
- *      看上去作者本想"逐段比较"，但实际不是。改掉会改变所有既有结果。
+ *   1. 决定 s0/s1 的循环里 `posi=0` / `posj=0` 每次迭代都被重置。于是取值几乎
+ *      总是 starts[0]/ends[0]，只有"最后一个元素落在背景窗内"这一种情形才会
+ *      取到 +1 个。看上去作者本想"逐段比较"，但实际不是。
+ *      ⚠ 本移植在这一处**只加了一层前置过滤**（见 detectSignalWindow 里
+ *      minSig 那段）：把持续时间过短的穿越段当噪声尖峰剔掉，再走同样的循环。
+ *      对连续单段信号（绝大多数文件）行为与原实现逐位相同；存在噪声尖峰时，
+ *      被选中的才是真正的剥蚀信号段，而不是那个尖峰。
  *   2. 落进 except 时固定 s0=30 / s1=60。
  *   3. `bcg_s=int(b0/Timeinternal)` 在 try 之外，Timeinternal 为 0 时抛
  *      ZeroDivisionError 且不被捕获 —— 也就是程序会直接崩，不会走默认窗口。
@@ -123,33 +127,59 @@ function detectSignalWindow(cfg) {
     (i % 2 === 0 ? starts : ends).push(index[i]);
   }
 
+  /* ---- 噪声尖峰过滤（本移植的修正，见文件头第 1 条）----
+   *
+   *  激光剥蚀信号是一段持续几十秒的平台；而偶发的单点计数尖峰同样会越过阈值，
+   *  在穿越点列表里形成一对 start/end —— 宽度只有 1 个采样点（约 0.2 s）。
+   *  这类段一旦参与下面的窗口选择，就会把窗口缩到尖峰上，甚至算出 s0 > s1，
+   *  使整行比值变成 NaN（真实示例里的 sample_10/23/25/40.csv 就是这样）。
+   *
+   *  这里把持续时间短于 minSig 秒的段剔除后再选窗口。剔除后若一段不剩，
+   *  回退到原始列表 —— 保证任何输入都不会因为这条过滤而失去候选段。
+   *  连续单段信号（绝大多数文件）不受影响：本来就只有一段，长度也远超 minSig。
+   *  对照证据见 test_window.js（16 个原程序用例逐位不变）与 test_demo_real.js。
+   */
+  const minSig = (cfg.minSig === undefined) ? 1.0 : cfg.minSig;
+  let useStarts = starts, useEnds = ends;
+  if (starts.length > 1 && ends.length > 1) {
+    const fs = [], fe = [];
+    const m = Math.min(starts.length, ends.length);
+    for (let k = 0; k < m; k++) {
+      if ((ends[k] - starts[k]) * Math.abs(cfg.timeinternal) >= minSig) {
+        fs.push(starts[k]);
+        fe.push(ends[k]);
+      }
+    }
+    if (fs.length > 0) { useStarts = fs; useEnds = fe; }
+  }
+
   // ---- 定 s0 / s1（原实现的 posi=0 重置行为原样保留）----
   let s0, s1;
   try {
-    if (ends.length > 1 && starts.length > 1) {
-      for (let i = 0; i < starts.length; i++) {
+    if (useEnds.length > 1 && useStarts.length > 1) {
+      for (let i = 0; i < useStarts.length; i++) {
         const posi = 0;
-        if (starts[i] < b1 / cfg.timeinternal) {
-          if (posi + 1 >= starts.length) throw new Error('list index out of range');
-          s0 = starts[posi + 1] * Math.abs(cfg.timeinternal);
+        if (useStarts[i] < b1 / cfg.timeinternal) {
+          if (posi + 1 >= useStarts.length) throw new Error('list index out of range');
+          s0 = useStarts[posi + 1] * Math.abs(cfg.timeinternal);
         } else {
-          s0 = starts[posi] * Math.abs(cfg.timeinternal);
+          s0 = useStarts[posi] * Math.abs(cfg.timeinternal);
         }
       }
-      for (let j = 0; j < ends.length; j++) {
+      for (let j = 0; j < useEnds.length; j++) {
         const posj = 0;
-        if (ends[j] < b1 / cfg.timeinternal) {
-          if (posj + 1 >= ends.length) throw new Error('list index out of range');
-          s1 = ends[posj + 1] * Math.abs(cfg.timeinternal);
+        if (useEnds[j] < b1 / cfg.timeinternal) {
+          if (posj + 1 >= useEnds.length) throw new Error('list index out of range');
+          s1 = useEnds[posj + 1] * Math.abs(cfg.timeinternal);
         } else {
-          s1 = ends[posj] * Math.abs(cfg.timeinternal);
+          s1 = useEnds[posj] * Math.abs(cfg.timeinternal);
         }
       }
     } else {
       // ends[0] / starts[0]：空列表时 Python 抛 IndexError，这里必须同样抛
-      if (ends.length < 1 || starts.length < 1) throw new Error('list index out of range');
-      s1 = ends[0] * Math.abs(cfg.timeinternal);
-      s0 = starts[0] * Math.abs(cfg.timeinternal);
+      if (useEnds.length < 1 || useStarts.length < 1) throw new Error('list index out of range');
+      s1 = useEnds[0] * Math.abs(cfg.timeinternal);
+      s0 = useStarts[0] * Math.abs(cfg.timeinternal);
     }
   } catch (err) {
     s0 = 30;                                   // 裸 except 的兜底值

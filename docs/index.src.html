@@ -223,15 +223,15 @@ footer .wrap{display:flex;gap:22px;flex-wrap:wrap;align-items:baseline}
 
   <div class="badges">
     <!-- BADGES:BEGIN 由 docs/make_badges.py 生成；改数字请改源头并重跑 -->
-    <span class="b ok" title="14 套 webgui/test_*.js，与桌面版逐位对照；本行由脚本实跑得出">409 项数值比对全绿</span>
-    <span class="b ok" title="在产物页面里点真按钮跑（#selftest）；每次由脚本核这个数">56 项页面内自检</span>
+    <span class="b ok" title="14 套 webgui/test_*.js，与桌面版逐位对照；本行由脚本实跑得出">439 项数值比对全绿</span>
+    <span class="b ok" title="在产物页面里点真按钮跑（#selftest）；每次由脚本核这个数">62 项页面内自检</span>
     <span class="b ok" title="含浮点最后一位；由上面那批比对保证">与桌面版逐位相同</span>
-    <span class="b pu" title="isoclock.html = 846147 字节；零外链、零依赖，双击即用">单文件 826 KB · 离线</span>
-    <span class="b pu" title="guide.html = 481973 字节，56 张内联图">图解教程 471 KB</span>
+    <span class="b pu" title="isoclock.html = 876215 字节；零外链、零依赖，双击即用">单文件 856 KB · 离线</span>
+    <span class="b pu" title="guide.html = 482008 字节，56 张内联图">图解教程 471 KB</span>
     <span class="b" title="同一个页面装进系统自带的 WebView；Windows 出 exe，macOS 出 app">Windows / macOS 桌面程序</span>
     <span class="b" title="两种仪器导出都能读（Element 的 .fin 请用桌面版转换）">Thermo + Agilent</span>
     <span class="b" title="沿用上游 sndjgm/Isoclock 的许可证">Apache-2.0</span>
-    <span class="b" title="dist/IsoclockWeb.exe = 10244243 字节">exe 单文件 9.8 MB</span>
+    <span class="b" title="dist/IsoclockWeb.exe = 10271507 字节">exe 单文件 9.8 MB</span>
     <!-- BADGES:END -->
   </div>
 
@@ -382,34 +382,32 @@ footer .wrap{display:flex;gap:22px;flex-wrap:wrap;align-items:baseline}
     如果你要引用方法或结果，请引用原作者与他的软件。</p>
   </div>
 
-  <h3>A. 对上游 Python 程序的工程修复</h3>
+  <h3>A. Python 桌面程序的工程整理</h3>
   <p>这些改动已经在上游之上提交，每一条都做了逐位/逐字节对照，
-  唯一目的是让它装得上、跑得动、出错时说得清——<b>输出数值一个都没动</b>。</p>
+  目的是让安装、运行与排错更顺——<b>输出数值一个都没动</b>。</p>
 
   <table>
-    <thead><tr><th>改动</th><th>为什么</th></tr></thead>
+    <thead><tr><th>改动</th><th>结果</th></tr></thead>
     <tbody>
       <tr><td>5 个重复的还原函数合并成一个共享骨架（净减约 500 行）</td>
           <td>行为逐位相同：6 样品 × 5 路径 × 23 列 = <b>690 个输出格全部一致</b></td></tr>
       <tr><td><code>loaddata</code> 只按 <code>float</code> 读取需要的 8 列</td>
-          <td>39.0 → 9.5 ms/样品（<b>4.1×</b>）。原实现先把每一列都当文本解析一遍</td></tr>
-      <tr><td><code>requirements.txt</code> 修正</td>
-          <td>原文件列了 5 个 PyPI 上根本不存在的包（<code>tkinter</code>、<code>csv</code> 等标准库成员），
-              <b>任何人首次安装都会失败</b></td></tr>
-      <tr><td><code>LISENSE</code> → <code>LICENSE</code>，补全 Apache 2.0 全文</td>
-          <td>文件名拼错导致 GitHub 与 Zenodo 识别不出许可证</td></tr>
-      <tr><td>转换脚本里的 <code>eval(seq.pop())</code> 换成 <code>int(float(...))</code></td>
-          <td>把取自 CSV 文件名的字符串拿去执行，是任意代码执行漏洞</td></tr>
+          <td>39.0 → 9.5 ms/样品（<b>4.1×</b>）</td></tr>
+      <tr><td><code>requirements.txt</code> 收敛到真正需要的包</td>
+          <td>全新环境下 <code>pip install -r</code> 一次装通</td></tr>
+      <tr><td>许可文件补全为 Apache 2.0 全文</td>
+          <td>GitHub 与 Zenodo 能正常识别许可证</td></tr>
+      <tr><td>转换脚本的输出名改用字符串处理生成</td>
+          <td>不再把文件名里的字符串当作代码执行</td></tr>
       <tr><td><code>except</code> 块补上 traceback；接管 Tk 回调异常（27 + 1 处）</td>
-          <td>错误原本会静默消失，打包成 <code>.exe</code> 后尤其明显</td></tr>
+          <td>运行中的失败可见，打包成 <code>.exe</code> 后同样可见</td></tr>
       <tr><td>删除 10 个未使用的 import</td>
-          <td>为了没用的东西拉进了 <code>pyDes</code>、<code>openpyxl</code>、<code>base64</code></td></tr>
+          <td>不再为无用代码拉入 <code>pyDes</code>、<code>openpyxl</code>、<code>base64</code></td></tr>
       <tr><td>重写 README + 新增 <code>CITATION.cff</code></td>
-          <td>原快速开始里有三条走不通的步骤（命令格式错、文件名不存在、包里不存在），
-              并补上说明书里有、README 里没有的关键前提</td></tr>
+          <td>快速开始按当前仓库与说明书对齐，并补上说明书里有、README 里没有的关键前提</td></tr>
     </tbody>
   </table>
-  <p><small><code>Isoclock2.0.py</code> 从 4099 行降到 <b>3602 行</b>（−12.1%）。</small></p>
+  <p><small><code>Isoclock2.0.py</code> 从 4099 行降到 <b>3676 行</b>（−10.3%）。</small></p>
 
   <h3>B. 新增：一个纯浏览器的单文件网页版</h3>
   <p>把数值内核移植成 JavaScript，打包成一个 HTML 文件。没有后端、没有依赖、
@@ -559,17 +557,17 @@ footer .wrap{display:flex;gap:22px;flex-wrap:wrap;align-items:baseline}
 
   <figure>
     <a href="assets/ui-isoplotr.png" target="_blank" rel="noopener" title="点开看原图">
-      <img src="assets/ui-isoplotr.png" alt="网页版的「IsoplotR 谐和图」标签页：样品下拉选的是「全部样品（不含标样，29 个可用点）」、拟合选 discordia 交点，图上是 29 个样品测点的误差椭圆与拟合出的不一致线，图上方印着下交点年龄与 MSWD，消息条写明另有 17 行是标样、不参与样品统计">
+      <img src="assets/ui-isoplotr.png" alt="网页版的「IsoplotR 谐和图」标签页：样品下拉选的是「全部样品（不含标样，32 个可用点）」、拟合选 discordia 交点，图上是 32 个样品测点的误差椭圆与拟合出的不一致线，图上方印着下交点年龄与 MSWD，消息条写明另有 17 行是标样、不参与样品统计">
     </a>
     <figcaption>IsoplotR 那一页的<b>默认视图</b>（<b>点图看原图</b>）：选图型、选样品、选拟合方式，
     点一下按钮才去取 R 运行时并作图。图是 <b>IsoplotR 自己画的</b>，不是本软件仿的 ——
     谐和线带年龄刻度、数据点连误差椭圆、拟合结果同时印在图上和下面的表里。
-    这一张是内置示例的<b>样品</b>：29 个测点（32 个样品里 3 个比值算不出来），拟合
-    discordia 交点得到<b>下交点 166.08 ± 1.73 Ma、MSWD 0.962</b>（图上印的是 95% 置信区间；
-    表里的 <code>1σ</code> 是 0.883 —— 两个数差一倍，这就是本页反复提醒的三联口径）。
-    消息条同时报了三件事：3 行缺值被剔、<b>另有 17 行是标样（AY-4、SRM 612）不参与
-    样品统计</b>、以及"想画标样请到下面那个分组里单独选它"。<br>
-    <small>作为对照：同一批点若改选"谐和年龄"，出来的是 171.25 Ma 而 <b>MSWD 620</b>
+    这一张是内置示例的<b>样品</b>：32 个测点（32 个样品各 1 点，全部可用），拟合
+    discordia 交点得到<b>下交点 165.91 ± 1.59 Ma、MSWD 1.037</b>（图上印的是 95% 置信区间；
+    表里的 <code>1σ</code> 是 0.813 —— 两个数差一倍，这就是本页反复提醒的三联口径）。
+    消息条同时报了两件事：<b>另有 17 行是标样（AY-4、SRM 612）不参与样品统计</b>、
+    以及"想画标样请到下面那个分组里单独选它"。<br>
+    <small>作为对照：同一批点若改选"谐和年龄"，出来的是 170.83 Ma 而 <b>MSWD 604</b>
     —— 这就说明这批锡石本来就不谐和（普通铅高），该看的是交点年龄而不是谐和年龄。
     这些数就是这次实拍的结果，出处是 <code>webgui/screenshots/</code> 里那张图本身；
     重拍一次它们就会换一组，所以别把这一段当成"本软件算出来的定值"。</small>
@@ -578,21 +576,56 @@ footer .wrap{display:flex;gap:22px;flex-wrap:wrap;align-items:baseline}
 
   <figure>
     <a href="assets/ui-isoplotr-std.png" target="_blank" rel="noopener" title="点开看原图">
-      <img src="assets/ui-isoplotr-std.png" alt="网页版的「IsoplotR 谐和图」标签页，样品下拉选的是 AY-4（标样 · 12 / 15 点可用）、拟合选谐和年龄：图上 12 个近谐和点的误差椭圆紧贴谐和线，图下方汇总表列出谐和年龄、三种口径的误差与 MSWD，再下面是标样对照一行和与本软件加权平均的交叉验证">
+      <img src="assets/ui-isoplotr-std.png" alt="网页版的「IsoplotR 谐和图」标签页，样品下拉选的是 AY-4（标样 · 13 / 15 点可用）、拟合选谐和年龄：图上 13 个近谐和点的误差椭圆紧贴谐和线，图下方汇总表列出谐和年龄、三种口径的误差与 MSWD，再下面是标样对照一行和与本软件加权平均的交叉验证">
     </a>
-    <figcaption>换成<b>标样视图</b>（下拉最后那个分组里的 AY-4）：15 个文件里 12 个可用点
-    （1 行比值缺失、2 行 ρ 写出去正好是 ±1，都在消息里点了名），贴着谐和线，
-    谐和年龄 <b>157.29 ± 1.31 Ma、MSWD 0.024</b>（图上并列印的是三个口径：
-    0.024 谐和 / 0.37 等价 / 0.36 合并）。这张图要看的不是"年龄是多少"，
-    而是下面这两行对照：<b>①</b> 与②里填的标样真值 <b>158.2 Ma</b> 相差 <b>0.91 Ma</b>
+    <figcaption>换成<b>标样视图</b>（下拉最后那个分组里的 AY-4）：15 个文件里 13 个可用点
+    （2 行 ρ 写出去正好是 ±1，都在消息里点了名），贴着谐和线，
+    谐和年龄 <b>157.36 ± 1.26 Ma、MSWD 0.021</b>（图上并列印的是三个口径：
+    0.021 谐和 / 0.39 等价 / 0.38 合并）。这张图要看的不是"年龄是多少"，
+    而是下面这两行对照：<b>①</b> 与②里填的标样真值 <b>158.2 Ma</b> 相差 <b>0.84 Ma</b>
     —— 标样对得上，说明这一批的分馏校正没问题；差得多就该回去查②里的参数与数据，
     而不是去改样品年龄。<b>②</b> 与本软件自己的加权平均
-    <b>157.04 ± 1.43 Ma（2σ，MSWD 0.69）</b>相差 <b>0.25 Ma</b> ——
+    <b>157.06 ± 1.39 Ma（2σ，MSWD 0.70）</b>相差 <b>0.30 Ma</b> ——
     两条实现完全独立的路径，判据写在 <code>webgui/test_isoplotr.js</code> 的 §G 里，
     每次构建都会重跑。<br>
     <small>为什么标样要单独摆出来：它是 <b>QC 样</b>，年龄要跟真值比；而"样品年龄"
     是上面那张图的事。把标样混进样品里拟合，数值上完全正常（照样出一串漂亮的
     年龄与 MSWD），错的是"这些点是什么"—— 这正是这一版专门把两者在下拉里分开的原因。</small>
+    </figcaption>
+  </figure>
+
+  <h4>「更多选项」：逐项对齐 IsoplotR 原版</h4>
+  <p>四个主下拉之外，这一页还收着一组<b>默认折叠</b>的「更多选项」面板。里面的控件是
+  <b>逐项照抄 IsoplotR 自己的图形界面</b>（<code>pvermees/IsoplotRgui</code> 的
+  <code>inst/www/options/concordia.html</code>）的：锚定 <code>anchor</code>
+  （含"强制交点落在指定年龄"）、不谐和度过滤 <code>cutoff.disc</code>
+  （判据 5 档 + 上下限）、年龄与坐标范围 <code>tlim / xlim / ylim</code>、
+  谐和线刻度 <code>ticks</code>、有效数字 <code>sigdig</code>、
+  误差椭圆样式与点号、以及计入衰变常数误差 <code>exterr</code>。
+  参数名、取值、默认值都照抄，不自己发明。两条规矩值得写下来：
+
+  <b>① 留空就是不传那个参数</b> —— 让它用 IsoplotR 自己的默认值，而不是另编一个。
+  所以什么都不碰时，行为与没有这个面板时<b>逐字相同</b>（这条有断言钉着）。
+  <b>② 界面上来的东西一律不当代码执行</b> —— 只有过校验的数字、受控布尔和
+  正则校验过的 <code>#RRGGBB</code> 颜色能进 R 脚本，别的字符串一概丢掉；
+  该填数字的地方填了非数字会直接报错，不会悄悄退回某一档。
+
+  每次作图之后，<b>真正传进 R 的那串参数会原样印在结果下面</b>（并进日志），
+  这样一张图配一行参数，别人能照着复现。上面两条做不到的项也写在面板里，
+  原因见文末「局限」那一条。</p>
+
+  <figure class="tall">
+    <a href="assets/ui-isoplotr-more.png" target="_blank" rel="noopener" title="点开看原图">
+      <img src="assets/ui-isoplotr-more.png" alt="网页版「IsoplotR 谐和图」标签页的「更多选项」面板展开：锚定、不谐和度过滤、年龄与坐标范围、谐和线刻度、有效数字、误差椭圆填色与描边等控件；下面图上谐和线带 150–300 的年龄刻度、误差椭圆是自定义的蓝色；结果下面印着本次传给 IsoplotR 的参数串">
+    </a>
+    <figcaption>面板展开的样子（这一张里设了谐和线刻度 <code>ticks=100,150,200,250,300</code>、
+    勾了<b>计入衰变常数误差</b>、并把误差椭圆改成自定义的蓝色与 0.35 透明度）。
+    注意<b>联动</b>：因为锚定选了"不锚定"，所以「锚定年龄」那一格根本没出现；
+    不谐和度过滤没开，判据与上下限两格也收着；描边色没勾"自定义"就同样不显示 ——
+    <b>看不见的控件不会被读进参数</b>。用不到的先收起来（而不是画面上摆一堆灰的），
+    与前面几个标签页的做法一致。<br>
+    <small>图下方那行是这次真正传给 IsoplotR 的实参表，印出来只为了一件事：
+    结果要能复现，光有图不够。</small>
     </figcaption>
   </figure>
 </section>
@@ -700,9 +733,13 @@ footer .wrap{display:flex;gap:22px;flex-wrap:wrap;align-items:baseline}
     <p><b>「载入示例：真实锡石数据」</b>是 {{DEMOFILES}} 个<b>真实</b>的 Thermo iCAP Qtegra 导出
     （锡石 LA-ICP-MS U-Pb，<b>一次连续会话</b>：首尾各夹着一个标样 SRM 612）。
     它不是挑出来的"干净"数据：有信号很弱的点（最弱的净 ²⁰⁶Pb 只有 {{DEMOMIN}} cps，
-    不到本批中位数一半的有 {{DEMOWEAK}} 个）、有 {{DEMONAN}} 个文件的积分窗口压根没定出来
-    （比值列整行 NaN）—— 这些都会在日志里点名说清，质量报告会把它们剔除而不是
-    拿去污染平均。所以你可以拿它当一次真实的练习：<b>看程序怎么处理一批不完美的数据</b>。
+    不到本批中位数一半的有 {{DEMOWEAK}} 个）—— 这些都会在日志里点名说清，
+    质量报告会把它们剔除而不是拿去污染平均。所以你可以拿它当一次真实的练习：
+    <b>看程序怎么处理一批不完美的数据</b>。
+    这批里还有 4 个文件的信号段前面挂着一个<b>单点噪声尖峰</b>：只按阈值穿越定
+    积分窗口时，会把这个尖峰当成信号段，窗口塌缩成零点几秒、整行比值算不出来。
+    网页版在选窗口前先剔掉持续时间过短的段，这 4 个文件于是都能算出结果
+    （<code>webgui/src/window.js</code>，对照用例见 <code>webgui/test_window.js</code>）。
     脱敏处理只有三件事：样品代号重编号成 <code>S-01…</code>、每个文件第 1 行的采集时间归零、
     文件名改成 <code>sample_NN.csv</code>；<b>数值一个字节都没有改</b>，
     12 行仪器元信息原样保留（那是方法信息，不是身份信息）。标样名保留原名。
@@ -790,7 +827,7 @@ footer .wrap{display:flex;gap:22px;flex-wrap:wrap;align-items:baseline}
   它以<b>平方和</b>并进相对误差（<code>sqrt((比值2s/比值)² + Ɛ²)</code>再乘到年龄误差上），
   <b>不改变年龄值</b>。</p>
   <div class="callout warn">
-    <p class="t">三处口径不齐（原实现如此，这里照抄但说明）</p>
+    <p class="t">三处口径并存（原实现如此，照抄并说明）</p>
     <p>① 内部相对误差用的是比值的 <b>2s（2σ）</b>，而 Ɛ 直接与它平方相加——严格说混了置信水平；
     ② ²⁰⁷Pb/²⁰⁶Pb 年龄的误差<b>不含</b> Ɛ，同一行四个年龄口径不一致；
     ③ <b>把 Ɛ 调大会让 MSWD 变小</b>，所以不能用它去"改善"一致性。</p>
@@ -854,12 +891,14 @@ footer .wrap{display:flex;gap:22px;flex-wrap:wrap;align-items:baseline}
   </div>
 
   <ul>
-    <li><b>三项科学逻辑问题</b>（改了会变数值，所以一律没动，只写进 Known issues）：
+    <li><b>三项数值行为</b>——会改变数值输出，所以一律按原样保留，只标注适用范围
+      （见 README 的 <code>Notes for users</code>）：
       <ul>
-        <li><code>Age76Pb</code> 固定的 10 次迭代，会让 <b>1.5–2.2 Ga</b> 区间偏高最多 <b>+34.9 Ma</b>；
-          比值恰在起点附近时甚至会返回 0 或负年龄。</li>
-        <li><code>PbCorrS == 3</code> 这条路径存在<b>除零</b>。</li>
-        <li>Hg 对质量 204 的校正<b>恒为 0</b>。</li>
+        <li><code>Age76Pb</code> 固定的 10 次迭代，在 <b>1.5–2.2 Ga</b> 区间与收敛解相差最多
+          <b>+34.9 Ma</b>；比值恰在起点附近时甚至会返回 0 或负年龄。</li>
+        <li><code>PbCorrS == 3</code> 这条路径在 204 通道净计数为零时无法继续
+          （网页版对该行显式置 NaN，并在日志里报出行号）。</li>
+        <li>Hg 对质量 204 的校正未纳入（该项结果恒为 0）。</li>
       </ul>
     </li>
     <li><b>网页版把 <code>Age76Pb</code> 做成了可切换的收敛修正</b>，默认<b>勾上</b>
@@ -892,6 +931,14 @@ footer .wrap{display:flex;gap:22px;flex-wrap:wrap;align-items:baseline}
       所以"只选某个样品"在图上就是一个点，拟合年龄没有意义 —— 要出年龄就选
       「全部样品」。这条是领域口径，不是界面细节：拿标样当样品拟合出来的数
       看着完全正常，只有知道"这些点是什么"的人能看出不对。</li>
+    <li><b>跟 IsoplotR 原版对齐时，有两项如实缺着。</b>「更多选项」面板是逐项照抄
+      <code>pvermees/IsoplotRgui</code> 的 concordia 表单的，但有两项这一页做不到，
+      所以写在面板里而不是悄悄省掉：<b>U–Th–Pb 图（<code>type=3</code>）</b>只对
+      IsoplotR 的 7/8 号数据格式开放（它要 ²⁰⁸Pb/²³²Th 那一列，而这里的年龄表是
+      5 列 U–Pb）；<b>不谐和度过滤的第二档</b>（按普通铅校正<b>后</b>的比值过滤）
+      要求数据格式 ≥4（得有逐点的普通铅校正量）；<b>椭圆配色的彩虹/热力/viridis
+      那几档</b>是给"按某个变量给点上色"（<code>levels</code>）用的，
+      这里的表没有这一列。要做就得先决定按什么上色。</li>
   </ul>
 
   <h3>已知的上游问题（本分支未动）</h3>

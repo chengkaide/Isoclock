@@ -335,6 +335,47 @@ footer.foot .grow { flex: 1 1 auto; }
 .iso-bar button.go { border-color: var(--accent); color: var(--accent); font-weight: 600; }
 .iso-bar button.go:hover:not(:disabled) { background: var(--accent); color: #fff; }
 .iso-bar button:disabled { color: #b9c6d4; border-color: #e6ebef; cursor: not-allowed; }
+
+/*  「更多选项」面板。主工具条一个字没动 —— 与原版一致的参数全收在这里，
+    默认是收起来的，不点开就还是原来那一屏。 */
+.iso-more {
+  margin: 10px 0 0; border: 1px solid var(--line); border-radius: 8px;
+  background: #fbfcfd;
+}
+.iso-more > summary {
+  padding: 8px 12px; font-size: 12.5px; color: var(--ink-2);
+  cursor: pointer; user-select: none;
+}
+.iso-more[open] > summary { border-bottom: 1px solid var(--line); }
+.iso-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 8px 18px; padding: 12px;
+}
+.iso-grid .fld {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  font-size: 12.5px; color: var(--ink-2);
+}
+/*  联动隐藏：用类而不是 hidden 属性 —— 上面的 display:flex 会盖掉
+    [hidden] 的 display:none（作者样式优先于 UA 样式），这是踩过的坑。 */
+.iso-grid .fld.off { display: none; }
+.iso-grid .fld > span:first-child { flex: 0 0 auto; }
+.iso-grid .fld .pair { display: flex; gap: 4px; flex: 1 1 auto; min-width: 0; }
+.iso-grid .fld select,
+.iso-grid .fld input[type="text"] {
+  flex: 1 1 auto; min-width: 0; font: inherit; font-size: 12.5px; padding: 3px 6px;
+  border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--ink);
+}
+.iso-grid .fld .pair input { width: 100%; min-width: 0; }
+.iso-grid .fld input[type="color"] {
+  flex: 0 0 34px; width: 34px; height: 24px; padding: 0;
+  border: 1px solid var(--line); border-radius: 6px; background: #fff;
+}
+.iso-grid .fld.chk { justify-content: flex-start; }
+.iso-more-note {
+  margin: 0; padding: 0 12px 12px; font-size: 11.5px;
+  color: var(--ink-3); line-height: 1.7;
+}
+.iso-more-note b { color: var(--ink-2); }
 .iso-msg {
   margin: 10px 0 0; padding: 8px 10px; border-radius: 8px;
   font-size: 12.5px; line-height: 1.65; background: var(--accent-2); color: var(--ink-2);
@@ -357,3 +398,9 @@ table.iso-sum td.note { color: var(--ink-3); font-size: 11.5px; }
 table.iso-sum tr.head td { font-weight: 600; color: var(--ink-2); border-bottom-color: var(--line); }
 .iso-notes { margin: 10px 0 0; font-size: 12px; color: var(--ink-2); line-height: 1.7; }
 .iso-notes ul { margin: 4px 0 0; padding-left: 18px; }
+/*  本次真正传进 R 的参数：便于复现，所以用等宽字、不当成正文。 */
+.iso-notes p.iso-args { margin: 0 0 8px; font-size: 11.5px; color: var(--ink-3); }
+.iso-notes p.iso-args code {
+  font-family: var(--mono); font-size: 11.5px;
+  background: #eef2f6; padding: 1px 5px; border-radius: 4px; color: var(--ink-2);
+}

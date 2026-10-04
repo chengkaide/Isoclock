@@ -41,7 +41,9 @@
     </div>
     <p class="hint">「真实锡石」是 <b><span id="demo-n">一批</span>真实的 iCAP Qtegra 导出</b>
       （锡石 LA-ICP-MS U-Pb，YS 方法对比那批）—— 样品代号已重编号、采集时间已归零，
-      <b>数值一个字节都没改</b>。里面有失败点、弱信号点和整行 NaN 的点，那是真数据的常态。
+      <b>数值一个字节都没改</b>。里面有失败点、弱信号点，也有少数几格 NaN —— 全落在
+      <b>²⁰⁸Pb/²³²Th</b> 那一族列上（²³²Th 通道太弱时那个比值算不出来，同一行其余列照常），
+      那是真数据的常态。
       <br>「合成数据」是人为拼的计数，只用来跑通流程、看版面，算出的年龄没有地质意义。</p>
     <p class="hint">文件顺序即处理顺序（原桌面版用 <code>os.listdir</code>，不保证稳定）。</p>
 
@@ -145,7 +147,7 @@
       把 Ɛ 改大改小，年龄一个数都不变，所有 <code>±</code> 跟着变大变小。
       只有 <b>rho</b>（相关系数）列也跟着动，因为它的公式里也用了 Ɛ。<br><br>
 
-      <b>三条必须知道的口径问题</b>：<br>
+      <b>三条需要注意的口径</b>：<br>
       ① 内部相对误差用的是表里的 <code>2s</code>，也就是 <b>2σ</b>，而程序把 Ɛ 直接与它
       平方相加 —— 相当于把 Ɛ 当成 2σ 同量级的量。你没量过 Ɛ 是 1σ 还是 2σ 的话，
       这里其实是混着用的，报出去的不确定度到底是几 σ 要自己心里有数。<br>
@@ -249,7 +251,7 @@
     <button data-tab="log">日志</button>
     <span class="spacer"></span>
     <label style="font-size:12px;color:var(--ink-2);white-space:nowrap"
-      title="导出的年龄表里，把沿自原实现的列名笔误改成正确写法：232Pb_232Th → 208Pb_232Th；以及四条校正路径各自那个末位缺 s 的 …Corrected isotop → …Corrected isotopes。默认关闭，保证与桌面版输出逐字节一致。">
+      title="导出的年龄表里，把沿用原程序的列名写法改成规范写法：232Pb_232Th → 208Pb_232Th；以及四条校正路径各自那个末尾少一个 s 的 …Corrected isotop → …Corrected isotopes。默认关闭，保证与桌面版输出逐字节一致。">
       <input type="checkbox" id="p-fixnames"> 修正列名笔误</label>
     <button class="act" id="btn-exp-all" disabled>result_all.csv</button>
     <button class="act" id="btn-exp-cps" disabled>Mean_Cps.csv</button>
@@ -290,6 +292,97 @@
         <button class="go" id="btn-iso-run" disabled>加载 IsoplotR 并作图</button>
         <button id="btn-iso-svg" disabled>另存 SVG</button>
       </div>
+      <!--  更多选项：逐项对应 IsoplotR 自己的图形界面（pvermees/IsoplotRgui 的
+            options/concordia.html）。规矩是「留空 = 不传 = 用它的默认值」，
+            所以这里所有输入框都不预填数字（sigdig 那格的 3 是本软件既有的默认，
+            与 IsoplotR 自己的 2 不同，格子里写明了）。见 isoplotr.js 文件头 ⑭。 -->
+      <details class="iso-more" id="iso-more">
+        <summary>更多选项 —— 逐项对应 IsoplotR 原版；留空即用它的默认值</summary>
+        <div class="iso-grid">
+          <label class="fld" title="anchor：只有拟合选 discordia（2/3/4）时才有效 —— 原版 GUI 也只在那一档显示它。选「强制交点落在指定年龄」时，右边那格要填年龄。">
+            <span>锚定 anchor</span>
+            <select id="iso-anchor"></select>
+          </label>
+          <label class="fld off" id="iso-anchor-age-wrap" title="anchor=c(2,年龄)：把交点钉在这个年龄上，再拟合另一头。">
+            <span>锚定年龄 (Ma)</span>
+            <input type="text" id="iso-anchor-age" placeholder="如 260">
+          </label>
+          <label class="fld" title="cutoff.disc：按不谐和度把点滤掉再拟合。原版第二档「按校正后的比值过滤」要求数据格式 ≥4（得有逐点的普通铅校正量），我们的年龄表是 5 列 U-Pb（format=1），所以这里只有两档。">
+            <span>不谐和度过滤</span>
+            <select id="iso-disc"></select>
+          </label>
+          <label class="fld off" id="iso-disc-opt-wrap" title="discfilter 的 option：不谐和度用什么量来度量。五档与原版一字不差。">
+            <span>过滤判据</span>
+            <select id="iso-disc-opt"></select>
+          </label>
+          <label class="fld off" id="iso-disc-cut-wrap" title="discfilter 的 cutoff。两格都留空 = 用原版按判据分的那套默认上下限（如 r 档是 -5~15%）；只填一格不生效。">
+            <span>过滤下限 / 上限</span>
+            <span class="pair">
+              <input type="text" id="iso-disc-min" placeholder="默认">
+              <input type="text" id="iso-disc-max" placeholder="默认">
+            </span>
+          </label>
+          <label class="fld" title="tlim：只画这一段年龄的谐和线，也决定纵轴范围。两格都填才生效。">
+            <span>谐和线年龄范围 (Ma)</span>
+            <span class="pair">
+              <input type="text" id="iso-tlim-min" placeholder="min">
+              <input type="text" id="iso-tlim-max" placeholder="max">
+            </span>
+          </label>
+          <label class="fld" title="xlim：横轴范围。Wetherill 图的横轴是 ²⁰⁷Pb/²³⁵U，Tera-Wasserburg 图是 ²³⁸U/²⁰⁶Pb。">
+            <span>横轴范围</span>
+            <span class="pair">
+              <input type="text" id="iso-xlim-min" placeholder="min">
+              <input type="text" id="iso-xlim-max" placeholder="max">
+            </span>
+          </label>
+          <label class="fld" title="ylim：纵轴范围。Wetherill 图的纵轴是 ²⁰⁶Pb/²³⁸U。">
+            <span>纵轴范围</span>
+            <span class="pair">
+              <input type="text" id="iso-ylim-min" placeholder="min">
+              <input type="text" id="iso-ylim-max" placeholder="max">
+            </span>
+          </label>
+          <label class="fld" title="ticks：谐和线上的年龄刻度。填一个数 = 放几条；填一串年龄（逗号分隔）= 就按你给的位置放。留空 = 原版默认的 5 条。">
+            <span>谐和线刻度 ticks</span>
+            <input type="text" id="iso-ticks" placeholder="5 或 249,250,251">
+          </label>
+          <label class="fld" title="sigdig：图上印的年龄保留几位有效数字。本软件默认 3（IsoplotR 自己的默认是 2）—— 只影响图上那个数，不影响下面的结果表。">
+            <span>有效数字 sigdig</span>
+            <input type="text" id="iso-sigdig" placeholder="3（原版默认 2）">
+          </label>
+          <label class="fld chk" title="exterr：把衰变常数的不确定度也算进去，误差椭圆的形状会跟着变。原版是勾选框，默认不勾。">
+            <input type="checkbox" id="iso-exterr"><span>计入衰变常数误差 (exterr)</span>
+          </label>
+          <label class="fld chk" title="show.numbers：给每个点标上序号，点多的时候用来对表。">
+            <input type="checkbox" id="iso-shownumbers"><span>显示点号</span>
+          </label>
+          <label class="fld chk" title="不勾就用 IsoplotR 自己的默认填色；勾上才把下面两个值传给它。">
+            <input type="checkbox" id="iso-fill-on"><span>自定义椭圆填色</span>
+          </label>
+          <label class="fld off" id="iso-fill-wrap" title="ellipse.fill：椭圆的填充色。透明度留空时用原版默认的 0.5。">
+            <span>填色 / 透明度</span>
+            <span class="pair">
+              <input type="color" id="iso-fill" value="#00ff00">
+              <input type="text" id="iso-fill-alpha" placeholder="0.5">
+            </span>
+          </label>
+          <label class="fld chk" title="不勾就用原版默认的黑色描边。">
+            <input type="checkbox" id="iso-stroke-on"><span>自定义椭圆描边</span>
+          </label>
+          <label class="fld off" id="iso-stroke-wrap" title="ellipse.stroke：椭圆描边的颜色。">
+            <span>描边色</span>
+            <input type="color" id="iso-stroke" value="#000000">
+          </label>
+        </div>
+        <p class="iso-more-note">
+          原版能选、这一页**做不到**的两项，写在这里而不是悄悄省掉：
+          <b>U–Th–Pb 图（type=3）</b>只对 IsoplotR 的 7/8 号数据格式开放，它要
+          ²⁰⁸Pb/²³²Th 那一列，而我们的年龄表是 5 列 U–Pb（format=1）；
+          <b>椭圆配色的彩虹/热力/viridis 那几档</b>是给"按某个变量给点上色"
+          （levels）用的，我们的表里没有这一列 —— 要做就得先决定按什么上色。
+        </p>
+      </details>
       <div class="iso-msg" id="iso-msg">
         这一页把当前结果交给 <b>IsoplotR</b>（Pieter Vermeesch 的 R 语言年代学工具箱）
         画谐和图，并可选地拟合谐和年龄或 discordia 交点年龄。
@@ -337,7 +430,7 @@
 
     <h3>结果可信到什么程度</h3>
     <p>同一批数据下，网页版的输出与桌面版<b>逐位相同</b>（bit-for-bit，包括浮点最后一位）。
-      这不是估计，是跑出来的：<b data-count="tests">409 项</b> Node 端自动比对
+      这不是估计，是跑出来的：<b data-count="tests">439 项</b> Node 端自动比对
       （<b data-count="suites">14 套</b> <code>webgui/test_*.js</code>：数值内核、
       Thermo/Agilent 解析、积分窗口、两个 CSV 的<b>逐字节</b>输出、
       年龄层 51 列 × 19 组参数、<b data-count="suite:test_agilent_e2e.js">20 项</b> Agilent 端到端、
@@ -345,8 +438,8 @@
       <b data-count="suite:test_qc.js">63 项</b> 质量统计、
       <b data-count="suite:test_report.js">50 项</b> 报告组装、
       <b data-count="suite:test_demo_real.js">22 项</b> 内置真实示例数据、
-      <b data-count="suite:test_isoplotr.js">73 项</b> IsoplotR 接入层）
-      ＋<b data-count="selftest">56 项</b>本页面内自检（走的是真按钮那条路）。<br>
+      <b data-count="suite:test_isoplotr.js">103 项</b> IsoplotR 接入层）
+      ＋<b data-count="selftest">62 项</b>本页面内自检（走的是真按钮那条路）。<br>
       上面这些数不是手写的：<code>docs/make_badges.py</code> 每次都会把测试真跑一遍，
       <b>连逐套的项数也一起核</b>，对不上就让 CI 红。真正手写的是这一句解释。</p>
       唯一一处曾经对不上的地方是 <code>exp</code> / <code>log</code>：宿主 C 运行时与浏览器的
@@ -354,26 +447,29 @@
       网页版因此自己实现了<b>正确舍入</b>的 exp/log（<code>fp.js</code>），
       顺带让结果不再依赖运行平台——同一批数据在任何浏览器、任何系统上都是同一串数字。</p>
 
-    <h3>保留的原实现缺陷（没有偷偷修）</h3>
+    <h3>默认与原程序逐位一致的行为</h3>
     <ul>
-      <li><b><code>Age76Pb</code> 的割线迭代写错了</b>：循环条件里的 <code>Rap</code> 从未更新，
-        收敛判据一旦为真就永远为真，于是实际是<b>固定迭代 10 次</b>。在 1.5–2.2 Ga 区间会
-        造成最大约 <b>+35 Ma</b> 的偏高；比值恰在起点附近时甚至直接返回 0 岁。
+      <li><b><code>Age76Pb</code> 为固定迭代 10 次</b>（循环条件里的 <code>Rap</code>
+        在循环体内不更新，收敛判据一旦为真就不再变化）。在 1.5–2.2 Ga 区间与收敛解
+        相差最大约 <b>35 Ma</b>；比值恰在迭代起点附近时返回 0 岁。
+        <b>²⁰⁶Pb/²³⁸U 与 ²⁰⁷Pb/²³⁵U 年龄有闭式解、不受影响</b>，可用来交叉核对。
         <b>默认已提供收敛修正</b>（左侧⑤勾选框），取消勾选则逐位回到桌面版数值。</li>
-      <li><b>微量元素系数会静默归零</b>：所选 NIST 标样在整批数据里出现 0 次或恰好 1 次时，
-        原代码内部抛异常并被 <code>except</code> 吞掉，系数直接变 0。已如实复现。</li>
-      <li><b>204Pb 路径会除零</b>：某些数据下 <code>204Pb</code> 计数差为 0，原代码不判。
-        网页版在界面上把这种行标成 <span style="color:#b3261e">NaN</span> 并给出提示，
-        数值本身仍与原实现一致。</li>
-      <li><b>Hg 校正恒为零</b>：原实现里 202Hg 通道参与了流程但结果始终是 0。</li>
-      <li><b>拼写笔误</b>：输出列名 <code>232Pb_232Th</code>，以及末位缺 <code>s</code> 的
+      <li><b>微量元素系数在个别情形下为 0</b>：所选 NIST 标样在整批数据里出现 0 次或
+        恰好 1 次时，该情形下系数取 0（对应的分支不产生结果）。已如实复现，
+        界面会给出提示。</li>
+      <li><b>204Pb 路径遇到分母为零</b>：某些数据下 <code>204Pb</code> 计数差为 0。
+        网页版把这种行标成 <span style="color:#b3261e">NaN</span> 并在日志里报出行数，
+        其余列仍与原实现逐位一致。</li>
+      <li><b>204 通道不含 Hg 干扰扣除</b>：该项在流程里的结果恒为 0。是否需要先扣 Hg，
+        取决于仪器软件如何导出数据，请核对你的导出设置。</li>
+      <li><b>输出列名沿用原写法</b>：<code>232Pb_232Th</code>，以及末尾少一个 <code>s</code> 的
         <code>…Corrected isotop</code>（四条校正路径各一版：
-        <code>204</code>／<code>207</code>／<code>208</code>／<code>Cal 204Pb</code>）
-        照抄保留，以免下游脚本按列名匹配时对不上。勾选"修正列名笔误"可换成正确写法。</li>
-      <li><b>外挂误差 Ɛ 的三处口径不齐</b>：桌面版界面上写作 <code>Ɛ(%)</code>，默认
+        <code>204</code>／<code>207</code>／<code>208</code>／<code>Cal 204Pb</code>），
+        默认照抄输出，以免下游脚本按列名匹配时对不上。勾选"修正列名笔误"可换成规范写法。</li>
+      <li><b>外挂误差 Ɛ 的口径有多处并存</b>：桌面版界面上写作 <code>Ɛ(%)</code>，默认
         <b>3%</b>；它以<b>平方和</b>并进各年龄的相对误差 —— <b>只改误差，不改年龄</b>。但
         ① 内部相对误差用的是比值的 <code>2s</code>（即 <b>2σ</b>），Ɛ 直接与它平方相加，
-        等于按 2σ 同量级对待，严格说混了置信水平；
+        等于按 2σ 同量级对待，两者未区分置信水平；
         ② ²⁰⁷Pb/²⁰⁶Pb 年龄的误差<b>不含</b> Ɛ，同一行四个年龄的误差口径并不一致；
         ③ Ɛ 调大会让 <b>MSWD 变小</b>，不能用它去"改善"一致性。
         左侧④那一格旁边写了完整说明。</li>
@@ -414,7 +510,14 @@
       <li>²⁰⁷Pb/²⁰⁶Pb 年龄迭代默认采用<b>收敛修正</b>（原实现的收敛判据因一处
         赋值缺失而失效，1.5–2.2 Ga 偏高最多约 +35 Ma，个别点甚至返回 0 岁）；
         取消勾选即逐位回到桌面版数值，用于与已发表结果核对。</li>
-      <li>鼠标交互不同：没有"点图取窗口"，积分窗口用数值输入配合信号图目视确定。</li>
+      <li><b>积分窗口能改的范围比原版窄。</b>原版的四个边界都能手输（<b>Bcg start/end</b>
+        与 <b>Sig start/end</b> 四个输入框 ＋「Set (Single)／Set (All)」，选中文件时旁边
+        画出多元素信号图与这四条虚线；<b>"点图取窗口"两边都没有</b>）。
+        网页版只保留<b>背景窗口</b>（<code>b0</code>/<code>b1</code>）与<b>信号阈值倍数</b>：
+        信号的起止由 <code>detectSignalWindow()</code> 按"越过阈值"自动定，
+        页面上<b>没有 <code>s0</code>/<code>s1</code> 的输入框</b> —— 自动识别若选错，
+        只能改这两个数间接绕。窗口层的行为与判据见 <code>webgui/src/window.js</code>
+        与 <code>webgui/test_window.js</code>。</li>
       <li>输出的是 CSV（两个中间文件 + 年龄表）与 JSON，不写 <code>.xls</code>。</li>
       <li>标样漂移回归 <code>regression()</code> 没有接线——它用 <code>scipy.curve_fit</code>，
         在原程序里也没有任何控件能改它的方法编号，属于从未生效的路径。</li>

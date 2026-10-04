@@ -788,7 +788,7 @@
     wrap.appendChild(table);
     pane.appendChild(wrap);
 
-    // 说明：列号一律按 1 起算。这里要把两处**沿自原实现的表头错位**讲明白，
+    // 说明：列号一律按 1 起算。这里要把两处**表头与内容不一致**（沿用自原程序）讲明白，
     // 否则有人按表头文字去取数就会取错：
     //   · 第 17 列表头写着 Age，数据其实是分隔线 '-------'；
     //   · 第 26 列表头写着 '…Corr. Age(Ma)'，数据其实是**备注文字**。
@@ -800,17 +800,17 @@
       + '每一列后面紧跟着它的 2s。';
     if (ageRes.header[25]) {
       note += ' 第 27-30 列是所选校正路径的两个年龄及其 2s。'
-        + '⚠ 第 26 列表头照着 ' + ageRes.header[25] + ' 写，但那一列实际装的是'
-        + '备注文字；第 17 列同理（表头 Age，数据是分隔线）—— 这是原实现留下的表头错位，'
-        + '照抄未改，取数请按实际列位置。';
+        + '⚠ 第 26 列表头写作 ' + ageRes.header[25] + '，但那一列实际装的是'
+        + '备注文字；第 17 列同理（表头 Age，数据是分隔线）。这两列的表头与内容不一致，'
+        + '沿用未改，取数请按实际列位置。';
     } else {
       note += ' 方式 0（不校正）下第 26-30 列为空。';
     }
     note += ' 第 51 列是微量元素含量（U / Th / Pb，ppm）。';
     if (typos.length) {
-      note += ' 表头里的 ' + typos.join('、') + ' 沿自原程序的笔误，'
+      note += ' 表头里的 ' + typos.join('、') + ' 沿用原程序的写法，'
         + (fixNames
-          ? '已按勾选换成正确写法（只动表头文字，数值不变）。'
+          ? '已按勾选换成规范写法（只动表头文字，数值不变）。'
           : '默认照抄保留，可在右上角勾选"修正列名笔误"换掉。');
     }
     pane.appendChild(el('p', 'colgroup-note', note));
@@ -1013,7 +1013,7 @@
   }
 
   /** 年龄表按 Python 的 repr 排版导出，保证数值可无损往返。 */
-  //  沿自原实现的列名笔误。默认原样导出（与桌面版逐字节一致）；
+  //  沿用原程序的列名写法。默认原样导出（与桌面版逐字节一致）；
   //  勾选"修正列名笔误"后替换成正确写法，方便按列名取数的下游脚本。
   //
   //  **`isotop` 那一处不止一种形态**：第 51 列（1 起算）会随校正方式变成
@@ -1036,7 +1036,7 @@
     });
   }
 
-  /** 找出表头里沿自原实现的笔误列，返回「第 N 列 xxx」这样的说明。 */
+  /** 找出表头里沿用原程序写法的列，返回「第 N 列 xxx」这样的说明。 */
   function typoColumns(header) {
     var out = [];
     header.forEach(function (name, i) {
@@ -1329,7 +1329,7 @@
    * 当前选中项能进表几个点（决定"拟合"里哪些选项可用）。
    *
    * 合并选（'*'）时**不含标样** —— 必须与 buildTable 的 drop 口径一致，
-   * 否则下拉里写"41 个可用点"、真正送进 R 的只有 29 个（踩过：两处各算一遍）。
+   * 否则下拉里写"41 个可用点"、真正送进 R 的只有 29 个（踩过：两处各算一遍；这两个数是当时的现场值，现在的对应值一律由本函数现场算，别抄）。
    */
   function isoUsableCount(groups, sample, std) {
     if (!groups || !groups.length) return 0;
@@ -1448,6 +1448,40 @@
     }
   }
 
+  /** 取控件的字符串值 / 勾选状态。控件不存在时也不炸（避免旧产物 + 新界面源码）。 */
+  function isoVal(id) { var e = $(id); return e ? String(e.value).trim() : ''; }
+  function isoChk(id) { var e = $(id); return !!(e && e.checked); }
+  /** 两个输入框 → "min,max"；只要有一格没填就返回空串 —— 空串的含义是"这一项不传"。 */
+  function isoPair(a, b) {
+    var x = isoVal(a), y = isoVal(b);
+    return (x !== '' && y !== '') ? (x + ',' + y) : '';
+  }
+
+  /**
+   * 「更多选项」里的联动显隐。规则照抄原版 GUI：只在用得上的时候才显示那一格，
+   * 看不到的控件不会被读进参数（isoOpts 里 anchor 还额外要求 show.age≥2，
+   * 见 isoplotr.js 的 rArgs —— 两处口径一致）。
+   */
+  function isoSyncMore() {
+    var on = function (id, yes) {
+      var e = $(id);
+      if (e) e.className = 'fld' + (yes ? '' : ' off');
+    };
+    var anchor = Number(isoVal('iso-anchor') || 0);
+    var showAge = Number(isoVal('iso-age') || 0);
+    on('iso-anchor-age-wrap', anchor === 2 && showAge >= 2);
+    var disc = Number(isoVal('iso-disc') || 0);
+    on('iso-disc-opt-wrap', disc > 0);
+    on('iso-disc-cut-wrap', disc > 0);
+    on('iso-fill-wrap', isoChk('iso-fill-on'));
+    on('iso-stroke-wrap', isoChk('iso-stroke-on'));
+    //  上下限的 placeholder 跟着判据走 —— "留空用默认"要让人看见默认是多少。
+    var dd = (ISO && ISO.DISC_DEFAULT && ISO.DISC_DEFAULT[Number(isoVal('iso-disc-opt') || 1)]) || [];
+    var mn = $('iso-disc-min'), mx = $('iso-disc-max');
+    if (mn) mn.placeholder = dd.length ? String(dd[0]) : '默认';
+    if (mx) mx.placeholder = dd.length ? String(dd[1]) : '默认';
+  }
+
   /** 把 <select> 的当前值读成参数。`drop` 只在"全部样品"时生效（见 buildTable）。 */
   function isoOpts() {
     return {
@@ -1455,7 +1489,26 @@
       showAge: Number($('iso-age').value),
       commonPb: Number($('iso-cpb').value),
       sample: $('iso-sample').value,
-      drop: ISO.standardNames(state.cfg)
+      drop: ISO.standardNames(state.cfg),
+
+      //  —— 以下对应「更多选项」面板，参数名逐项照抄 IsoplotR 原版 ——
+      //  一律"留空/不勾 = 空串或 false = 不传这个参数"，让 IsoplotR 用自己的默认值。
+      anchor: Number(isoVal('iso-anchor') || 0),
+      anchorAge: isoVal('iso-anchor-age'),
+      discFilter: Number(isoVal('iso-disc') || 0),
+      discOpt: Number(isoVal('iso-disc-opt') || 1),
+      discCutoff: isoPair('iso-disc-min', 'iso-disc-max'),
+      tlim: isoPair('iso-tlim-min', 'iso-tlim-max'),
+      xlim: isoPair('iso-xlim-min', 'iso-xlim-max'),
+      ylim: isoPair('iso-ylim-min', 'iso-ylim-max'),
+      ticks: isoVal('iso-ticks'),
+      sigdig: isoVal('iso-sigdig'),
+      exterr: isoChk('iso-exterr'),
+      shownumbers: isoChk('iso-shownumbers'),
+      //  颜色框永远有值，所以各自挂一个"改不改"的勾选框：不勾就不传。
+      fill: isoChk('iso-fill-on') ? isoVal('iso-fill') : '',
+      fillAlpha: isoChk('iso-fill-on') ? isoVal('iso-fill-alpha') : '',
+      stroke: isoChk('iso-stroke-on') ? isoVal('iso-stroke') : ''
     };
   }
 
@@ -1527,9 +1580,12 @@
     $('btn-iso-svg').disabled = true;
     isoMsg(head + '<br>正在加载…');
 
-    ISO.render(tab, {
-      type: o.type, showAge: o.showAge, commonPb: o.commonPb
-    }, function (s) {
+    //  选项**整份透传**，不再一项一项列。列一份就一定会漏一项，而漏掉的那项
+    //  照样能出图（只是悄悄用了默认值），最难发现 —— 所以清单只有
+    //  ISO.RARG_KEYS 那一份（见 isoplotr.js）。
+    var ropts = {};
+    (ISO.RARG_KEYS || []).forEach(function (k) { ropts[k] = o[k]; });
+    ISO.render(tab, ropts, function (s) {
       isoMsg(head + '<br>' + s);
     }).then(function (out) {
       svgText = out.svg;
@@ -1575,9 +1631,14 @@
           + '参数与数据，而不是去改样品年龄。</p>';
       }
 
-      //  说明（口径、失败原因、地质含义）
+      //  说明（口径、失败原因、地质含义）+ 这一次真正传进 R 的参数。
+      //  参数必须原样留痕：结果要能复现，光有那张图是不够的。
+      var argTxt = (out.args && out.args.length)
+        ? '<p class="iso-args">本次传给 IsoplotR 的参数：<code>'
+          + out.args.join(', ') + '</code></p>'
+        : '';
       var nl = out.summary.notes.map(function (s) { return '<li>' + s + '</li>'; }).join('');
-      $('iso-notes').innerHTML = (stdCmp ? stdCmp : '')
+      $('iso-notes').innerHTML = argTxt + (stdCmp ? stdCmp : '')
         + (cross ? '<p>' + cross + '</p>' : '')
         + (nl ? '<ul>' + nl + '</ul>' : '');
 
@@ -1586,9 +1647,9 @@
         + Math.round(svgText.length / 1024) + ' KB）。'
         + (out.result.error ? ' <b>但拟合失败了，已退回只画点 —— 见下方说明。</b>' : ''), cls);
       logLine('IsoplotR：' + tab.n + ' 点（'
-        + (o.sample === '*' ? '全部样品，不含标样' : o.sample) + '），图型 ' + o.type
-        + '，拟合 show.age='
-        + o.showAge + '，普通铅 ' + o.commonPb + '，' + out.seconds.toFixed(1) + ' s'
+        + (o.sample === '*' ? '全部样品，不含标样' : o.sample) + '），'
+        + (out.args && out.args.length ? out.args.join(', ') : '') + '，'
+        + out.seconds.toFixed(1) + ' s'
         + (out.result.error ? '（拟合失败：' + out.result.error + '）' : ''), out.result.error ? 'w' : 'g');
     }).catch(function (e) {
       var m = String(e && e.message || e);
@@ -1612,6 +1673,16 @@
     isoFill($('iso-type'), ISO.TYPES, 1);
     isoFill($('iso-age'), ISO.AGES, 1);
     isoFill($('iso-cpb'), ISO.CPB, 0);
+    //  「更多选项」面板：三组候选值都由 isoplotr.js 提供，界面不另抄一份。
+    isoFill($('iso-anchor'), ISO.ANCHORS, 0);
+    isoFill($('iso-disc'), ISO.DISCFILTERS, 0);
+    isoFill($('iso-disc-opt'), ISO.DISCOPT, 1);
+    ['iso-age', 'iso-anchor', 'iso-disc', 'iso-disc-opt',
+     'iso-fill-on', 'iso-stroke-on'].forEach(function (id) {
+      var e = $(id);
+      if (e) e.addEventListener('change', isoSyncMore);
+    });
+    isoSyncMore();
     $('btn-iso-run').addEventListener('click', isoRender);
     $('btn-iso-svg').addEventListener('click', function () {
       var img = $('iso-fig');
@@ -1779,9 +1850,9 @@
      *  这个单文件里，点一下才解压 —— 所以是异步的。
      *  它带的 DS_DEMO_REAL.params 是**推荐参数**、stdMeasured 是**这套参数跑出来的
      *  标样结果**，两样都由生成脚本用真管线在这批数据上量出来（AY-4 出
-     *  157.04 ± 1.43 Ma（2σ），与文献两个 ID-TIMS 值都对得上）。
+     *  157.06 ± 1.39 Ma（2σ），与文献两个 ID-TIMS 值都对得上）。
      *  界面不要再抄一份 —— 抄的那份迟早与数据脱节。口径尤其要跟着走：
-     *  质量报告里印的是 **1σ 内部标准误**（0.7），正文引的是 **2σ**（1.4），
+     *  质量报告里印的是 **1σ 内部标准误**（0.70），正文引的是 **2σ**（1.39），
      *  同一个数在两处看着像对不上，所以 stdMeasured 连 sigma 一起记下来。
      * ---------------------------------------------------------------- */
     function applyParams(P) {
@@ -1970,6 +2041,7 @@
     //  IsoplotR 那一页：自检要能读它的控件状态，也要能直接调交叉验证那一段
     initIsoTab: initIsoTab, refreshIsoControls: refreshIsoControls,
     refreshIsoAgeOptions: refreshIsoAgeOptions, isoOpts: isoOpts,
+    isoSyncMore: isoSyncMore,
     isoOwnMean: isoOwnMean, isoRender: isoRender, isoMsg: isoMsg
   };
 })();

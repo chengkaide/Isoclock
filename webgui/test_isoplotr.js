@@ -13,9 +13,10 @@
  *        这里把它硬编码成本文件里的 EXPECT_SPEC，与模块里的 HEADER 顺序对照。
  *      · 列号 36/37/38/39/40/33/34 来自 src/age.js 的 row 数组，并且用
  *        **内置的 49 个真实样品跑完整管线**回过头核了一遍（下面 §G）：
- *        n=49 行里恰好 45 行可用，缺的 4 行就是产物里 flaws.nanRows 声明的那些。
- *      · 95% 置信区间 = 1.96σ，来自实测：AY-4 的 $age["s[t]"]=0.4970411，
- *        而图（oerr=3 默认）上印的是 0.974 → 0.974/0.4970411 = 1.9597。
+ *        n=49 行的比值全部可用（窗口识别修正后不再有 NaN 行），
+ *        只有 2 行因 ρ 写成 ±1 被剔 —— 那 2 行都属于标样 AY-4。
+ *      · 95% 置信区间 = 1.96σ，来自实测：AY-4 的 $age["s[t]"]=0.645，
+ *        而图（oerr=3 默认）上印的是 1.26 → 1.26/0.645 = 1.953。
  *
  *   ② 没有外部真值的（比如"空串不能当 0"），写成**能失败的反例**：
  *      故意构造会让错误实现通过、正确实现不通过的那一行。
@@ -486,10 +487,12 @@ t('点数太少（n=1）时明确说出来', su.notes.some((n) => /几何上就�
 
     const tb = ISO.buildTable(res.rows, {});
     //  两个类别要分开报，否则"少了几个点"就说不清到底少在哪：
-    //    missing  —— 比值列整行 NaN（积分窗口没定出来的那 4 个文件）
+    //    missing  —— 比值列整行 NaN（窗口识别探到空切片的那几个文件）
     //    badrho   —— ρ 舍入到写出精度后成为 ±1（AY-4 有 2 个点命中）
-    //  缺的 missing 那几行必须**恰好**是产物里 flaws.nanRows 声明的那几个文件，
+    //  missing 必须**恰好**是产物里 flaws.nanRows 声明的那几个文件 ——
     //  这样"少了几个点"就不是一个孤立的数字，而是能与产物对上号的清单。
+    //  窗口识别修正后这份清单是空的（49 行比值全部可用），断开的是别的环节时
+    //  这里会立刻红。
     const dropped = [], rhoOut = [];
     res.rows.forEach(function (r) {
       const u = ISO.rowUsable(r);
@@ -498,8 +501,8 @@ t('点数太少（n=1）时明确说出来', su.notes.some((n) => /几何上就�
       else dropped.push(String(r[0]));
     });
     const declared = ((D.flaws && D.flaws.nanRows) || []).map((x) => x.file).sort();
-    t('§G 真实数据：49 行里 43 行能进表，缺的正是产物声明的那 4 行 + 2 行 ρ=1',
-      res.rows.length === 49 && tb.n === 43 && tb.skipped === 4 && tb.badRho === 2
+    t('§G 真实数据：49 行全部有值，只剔 2 行 ρ=1（与产物声明的 NaN 清单一致）',
+      res.rows.length === 49 && tb.n === 47 && tb.skipped === 0 && tb.badRho === 2
       && JSON.stringify(dropped.sort()) === JSON.stringify(declared),
       `49 行 → ${tb.n} 点：比值缺 [${dropped.join('、')}]，`
       + `ρ 写出即 ±1 [${rhoOut.join('、')}]`);
@@ -517,29 +520,29 @@ t('点数太少（n=1）时明确说出来', su.notes.some((n) => /几何上就�
           if (ISO.rowUsable(r).ok) rhos.push(Number(r[40]));
         });
         const mn = Math.min.apply(null, rhos), mx = Math.max.apply(null, rhos);
-        return rhos.length === 43 && mn > 0 && mx < 1 && (mx - mn) > 0.5;
-      })(), '实测 0.0218 ~ 0.9216；被剔掉的两个是 0.9999999999999989 那几个');
+        return rhos.length === 47 && mn > 0 && mx < 1 && (mx - mn) > 0.5;
+      })(), '实测 0.0231 ~ 0.9216；被剔掉的两个是 0.9999999999999989 那几个');
 
     const grp = ISO.sampleNames(res.rows);
     const ay4 = grp.filter((g) => g.name === P.stdName)[0];
-    t('§G 样品分组：AY-4 有 ' + (ay4 ? ay4.usable : '?') + ' 个可用点（15 行里剔 1 缺值 + 2 个 ρ=1）',
-      !!ay4 && ay4.rows === 15 && ay4.usable === 12,
+    t('§G 样品分组：AY-4 有 ' + (ay4 ? ay4.usable : '?') + ' 个可用点（15 行里剔 0 缺值 + 2 个 ρ=1）',
+      !!ay4 && ay4.rows === 15 && ay4.usable === 13,
       grp.length + ' 组；单点样品 ' + grp.filter((g) => g.usable === 1).length + ' 个');
 
     /*  默认选中的必须是「全部样品」而不是标样（用户 2026-10-02 指出）。
      *  这批数据一个文件一个测点：32 个样品各 1 点，标样 AY-4 有 15 个文件、
      *  SRM 612 有 2 个 —— 49 = 32 + 15 + 2。所以"选样品作图"只有选**全部**
-     *  才有 29 个点可看；按点数排序会把 AY-4 顶到第一位，而它是 QC 样。 */
+     *  才有 32 个点可看；按点数排序会把 AY-4 顶到第一位，而它是 QC 样。 */
     const stdNames = ISO.standardNames({ stdName: P.stdName, nistStd: P.nistStd });
     const tSmp = ISO.buildTable(res.rows, { sample: '*', drop: stdNames });
-    t('§G 真实数据：默认「全部样品」= 32 个样品测点（29 可用），标样被排掉',
+    t('§G 真实数据：默认「全部样品」= 32 个样品测点，全部可用，标样被排掉',
       JSON.stringify(stdNames) === JSON.stringify([P.stdName, P.nistStd])
-      && tSmp.n === 29 && tSmp.skipped === 3 && tSmp.badRho === 0
+      && tSmp.n === 32 && tSmp.skipped === 0 && tSmp.badRho === 0
       && tSmp.dropped === 17 && tSmp.others === 0,
-      `样品 ${tSmp.n} 点（另剔 ${tSmp.skipped} 个缺值）；排掉标样 ${tSmp.dropped} 行`
+      `样品 ${tSmp.n} 点（无缺值）；排掉标样 ${tSmp.dropped} 行`
       + `（${P.stdName} 15 + ${P.nistStd} 2）；含标样时是 ${tb.n} 点 —— 两个数不能混报`);
 
-    t('§G 真实数据：ρ=±1 被剔的那两个点属于标样，不在样品那 29 点里',
+    t('§G 真实数据：ρ=±1 被剔的那两个点属于标样，不在样品那 32 点里',
       rhoOut.length === 2 && rhoOut.every(function (f) {
         const r = res.rows.filter((x) => String(x[0]) === f)[0];
         return r && String(r[1]).trim() === P.stdName;
@@ -556,15 +559,15 @@ t('点数太少（n=1）时明确说出来', su.notes.some((n) => /几何上就�
      *  —— 两条完全独立的路径，对得上才说明接进来的不是个摆设。
      *  两侧的来源都要写清楚，否则这条断言就成了"拿我的实现验证我的实现"：
      *   · Isoclock 侧：产物声明的 stdMeasured（test_demo_real.js 已钉住它
-     *     等于本次实测），AY-4 = 157.04 ± 1.43 Ma（2σ，MSWD 0.69，14 点）。
-     *   · IsoplotR 侧：浏览器里真跑出来的 concordia age。**这里的三个数是
-     *     2026-10-02 在无头 Edge 里实测的**（G:/_isohtml/probe_fixed.js），
-     *     不是从某次探针手抄的旧值：修好 ρ 判据之后 AY-4 是 12 个点
-     *     （2 个 ρ→1 的点被剔），t = 157.2939 Ma，s[t] = 0.66874 Ma (1σ)，
-     *     MSWD(combined) = 0.3576。
+     *     等于本次实测），AY-4 = 157.06 ± 1.39 Ma（2σ，MSWD 0.70，15 点）。
+     *   · IsoplotR 侧：浏览器里真跑出来的 concordia age。**这里的两个数是
+     *     2026-10-04 在无头 Edge 里实测的**（G:/_isohtml/probe_iso_val.py），
+     *     不是从某次探针手抄的旧值：窗口识别修正之后 AY-4 是 13 个点
+     *     （2 个 ρ→1 的点被剔），t = 157.36 Ma，s[t] = 0.645 Ma (1σ)，
+     *     MSWD(combined) = 0.378。
      *  口径：Isoclock 的 2s 是 2σ，IsoplotR 的 s[t] 是 1σ ⇒ 统一到 2σ 再比。 */
     const M2 = D.stdMeasured;
-    const isoAge = 157.2939, isoS = 0.66874;
+    const isoAge = 157.36, isoS = 0.645;
     const d = Math.abs(M2.mean - isoAge);
     const dfree = Math.sqrt(Math.pow(M2.se2 / 2, 2) + Math.pow(isoS, 2));
     t('§G 交叉验证：Isoclock 加权平均与 IsoplotR 谐和年龄相容',
@@ -587,6 +590,168 @@ t('点数太少（n=1）时明确说出来', su.notes.some((n) => /几何上就�
     === '<svg xmlns="http://www.w3.org/2000/svg"></svg>');
   t('svgDataUri：用 <img> 装，避免两张图的内联 symbol id 撞车', true,
     'IsoplotR 的 SVG 用 <symbol id="glyph0-1"> 定义字形，内联进同一份文档必然撞 id');
+
+  /* ==================================================================
+   *  §I 「更多选项」的实参表（rArgs）—— 逐项对齐 IsoplotR 原版
+   *
+   *  判据来源（都是外部真值，不是拿自己比）：
+   *    · 控件与取值 ← pvermees/IsoplotRgui 的 inst/www/options/concordia.html
+   *    · R 侧写法   ← cran/IsoplotR 的 R/concordia.R 与 R/discfilter.R
+   *      （anchor=c(2,年龄)、cutoff.disc=discfilter(option=,before=,cutoff=)、
+   *       discfilter 那串按 option 分的默认上下限）
+   *
+   *  两条规矩各配了能失败的断言：
+   *    (a) **留空 = 不传** —— 用 IsoplotR 自己的默认值，而不是我们另编一个；
+   *    (b) **只有校验过的东西能进 R 代码** —— 数字、受控布尔、#RRGGBB。
+   * ================================================================== */
+  const BASE_OPT = { csv: '/tmp/a.csv', svg: '/tmp/a.svg' };
+  const RA = (o) => ISO.rArgs(Object.assign({}, BASE_OPT, o));
+
+  t('§I 一个更多选项都不给时，实参表恰好是原来的四项',
+    RA({}).join(',') === 'type=1,show.age=0,common.Pb=0,sigdig=3',
+    RA({}).join(', '));
+  t('§I 默认时更多选项一个都不出现（留空 = 不传 = 用原版默认值）',
+    !RA({}).some((s) => /anchor|cutoff\.disc|tlim|xlim|ylim|ticks|exterr|shownumbers|ellipse/.test(s)));
+  /*  这一条是**浏览器里实测撞出来的**：界面上 sigdig 那格默认是空的，
+   *  于是传下来一个空串；把"空串"和"填错了"混成一个含义，整张图就会报
+   *  "作图参数不是数字"。空串必须等于"没填 ⇒ 用默认值"，非数字才报错。 */
+  t('§I 主参数留空 = 用默认值（空串不能被当成"非数字"）',
+    RA({ type: '', showAge: '', commonPb: '', sigdig: '' }).join(',')
+      === 'type=1,show.age=0,common.Pb=0,sigdig=3',
+    RA({ type: '', showAge: '', commonPb: '', sigdig: '' }).join(', '));
+  t('§I 主参数填了非数字仍然要报错（留空与填错是两回事）',
+    (function () {
+      try { RA({ showAge: 'abc' }); return false; }
+      catch (e) { return /不是数字/.test(e.message); }
+    })());
+
+  //  —— anchor ——
+  t('§I anchor=2 → anchor=c(2,年龄)（原版 anchor[1] 选模式、anchor[2] 是年龄）',
+    RA({ showAge: 2, anchor: 2, anchorAge: '260' }).indexOf('anchor=c(2,260)') >= 0);
+  t('§I anchor=2 却没填年龄 → 整个 anchor 不传（半截参数不能进 R）',
+    !RA({ showAge: 2, anchor: 2 }).some((s) => s.indexOf('anchor') === 0));
+  t('§I anchor=1 / 3 → 标量 anchor=1 / anchor=3',
+    RA({ showAge: 3, anchor: 1 }).indexOf('anchor=1') >= 0
+    && RA({ showAge: 3, anchor: 3 }).indexOf('anchor=3') >= 0);
+  t('§I anchor 只在 show.age≥2 时传（原版 GUI 也只在那档显示这一栏）',
+    !RA({ showAge: 1, anchor: 3 }).some((s) => s.indexOf('anchor') === 0)
+    && !RA({ showAge: 0, anchor: 2, anchorAge: '260' }).some((s) => s.indexOf('anchor') === 0));
+
+  //  —— 不谐和度过滤 ——
+  t('§I 过滤：cutoff.disc=discfilter(option=,before=,cutoff=)（照抄 GUI 的写法）',
+    RA({ discFilter: 1, discOpt: 4, discCutoff: '-1.6,4.7' })
+      .indexOf('cutoff.disc=discfilter(option=4,before=TRUE,cutoff=c(-1.6,4.7))') >= 0);
+  t('§I 过滤：上下限留空就不传 cutoff（改用 R 里按判据分的那套默认值）',
+    RA({ discFilter: 1, discOpt: 5 }).indexOf('cutoff.disc=discfilter(option=5,before=TRUE)') >= 0);
+  t('§I 过滤：档位为 0（不过滤）时整段不出现',
+    !RA({ discFilter: 0, discOpt: 3 }).some((s) => s.indexOf('cutoff.disc') === 0));
+  t('§I 过滤：判据只认 1~5，越界要吵出来而不是悄悄退回某一档',
+    (function () {
+      try { RA({ discFilter: 1, discOpt: 9 }); return false; }
+      catch (e) { return /判据/.test(e.message); }
+    })(), '悄悄退回某一档会让人以为过滤生效了');
+  t('§I 过滤：上下限只填一格不生效（不做半截参数）',
+    RA({ discFilter: 1, discOpt: 1, discCutoff: ',5' }).join(',').indexOf('cutoff=c(') < 0
+    && RA({ discFilter: 1, discOpt: 1, discCutoff: '1,' }).join(',').indexOf('cutoff=c(') < 0);
+
+  //  —— 坐标与刻度 ——
+  t('§I tlim / xlim / ylim → c(min,max)',
+    RA({ tlim: '100,300', xlim: '0,0.06', ylim: '0,0.06' }).join(',')
+      .indexOf('tlim=c(100,300),xlim=c(0,0.06),ylim=c(0,0.06)') >= 0);
+  t('§I ticks 给一个数就是标量、给一串就是年龄向量（原版两种都收）',
+    RA({ ticks: '5' }).indexOf('ticks=5') >= 0
+    && RA({ ticks: '249,250,251' }).indexOf('ticks=c(249,250,251)') >= 0);
+  t('§I 坐标格式不对（半截 / 非数字 / 多一个逗号）一律当作没填',
+    !RA({ tlim: '100', xlim: 'a,b', ylim: '1,2,3' }).some((s) => /^(tlim|xlim|ylim)=/.test(s))
+    && !RA({ ticks: '1,2,' }).some((s) => s.indexOf('ticks=') === 0));
+
+  //  —— 勾选框 ——
+  t('§I exterr / show.numbers 只在勾上时传 TRUE（原版的默认是 FALSE）',
+    RA({ exterr: true, shownumbers: 'true' }).join(',').indexOf('exterr=TRUE,shownumbers=TRUE') >= 0
+    && !RA({ exterr: false, shownumbers: 0 }).some((s) => /^(exterr|shownumbers)/.test(s)));
+
+  //  —— 椭圆样式 ——
+  t('§I 填色写成 8 位十六进制 #RRGGBBAA（IsoplotR 的椭圆就吃这个写法）',
+    RA({ fill: '#ff0000', fillAlpha: '0.5' }).indexOf('ellipse.fill="#FF000080"') >= 0);
+  t('§I 填色给了、透明度没给 → 用原版默认的 0.5（它默认填色的末两位就是 80）',
+    RA({ fill: '#00ff00' }).indexOf('ellipse.fill="#00FF0080"') >= 0);
+  t('§I 透明度超出 0~1 会被夹住（不生成非法颜色）',
+    RA({ fill: '#00ff00', fillAlpha: '2' }).indexOf('ellipse.fill="#00FF00FF"') >= 0
+    && RA({ fill: '#00ff00', fillAlpha: '-1' }).indexOf('ellipse.fill="#00FF0000"') >= 0);
+  t('§I 描边色单独成参数',
+    RA({ stroke: '#333333' }).indexOf('ellipse.stroke="#333333"') >= 0);
+  t('§I 颜色只认 #RRGGBB；red / #12 / #RRGGBBAA 一律不传',
+    !RA({ fill: 'red', stroke: '#12' }).some((s) => s.indexOf('ellipse.') === 0)
+    && !RA({ fill: '#ff000080' }).some((s) => s.indexOf('ellipse.fill') === 0),
+    '多给一位就会拼出 #RRGGBBAA+AA 这种非法颜色');
+
+  //  —— (b) 只有校验过的东西能进 R 代码 ——
+  t('§I 注入样本喂进去之后，实参表里没有分号、引号展开、也没有 system(',
+    (function () {
+      const dirty = RA({
+        showAge: 2, anchor: 2, anchorAge: '260); system("rm -rf /"); #',
+        tlim: '1);system("x");#', ylim: '0,1);system("y");#',
+        ticks: '5\nsystem("z")', discFilter: 1, discOpt: 1,
+        discCutoff: '0,1);system("w");#',
+        fill: 'red;system("v")', stroke: '#12;system("u")'
+      });
+      const s = dirty.join(' ');
+      return dirty.every((x) => /^[a-zA-Z.]+=[A-Za-z0-9_.,()"#=+-]*$/.test(x))
+        && s.indexOf('system') < 0 && s.indexOf(';') < 0;
+    })(), '数值项经 Number() 过滤、颜色经正则过滤，其余一概丢掉');
+  t('§I 必填的数字项（sigdig）被注入时直接报错，不静默',
+    (function () {
+      try { RA({ sigdig: '3);cat(1);#' }); return false; }
+      catch (e) { return /不是数字/.test(e.message); }
+    })());
+  t('§I 更多选项进 R 代码后，concordia() 那一行不多出一个分号或单引号',
+    (function () {
+      const c = ISO.rCode(Object.assign({}, BASE_OPT, {
+        showAge: 2, anchor: 2, anchorAge: '260',
+        discFilter: 1, discOpt: 2, discCutoff: '-3,12',
+        tlim: '100,300', xlim: '0,0.06', ylim: '0,0.06',
+        ticks: '249,250,251', exterr: true, shownumbers: true,
+        fill: '#ff0000', fillAlpha: '0.35', stroke: '#333333'
+      }));
+      const call = c.split('\n').filter((l) => l.indexOf('concordia(d,') >= 0)[0] || '';
+      return call.indexOf(';') < 0 && call.indexOf("'") < 0
+        && /ellipse\.fill="#FF000059"/.test(call) && /anchor=c\(2,260\)/.test(call);
+    })());
+  t('§I 拟合失败退回只画点时，其余参数原样保留（只把 show.age 换成 0）',
+    (function () {
+      const c = ISO.rCode(Object.assign({}, BASE_OPT, { showAge: 2, tlim: '100,300' }));
+      const fb = c.split('\n').filter((l) => l.indexOf('try(concordia(d,') >= 0)[0] || '';
+      return /tlim=c\(100,300\)/.test(fb) && /show\.age=0/.test(fb) && !/show\.age=2/.test(fb);
+    })());
+
+  //  —— 契约：rArgs 读的键与 RARG_KEYS 必须互相覆盖 ——
+  const RA_SRC = ISO.rArgs.toString();
+  const USED_KEYS = [];
+  (function () {
+    const re = /\ba\.([A-Za-z_][A-Za-z0-9_]*)/g;
+    let m;
+    while ((m = re.exec(RA_SRC))) if (USED_KEYS.indexOf(m[1]) < 0) USED_KEYS.push(m[1]);
+  })();
+  const MISSING_KEYS = USED_KEYS.filter((k) => ISO.RARG_KEYS.indexOf(k) < 0);
+  const UNUSED_KEYS = ISO.RARG_KEYS.filter((k) => USED_KEYS.indexOf(k) < 0);
+  t('§I RARG_KEYS 覆盖 rArgs 读的每一个键',
+    MISSING_KEYS.length === 0,
+    '缺：' + (MISSING_KEYS.join('、') || '无') + '（app.js 照这张表整份透传；'
+    + '漏一个的症状是"界面填了、图没变"）');
+  t('§I RARG_KEYS 里没有多余（改了名却忘了删）的键',
+    UNUSED_KEYS.length === 0, '多余：' + (UNUSED_KEYS.join('、') || '无'));
+
+  //  —— 候选值必须与原版一致 ——
+  t('§I 三个下拉的取值与原版一致（anchor 0~3 / 过滤档 0·1 / 判据 1~5）',
+    ISO.ANCHORS.map((o) => o.v).join(',') === '0,1,2,3'
+    && ISO.DISCFILTERS.map((o) => o.v).join(',') === '0,1'
+    && ISO.DISCOPT.map((o) => o.v).join(',') === '1,2,3,4,5',
+    '过滤档只有两档：原版第二档「按校正后的比值过滤」要求数据格式 ≥4，'
+    + '我们的表是 5 列 U-Pb（format=1）');
+  t('§I discfilter 的默认上下限照抄 R 里那串 if-else',
+    JSON.stringify(ISO.DISC_DEFAULT) === JSON.stringify(
+      { 1: [-48, 140], 2: [-5, 15], 3: [-0.36, 0.96], 4: [-1.6, 4.7], 5: [-2, 5.8] }),
+    JSON.stringify(ISO.DISC_DEFAULT));
 
   console.log('');
   console.log(`总计 ${pass + fail} 项：通过 ${pass}，失败 ${fail}`);

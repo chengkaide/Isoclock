@@ -127,6 +127,24 @@
  *         `buildTable` 的 `drop` 只在合并选时生效（单点某个标样仍可画）。
  *       单看代码是发现不了这个错的 —— 它数值上完全正常（14 个近谐和点能拟合出
  *       157.29 Ma，很漂亮），错的是"这 14 个点是什么"。
+ *
+ *  ⑭ 选项**逐项对齐原版**而已（2026-10-04）。界面上的"更多选项"面板对应的是
+ *     IsoplotR 自己的图形界面（pvermees/IsoplotRgui，
+ *     inst/www/options/concordia.html），参数名、取值、默认值全部照抄，不自己发明：
+ *       · anchor      → `anchor=模式` 或 `anchor=c(2,年龄)`（anchor[1] 选模式、
+ *                       anchor[2] 是年龄；只有 show.age≥2 用得上，原版 GUI 也是
+ *                       只在选 discordia 时才显示这一栏）
+ *       · 不谐和度过滤 → `cutoff.disc=discfilter(option=,before=,cutoff=)`
+ *       · ticks       → 一个数（刻度条数）或一串年龄
+ *       · 椭圆样式     → `ellipse.fill="#RRGGBBAA"` / `ellipse.stroke="#RRGGBB"`
+ *       三条规矩：
+ *        (a) **留空就是不传这个参数** —— 让它用 IsoplotR 自己的默认值，而不是我们
+ *            另编一个。用户没动过的项，行为必须与没有这个面板时逐位相同。
+ *        (b) **只有经过校验的东西才能进 R 代码**：数字、受控布尔、正则校验过的
+ *            十六进制颜色。界面上的任意字符串绝不直接拼进 R（那就是代码注入）。
+ *        (c) 原版能选而我们做不到的，**要在界面上写明原因**，不能悄悄缺两项：
+ *            type=3（U-Th-Pb 图）只对 7/8 号数据格式开放，我们要的是 ²⁰⁸Pb/²³²Th 列；
+ *            椭圆配色的那些 ramp 是给"按变量上色"（levels）用的，我们没有这一列。
  * ========================================================================== */
 (function () {
   'use strict';
@@ -139,8 +157,11 @@
   var PKG = 'IsoplotR';
 
   //  age.js 的 51 列行布局（0 基）。这几个列号是读 src/age.js 的 row 数组数出来的，
-  //  并用内置的 49 个真实样品核过：n=49 行里 [33][34][36][37][38][39][40]
-  //  各有 45 个有限值，缺的 4 行就是产物里 flaws.nanRows 声明的那几个。
+  //  并用内置的 49 个真实样品核过：n=49 行里 [33][34][36][37][38][39][40] **全部有限**
+  //  （积分窗口修正后不再有"整行算不出比值"的文件；剩下的 NaN 只在 ²⁰⁸Pb/²³²Th
+  //  那一族列上，与这里的五个量无关）。另有两行（sample_24 / sample_48）的 ρ 恰好
+  //  写成 ±1，交给 IsoplotR 会被它按退化协方差剔掉 —— 那是它自己的判据，
+  //  见 test_isoplotr.js 的 §G。
   var COL = { file: 0, name: 1, Z: 33, sZ: 34, X: 36, sX: 37, Y: 38, sY: 39, rho: 40 };
 
   //  read.data(format=1) 的表头。顺序即列序，改了就是另一个 format。
@@ -174,6 +195,53 @@
     { v: 2, label: '用等时线截距作普通铅' },
     { v: 3, label: 'Stacey–Kramers 两阶段模型' }
   ];
+
+  //  —— 以下三组是"更多选项"面板用的，逐项照抄 IsoplotRgui 的 concordia 表单 ——
+
+  //  锚定（anchor）。原版的 anchor 是**向量**：anchor[1] 选模式，anchor=2 时
+  //  anchor[2] 才是那个年龄。只有 show.age≥2（discordia）用得上。
+  var ANCHORS = [
+    { v: 0, label: '不锚定（原版默认）',
+      note: '让 discordia 自由拟合，上下交点都由数据定。' },
+    { v: 1, label: '固定普通铅成分（用设定值）',
+      note: 'anchor=1：把普通铅的 ²⁰⁷Pb/²⁰⁶Pb 钉在设定值上，只拟合年龄。' },
+    { v: 2, label: '强制交点落在指定年龄',
+      note: 'anchor=c(2,年龄)：把上交点（Tera-Wasserburg 时是下交点）钉在你填的'
+        + '年龄上，再拟合另一头。右边要填那个年龄。' },
+    { v: 3, label: '锚到 Stacey–Kramers 地幔线',
+      note: 'anchor=3：把非放射成因组分锚在 Stacey–Kramers 地幔演化成分上。' }
+  ];
+
+  //  不谐和度过滤的档位。原版第一档是「校正前 / 校正后」二选一，而"校正后"
+  //  要求数据格式 ≥4（得能给出逐点的普通铅校正量）；我们的表是 format=1，
+  //  所以那一档在界面上不出现 —— 这是**如实缺一项**，不是漏写（见文件头 ⑭(c)）。
+  var DISCFILTERS = [
+    { v: 0, label: '不过滤（原版默认）' },
+    { v: 1, label: '按普通铅校正前的比值过滤',
+      note: 'before=TRUE：先用原始比值判不谐和度，再谈校正。' }
+  ];
+
+  //  过滤判据（discfilter 的 option），5 档与原版一字不差。
+  var DISCOPT = [
+    { v: 1, label: 't：²⁰⁶Pb/²³⁸U 与 ²⁰⁷Pb/²⁰⁶Pb 年龄之差（Ma）' },
+    { v: 2, label: 'r：同上，取相对值（%）' },
+    { v: 3, label: 'sk：沿 Stacey–Kramers 地幔连线的普通铅百分比' },
+    { v: 4, label: 'a：到 Tera-Wasserburg 谐和线的对数比距离（%）' },
+    { v: 5, label: 'c：到单点谐和年龄成分的对数比距离（%）' }
+  ];
+
+  //  discfilter() 在 cutoff 缺省时各自的上下限（照抄 R 里那串 if-else）。
+  //  界面上拿它当 placeholder：留空就真的是这套默认值，不是我们另编的。
+  var DISC_DEFAULT = { 1: [-48, 140], 2: [-5, 15], 3: [-0.36, 0.96],
+                       4: [-1.6, 4.7], 5: [-2, 5.8] };
+
+  //  render() 把界面上来的选项**原样透传**给 rArgs() 时认的 key。
+  //  这是这份清单唯一的一份拷贝 —— 加参数只改这里；漏了某个 key 的症状是
+  //  "界面填了、图没变"，单看代码看不出来，所以测试里有一条断言钉住它：
+  //  rArgs() 源码里出现的每一个 `a.xxx` 都必须在这张表里（见 test_isoplotr.js §H）。
+  var RARG_KEYS = ['type', 'showAge', 'commonPb', 'sigdig', 'anchor', 'anchorAge',
+                   'discFilter', 'discOpt', 'discCutoff', 'tlim', 'xlim', 'ylim',
+                   'ticks', 'exterr', 'shownumbers', 'fill', 'fillAlpha', 'stroke'];
 
   /* ------------------------------------------------------------------
    *  纯函数（可在 node 里单测，不碰网络）
@@ -353,22 +421,147 @@
   }
 
   /**
+   * 把界面上的选项整理成 R 调用的实参表（形如 ['type=1', 'show.age=2', ...]）。
+   *
+   * **这是整个模块里唯一允许"拼出 R 代码"的地方**（见文件头 ⑭），所以每一条都
+   * 只由已经过校验的东西拼出来：数字、受控布尔、正则校验过的十六进制颜色。
+   * 界面上来的任意字符串绝不直接进 R —— 那等于把用户输入当代码执行。
+   *
+   * 另一条同样重要的规矩：**没填就不生成这个参数**。留空必须是"用 IsoplotR
+   * 自己的默认值"，而不是我们另编一个 —— 否则用户没动过的项也被我们改掉了，
+   * 行为就不再与"没有这个面板"时逐位相同。
+   */
+  function rArgs(a) {
+    /** 数值化；空 / 空白 / 非数字一律 null（null 的含义是"这一项没填"）。 */
+    function n1(v) {
+      if (v === null || v === undefined || String(v).trim() === '') return null;
+      var n = Number(String(v).trim());
+      return isFinite(n) ? n : null;
+    }
+    /**
+     * 有默认值的那几项：**留空 = 用默认值**，但填了非数字就是调用方的错，
+     * 要吵出来（NaN）。这两个含义必须分开 —— 混成一个就会踩到"界面上那格
+     * 留空，于是空串被当成非数字、整张图报'作图参数不是数字'"（实测撞过：
+     * sigdig 那格默认是空的）。
+     */
+    function numd(v, dflt) {
+      if (v === null || v === undefined || String(v).trim() === '') return dflt;
+      var n = Number(String(v).trim());
+      return isFinite(n) ? n : NaN;
+    }
+    /** "a,b,c" → [a,b,c]；want>=0 时个数必须正好是 want，否则当作没填。 */
+    function nList(v, want) {
+      if (v === null || v === undefined || String(v).trim() === '') return null;
+      var p = String(v).split(','), out = [];
+      if (want >= 0 && p.length !== want) return null;
+      for (var i = 0; i < p.length; i++) {
+        var n = n1(p[i]);
+        if (n === null) return null;
+        out.push(n);
+      }
+      return out.length ? out : null;
+    }
+    /** 只认 #RRGGBB（#RRGGBBAA 不接受，透明度走单独的输入框）。 */
+    function hx(v) {
+      return /^#[0-9a-fA-F]{6}$/.test(String(v)) ? String(v).toUpperCase() : null;
+    }
+    function tf(v) { return v === true || v === 1 || v === '1' || v === 'true'; }
+
+    var ty = numd(a.type, 1);
+    var sa = numd(a.showAge, 0);
+    var cp = numd(a.commonPb, 0);
+    //  作图的 sigdig 默认 3（IsoplotR 自己的默认是 2，这里保持本软件既有行为，
+    //  界面上那格写明了"原版默认 2"）。别拿文件头的 SIGDIG 当它 ——
+    //  那个 SIGDIG 是 ρ 的 10 位有效数字，两码事（见文件头 ⑫）。
+    var sd = numd(a.sigdig, 3);
+    [ty, sa, cp, sd].forEach(function (v) {
+      if (!isFinite(v)) throw new Error('作图参数不是数字');
+    });
+    var out = ['type=' + ty, 'show.age=' + sa, 'common.Pb=' + cp, 'sigdig=' + sd];
+
+    //  anchor：只有 discordia（show.age≥2）用得上，原版 GUI 也是只在那一档显示。
+    var an = n1(a.anchor) || 0;
+    if (an > 0 && sa >= 2) {
+      var aAge = n1(a.anchorAge);
+      if (an === 2) {
+        if (aAge !== null) out.push('anchor=c(2,' + aAge + ')');
+      } else {
+        out.push('anchor=' + an);
+      }
+    }
+
+    //  cutoff.disc = discfilter(option=, before=, cutoff=) —— 与 GUI 里的写法一致。
+    //  cutoff 留空就整个不传，用 R 里那套按 option 分的默认上下限。
+    var df = n1(a.discFilter) || 0;
+    if (df > 0) {
+      var opt = n1(a.discOpt);
+      if (opt === null) opt = 1;
+      //  判据只认 DISCOPT 里那 5 档。这一条防的是"调用方把参数接错了"，所以
+      //  要**吵**出来而不是悄悄退回某一档 —— 悄悄退回会让人以为过滤生效了。
+      if (!DISCOPT.some(function (o) { return o.v === opt; })) {
+        throw new Error('不谐和度判据只能是 1~5，收到 ' + opt);
+      }
+      var dv = ['option=' + opt, 'before=' + (df === 1 ? 'TRUE' : 'FALSE')];
+      var dcut = nList(a.discCutoff, 2);
+      if (dcut) dv.push('cutoff=c(' + dcut[0] + ',' + dcut[1] + ')');
+      out.push('cutoff.disc=discfilter(' + dv.join(',') + ')');
+    }
+
+    //  坐标范围：都是 [min,max] 两个数，格式不对就当作没填（不许半截参数进 R）。
+    [['tlim', a.tlim], ['xlim', a.xlim], ['ylim', a.ylim]].forEach(function (p) {
+      var v = nList(p[1], 2);
+      if (v) out.push(p[0] + '=c(' + v[0] + ',' + v[1] + ')');
+    });
+
+    //  ticks：一个数 = 刻度条数；一串数 = 指定这些年龄上放刻度（原版两种都收）。
+    var tk = nList(a.ticks, -1);
+    if (tk) out.push(tk.length === 1 ? 'ticks=' + tk[0] : 'ticks=c(' + tk.join(',') + ')');
+
+    if (tf(a.exterr)) out.push('exterr=TRUE');
+    if (tf(a.shownumbers)) out.push('shownumbers=TRUE');
+
+    //  椭圆样式。填色写成 8 位十六进制 #RRGGBBAA；透明度没填时用原版自己那套
+    //  默认的 0.5（它的默认填色就是 #00FF0080 / #FF000080，末两位正是 80）。
+    var fc = hx(a.fill);
+    if (fc) {
+      var al = n1(a.fillAlpha);
+      if (al === null) al = 0.5;
+      if (al < 0) al = 0; else if (al > 1) al = 1;
+      var aa = Math.round(al * 255).toString(16).toUpperCase();
+      if (aa.length < 2) aa = '0' + aa;
+      out.push('ellipse.fill="' + fc + aa + '"');
+    }
+    var sc = hx(a.stroke);
+    if (sc) out.push('ellipse.stroke="' + sc + '"');
+    return out;
+  }
+
+  /**
    * 生成 R 代码。这是**唯一**一处与 IsoplotR 打交道的地方，所以口径全写在这里：
    *   format=1 + ierr=2 + header=TRUE  ← 见文件头 ①②
+   *   实参表由 rArgs() 生成，没填的项不出现 ← 见文件头 ⑭
    *   整段包在 tryCatch 里，失败退回 show.age=0 并带回原文 ← 见文件头 ⑥
    *   结果摘成 key=value 纯文本，界面自己解析，不依赖 R 对象序列化
    */
   function rCode(a) {
     var csv = safePath(a.csv), svg = safePath(a.svg);
-    var ty = (a.type === undefined || a.type === null) ? 1 : Number(a.type);
-    var sa = (a.showAge === undefined || a.showAge === null) ? 0 : Number(a.showAge);
-    var cp = (a.commonPb === undefined || a.commonPb === null) ? 0 : Number(a.commonPb);
     var w = a.w || 7, h = a.h || 6, ps = a.ps || 11;
-    var sigdig = (a.sigdig === undefined || a.sigdig === null) ? 3 : Number(a.sigdig);
 
     //  这些值会原样进 R 代码，所以必须是纯数字
-    [ty, sa, cp, w, h, ps, sigdig].forEach(function (v) {
+    [w, h, ps].forEach(function (v) {
       if (!isFinite(v)) throw new Error('作图参数不是数字');
+    });
+
+    var A = rArgs(a);
+    var args = A.join(', ');
+    //  退回"只画点"时，把实参表里的 show.age 换成 0，其余原样保留。
+    var args0 = A.map(function (p) {
+      return p.indexOf('show.age=') === 0 ? 'show.age=0' : p;
+    }).join(', ');
+    //  退回的分支要不要执行，看的就是实参表里那个 show.age —— 不另算一遍。
+    var sa = 0;
+    A.forEach(function (p) {
+      if (p.indexOf('show.age=') === 0) sa = Number(p.slice('show.age='.length));
     });
 
     var L = [];
@@ -385,16 +578,14 @@
     L.push('msg <- ""');
     L.push('o <- NULL');
     L.push('svg(' + rStr(svg) + ', width=' + w + ', height=' + h + ', pointsize=' + ps + ')');
-    L.push('o <- tryCatch(concordia(d, type=' + ty + ', show.age=' + sa
-      + ', common.Pb=' + cp + ', sigdig=' + sigdig + '),');
+    L.push('o <- tryCatch(concordia(d, ' + args + '),');
     L.push('              error = function(e) { msg <<- conditionMessage(e); NULL })');
     L.push('dev.off()');
     //  失败也要给一张图：退回只画点（show.age=0）。不能把面板留空。
     L.push('if (is.null(o) && ' + sa + ' > 0) {');
     L.push('  msg <- paste0("拟合失败，已退回只画点：", msg)');
     L.push('  svg(' + rStr(svg) + ', width=' + w + ', height=' + h + ', pointsize=' + ps + ')');
-    L.push('  try(concordia(d, type=' + ty + ', show.age=0, common.Pb=' + cp
-      + ', sigdig=' + sigdig + '), silent = TRUE)');
+    L.push('  try(concordia(d, ' + args0 + '), silent = TRUE)');
     L.push('  dev.off()');
     L.push('}');
     //  错误原文里可能有换行 —— [[:space:]] 不需要反斜杠转义，比 [\r\n] 稳
@@ -645,11 +836,13 @@
 
   /**
    * 出一张图。会先确保运行时已加载。
-   * 返回 { svg, raw, result, summary, seconds }
+   * 返回 { svg, raw, result, summary, seconds, args }
+   *   args 是这一次真正传进 R 的实参表 —— 界面上原样列出来，好留痕/复现。
    */
   function render(table, opts, onProgress) {
     opts = opts || {};
     var say = function (s) { if (onProgress) onProgress(s); };
+    var argsList = [];              // 这一次真正传进 R 的实参表，回给界面做留痕
     return load(onProgress).then(function () {
       say('正在作图（' + table.n + ' 个点，' + AGES.filter(function (a) {
         return a.v === Number(opts.showAge || 0);
@@ -659,11 +852,15 @@
       var svg = '/tmp/' + stamp + '.svg';
       return putLines(st.webR, csv, table.lines).then(function () {
         var t = now();
-        return st.webR.evalRString(rCode({
-          csv: csv, svg: svg,
-          type: opts.type, showAge: opts.showAge, commonPb: opts.commonPb,
-          w: opts.w, h: opts.h, ps: opts.ps, sigdig: opts.sigdig
-        })).then(function (raw) { return { raw: raw, ms: now() - t }; });
+        //  选项原样透传：传进来的 key 就是 rArgs() 认的那些，**不再一处一处抄**。
+        //  抄一份就一定会漏一项，而漏掉的那项照样能出图，最难发现。
+        var ra = { csv: csv, svg: svg };
+        RARG_KEYS.forEach(function (k) {
+          if (opts[k] !== undefined && opts[k] !== null) ra[k] = opts[k];
+        });
+        argsList = rArgs(ra);
+        return st.webR.evalRString(rCode(ra))
+          .then(function (raw) { return { raw: raw, ms: now() - t }; });
       }).then(function (o) {
         return st.webR.FS.readFile(svg).then(function (buf) {
           //  ⚠ 浏览器里 FS.readFile 回来的是 Uint8Array，不是字符串（踩过：
@@ -674,7 +871,7 @@
           say('图已出（' + (o.ms / 1000).toFixed(1) + ' s，' + Math.round(text.length / 1024) + ' KB）'
             + (result.error ? ' —— 但拟合失败了，见下方说明' : ''));
           return { svg: text, raw: o.raw, result: result, summary: summary,
-                   seconds: o.ms / 1000 };
+                   seconds: o.ms / 1000, args: argsList };
         });
       });
     });
@@ -684,9 +881,11 @@
     CDN: CDN, WEBR_ENTRY: WEBR_ENTRY, PKG: PKG,
     COL: COL, HEADER: HEADER, HEADER_SPEC: HEADER_SPEC, SIGDIG: SIGDIG,
     TYPES: TYPES, AGES: AGES, CPB: CPB, Z95: Z95,
+    ANCHORS: ANCHORS, DISCFILTERS: DISCFILTERS, DISCOPT: DISCOPT,
+    DISC_DEFAULT: DISC_DEFAULT, RARG_KEYS: RARG_KEYS,
     numOr: numOr, asWritten: asWritten, rowUsable: rowUsable, sampleNames: sampleNames,
     standardNames: standardNames,
-    buildTable: buildTable, rCode: rCode, parseResult: parseResult,
+    buildTable: buildTable, rArgs: rArgs, rCode: rCode, parseResult: parseResult,
     summarise: summarise, svgDataUri: svgDataUri, fnum: fnum, rStr: rStr,
     load: load, render: render,
     isReady: function () { return st.ready; },

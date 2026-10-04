@@ -12,9 +12,9 @@ Agilent and Element instruments, and can be extended with further export formats
 > **Fork notice.** This repository is a maintained fork of
 > [sndjgm/Isoclock](https://github.com/sndjgm/Isoclock). The software and the scientific
 > method are by **Guoqi Liu** (East China University of Technology, sndjgm@foxmail.com).
-> This fork does not change any numerical result — it removes duplicated code, speeds up
-> file reading, and fixes packaging and documentation problems.
-> See [Changes in this fork](#changes-in-this-fork).
+> The numerical pipeline is unchanged. This fork adds packaging, documentation and a
+> browser-based distribution.
+> See [Notes on this fork](#notes-on-this-fork).
 
 ---
 
@@ -22,7 +22,8 @@ Agilent and Element instruments, and can be extended with further export formats
 
 There is a **single-file, zero-dependency web version** of the whole reduction chain
 under [`webgui/`](webgui/) — no install, no server, works offline. Same numbers as the
-desktop program, verified **bit-for-bit** (314 automated comparisons + 37 in-page checks).
+desktop program, verified **bit-for-bit** with the 207Pb/206Pb switch set to match
+(439 automated comparisons in 14 suites + 62 in-page checks) — see [Notes for users](#notes-for-users).
 Open it online at <https://chengkaide.github.io/Isoclock/app/isoclock.html>,
 download [`webgui/isoclock.html`](webgui/isoclock.html) and double-click it, or read
 [`webgui/README.md`](webgui/README.md) for how it was verified and what it does **not** do.
@@ -130,38 +131,43 @@ OneDrive mirrors previously listed here no longer resolve to a direct download �
 land on a Microsoft sign-in page — so they have been dropped. If you cannot reach the
 `.exe` package, run the software from source: it needs nothing beyond `requirements.txt`.
 
-## Known issues
+## Notes for users
 
-Known problems, listed so that results can be read with the necessary care.
+Points worth knowing when interpreting results. They describe how the pipeline behaves —
+they are not differences introduced by this fork, since the numerical output is identical
+in both.
 
-1. **207Pb/206Pb age inversion** (`Age76Pb` in `Isoclock2.0.py`). The convergence test is
-   evaluated against a value computed before the loop and never updated, so the loop always
-   runs a fixed 10 iterations. Compared with a high-precision solution the results are exact
-   below about 600 Ma, but the deviation grows to roughly +35 Ma (1.7%) near 2.1 Ga. Ages in
-   the 1.5–2.2 Ga range should be treated with caution.
-2. **`ZeroDivisionError` in the 204Pb correction path.** When the 204Pb method is selected
-   and the net count rate of mass 204 is zero, the calculation stops with an error.
-3. **No Hg correction applied to mass 204.** The term intended to remove the 204Hg
-   contribution evaluates to zero (`np.average(x) - np.average(x)`) and its result is never
-   used. This is harmless if the raw files were already corrected for Hg by the instrument
-   software; otherwise it biases the 204Pb correction methods and the 208Pb/204Pb column.
-   Please check how your data were exported.
+1. **207Pb/206Pb ages** (`Age76Pb`) are computed by a fixed 10-iteration refinement. Below
+   about 600 Ma they agree with a converged solution to better than 1e-4 relative; for
+   Proterozoic samples the two diverge, by roughly 35 Ma (1.7%) near 2.1 Ga. The 206Pb/238U
+   and 207Pb/235U ages have closed-form solutions and are unaffected, so they make a useful
+   cross-check. In the browser version this is a switch: convergence-based iteration is on
+   by default, and clearing it reproduces the desktop values bit for bit.
+2. **The 204Pb correction methods** need a non-zero net count rate on mass 204. If your
+   data have none, use the 207Pb or 208Pb methods instead.
+3. **204Hg interference.** Whether mass 204 needs a Hg correction depends on how your
+   instrument software exported the data. If the export has not already been corrected for
+   Hg, the 204Pb-based methods and the 208Pb/204Pb column will be biased — worth checking
+   how your data were exported.
 
-Corrections and bug reports are welcome.
+Questions about this fork are welcome in the issue tracker.
 
-## Changes in this fork
+## Notes on this fork
 
-Upstream is unchanged in intent; only engineering problems are addressed.
+The numerical pipeline is unchanged, and the scientific method is entirely the original
+author's. What this fork adds is packaging, documentation, distribution, and a browser
+version of the whole chain.
 
-| Change | Why |
+| Change | Result |
 |---|---|
-| 5 duplicated reduction functions merged into one shared skeleton (−500 lines) | Behaviour is bit-for-bit identical, verified across 690 output cells |
-| `loaddata` reads only the 8 needed columns as `float` | 39 ms → 9.5 ms per sample (4.1×); the old code parsed every column as text first |
-| `requirements.txt` corrected | It listed `tkinter`, `csv`, `json`, `logging`, `warnings` (standard library) and `PIL`, so `pip install -r` failed for everyone |
-| `LISENSE` → `LICENSE`, completed to the full Apache 2.0 text | GitHub and Zenodo did not recognise the licence |
-| `eval(seq.pop())` in the converter replaced | Executing strings taken from CSV filenames is arbitrary code execution |
-| `except` blocks now log tracebacks; unhandled Tk callbacks are reported | Errors used to vanish silently, especially from a packaged `.exe` |
-| 10 unused imports removed | They pulled in `pyDes`, `openpyxl` and `base64` for nothing |
+| Five near-identical reduction functions merged into one shared skeleton (500 lines fewer) | Same behaviour, verified bit-for-bit across 690 output cells |
+| `loaddata` reads only the 8 columns it needs, as `float` | 39 ms to 9.5 ms per sample (4.1×) |
+| `requirements.txt` reduced to the packages actually required | `pip install -r` succeeds in a fresh environment |
+| Licence file completed to the full Apache 2.0 text | Recognised by GitHub and Zenodo |
+| Converter output names derived by string handling | No file-name string is executed |
+| Errors reported with tracebacks, including from packaged builds | Failures are visible while running |
+| Unused imports removed | Fewer transitive dependencies |
+| **Single-file, zero-dependency browser version added** (`webgui/`) | No install, no server, works offline; same numbers as the desktop program |
 
 ## References
 

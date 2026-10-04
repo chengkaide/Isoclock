@@ -457,6 +457,79 @@
       $('iso-type').options.length + ' / ' + $('iso-age').options.length
       + ' / ' + $('iso-cpb').options.length + ' 项');
 
+    /*  「更多选项」面板（逐项对应 IsoplotR 原版）。这里验的是**接线**：
+     *  控件填满了没有、联动对不对、以及"留空是不是真的不传"。
+     *  参数本身怎么进 R 代码由 webgui/test_isoplotr.js 的 §I 负责。 */
+    var more = $('iso-more');
+    t('「更多选项」面板在，且默认是收起来的',
+      !!more && String(more.tagName).toLowerCase() === 'details' && more.open === false,
+      more ? (more.open ? '默认展开会挤掉首屏' : '默认收起') : '没有这个面板');
+    t('面板里三组候选值都填满了（锚定 / 过滤档 / 判据）',
+      $('iso-anchor').options.length === (ISO ? ISO.ANCHORS.length : 0)
+      && $('iso-disc').options.length === (ISO ? ISO.DISCFILTERS.length : 0)
+      && $('iso-disc-opt').options.length === (ISO ? ISO.DISCOPT.length : 0),
+      $('iso-anchor').options.length + ' / ' + $('iso-disc').options.length
+      + ' / ' + $('iso-disc-opt').options.length + ' 项');
+
+    /*  默认（什么都没碰）时必须**一个都不传** —— 这是"与原版一致"的前提：
+     *  用户没动过的项，行为必须和不加这个面板时一模一样。 */
+    t('默认状态下「更多选项」一个参数都不传（留空 = 用 IsoplotR 自己的默认值）',
+      (function () {
+        var o = ui.isoOpts();
+        return o.anchor === 0 && !o.anchorAge && o.discFilter === 0 && !o.discCutoff
+          && !o.tlim && !o.xlim && !o.ylim && !o.ticks && !o.exterr
+          && !o.shownumbers && !o.fill && !o.stroke;
+      })(), '默认就把参数传出去，等于偷偷改了用户没动过的东西');
+
+    t('联动：锚定年龄那格只在 anchor=2 且拟合选 discordia 时出现',
+      (function () {
+        var shown = function (a, sa) {
+          $('iso-anchor').value = String(a);
+          $('iso-age').value = String(sa);
+          ui.isoSyncMore();
+          return $('iso-anchor-age-wrap').className.indexOf('off') < 0;
+        };
+        var r = [shown(2, 2), shown(2, 1), shown(3, 2), shown(0, 2)];
+        $('iso-anchor').value = '0'; $('iso-age').value = '1'; ui.isoSyncMore();
+        return r[0] === true && r[1] === false && r[2] === false && r[3] === false;
+      })(), '原版 GUI 也是只在 discordia 那一档显示这一栏');
+
+    t('联动：颜色框挂在「自定义」勾选框上，不勾就不传颜色',
+      (function () {
+        var before = ui.isoOpts();
+        $('iso-fill-on').checked = true;
+        $('iso-fill').value = '#ff0000';
+        $('iso-fill-alpha').value = '0.35';
+        ui.isoSyncMore();
+        var shown = $('iso-fill-wrap').className.indexOf('off') < 0;
+        var on = ui.isoOpts();
+        $('iso-fill-on').checked = false;
+        ui.isoSyncMore();
+        var off = ui.isoOpts();
+        return !before.fill && shown && on.fill === '#ff0000'
+          && on.fillAlpha === '0.35' && off.fill === '';
+      })(), '颜色框永远有值，所以必须靠勾选框决定传不传');
+
+    t('填了更多选项后，生成的 R 代码里真的带上它们（anchor 也会按 show.age 决定传不传）',
+      (function () {
+        var mk = function () {
+          var o = ui.isoOpts();
+          return ISO.rCode({ csv: '/tmp/s.csv', svg: '/tmp/s.svg',
+                             showAge: o.showAge, ticks: o.ticks, anchor: o.anchor });
+        };
+        $('iso-anchor').value = '3';
+        $('iso-ticks').value = '5';
+        $('iso-age').value = '1';
+        var c1 = mk();                       // discordia 之外的档：anchor 不该传
+        $('iso-age').value = '2';
+        var c2 = mk();
+        $('iso-anchor').value = '0';
+        $('iso-age').value = '1';
+        $('iso-ticks').value = '';
+        ui.isoSyncMore();
+        return /ticks=5/.test(c1) && !/anchor=3/.test(c1) && /anchor=3/.test(c2);
+      })());
+
     var arIso = ui.state.ageResult;
     t('有结果时「加载 IsoplotR 并作图」可用；没结果时禁用',
       !!arIso && $('btn-iso-run').disabled === false,

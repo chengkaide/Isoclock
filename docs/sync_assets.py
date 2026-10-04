@@ -33,6 +33,7 @@ import os
 import re
 import shutil
 import sys
+import time
 from pathlib import Path
 
 # ---------------------------------------------------------------- 路径
@@ -53,12 +54,14 @@ SHOT_MAP = {
     "ui-report-panel.png": "5_质量报告面板.png",
     "ui-compat.png": "6_兼容读取.png",
     "ui-report.png": "7_质量报告节选.png",
-    #  8/9 号这两张是唯一**需要联网**的：拍之前要真去 CDN 下 webR 与 IsoplotR。
+    #  8/9/10 号这三张是唯一**需要联网**的：拍之前要真去 CDN 下 webR 与 IsoplotR。
     #  上游脚本是 G:/_isohtml/shot_iso.py（走 CDP 等页面报完成再抓图，
     #  不能用 `--virtual-time-budget`，见那个脚本的文件头）。
-    #  8 → 默认视图（全部样品，不含标样）；9 → 单独看标样 AY-4 时的那套 QC 对照。
+    #  8 → 默认视图（全部样品，不含标样）；9 → 单独看标样 AY-4 时的那套 QC 对照；
+    #  10 → 「更多选项」面板展开（`--more`）并摆了几个控件（`--pre`）。
     "ui-isoplotr.png": "8_IsoplotR谐和图.png",
     "ui-isoplotr-std.png": "9_IsoplotR标样QC.png",
+    "ui-isoplotr-more.png": "10_IsoplotR更多选项.png",
 }
 
 # 注入到 guide.html 末尾的浮动返回链接。
@@ -92,6 +95,41 @@ def _report(label, dst, note=""):
     print("  %-26s %8.1f KB  %s%s" % (label, _mb(dst) * 1024, dst.relative_to(REPO), note))
 
 
+def _replace_atomic(tmp, dst):
+    """os.replace + 少量重试。目标被别的进程占着时 Windows 会抛 PermissionError，
+    而这类占用往往是瞬时的（编辑器保存、杀软扫描、预览面板重建缓存）。"""
+    last = None
+    for _ in range(5):
+        try:
+            os.replace(tmp, dst)
+            return
+        except PermissionError as exc:
+            last = exc
+            time.sleep(0.25)
+    raise last
+
+
+def _copy_atomic(src, dst):
+    """先写 .tmp 再原子替换，而不是 shutil.copyfile 直接覆盖目标。
+
+    原因：目标文件被别的进程以**独占方式**打开时，copyfile 会抛
+    PermissionError（本机 2026-10-03 实测：docs/app/isoclock.html 被预览面板
+    占着，"删除+重建"不行、"改名替换"可以）。先写临时文件再 os.replace
+    只需要"允许改名"的权限，能绕开这类占用；顺带也避免目标出现写了一半的中间态。
+    """
+    tmp = str(dst) + ".tmp"
+    shutil.copyfile(src, tmp)
+    _replace_atomic(tmp, dst)
+
+
+def _write_text_atomic(dst, text):
+    """同上，写入文本。显式 LF —— 原因见 sync_guide 里的长注释。"""
+    tmp = str(dst) + ".tmp"
+    with io.open(tmp, "w", encoding="utf-8", newline="\n") as fh:
+        fh.write(text)
+    _replace_atomic(tmp, dst)
+
+
 # ---------------------------------------------------------------- 1. 网页版
 
 def sync_app(check):
@@ -105,7 +143,12 @@ def sync_app(check):
         print("  %-26s %s" % ("网页版 isoclock.html", "已是最新" if same else "**需要同步**"))
         return True
     dst.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(src, dst)
+    #  内容已经一致就不写：既省一次 I/O，也避开"目标被别的进程占着"这类偶发锁
+    #  （写路径上撞锁会中断后面所有步骤，而这几步之间并没有依赖关系）。
+    if dst.exists() and dst.read_bytes() == src.read_bytes():
+        _report("网页版 isoclock.html", dst, "  (已是最新，未改动)")
+        return True
+    _copy_atomic(src, dst)
     _report("网页版 isoclock.html", dst)
     return True
 
@@ -152,9 +195,8 @@ def sync_guide(src, check):
     #  docs/make_badges.py 量的是本地文件、CI（ubuntu）量的是 checkout 出来的文件，
     #  两边都往徽章里写"图解教程 xx KB"和 {{GUIDEKB}}，一旦舍入落在边界上，
     #  CI 的 --check 就会红 —— 而且只在别人机器上红，最坏的那种红。
-    #  统一成 LF 之后，两边量到的是同一个数（481973 字节）。
-    with io.open(dst, "w", encoding="utf-8", newline="\n") as fh:
-        fh.write(want)
+    #  统一成 LF 之后，两边量到的是同一个数（2026-10-04 实测 482008 字节）。
+    _write_text_atomic(dst, want)
     _report("图解教程 guide.html", dst, "  (注入了返回首页链接)")
     return True
 
@@ -180,7 +222,7 @@ def sync_shots(check):
             same = d.exists() and d.read_bytes() == s.read_bytes()
             print("  %-26s %s" % (new, "已是最新" if same else "**需要同步**"))
             continue
-        shutil.copyfile(s, d)
+        _copy_atomic(s, d)
         _report(new, d)
     return ok
 

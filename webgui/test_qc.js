@@ -181,13 +181,13 @@ function main() {
   check('选了 207Pb/206Pb 就用未校正',
     d76.key === QC.QC_KEY76 && d76.corrected === false, JSON.stringify(d76));
 
-  /* ---- ⑨ 表头自检：能发现列错位 ---- */
+  /* ---- ⑨ 表头自检：能发现表头与内容不一致 ---- */
   console.log('');
   console.log('--- ⑨ 表头自检 ---');
   const good = AGE.headerFor(false, 1);
   const lay = QC.qcCheckLayout(good, 1);
   check('正确的表头没有 problems', lay.problems.length === 0, lay.problems.join('；'));
-  check('指出了第 26 列的错位', lay.notes.length > 0
+  check('指出了第 26 列表头与内容不一致', lay.notes.length > 0
     && lay.notes.join('').indexOf('备注') >= 0, lay.notes.join(' ').slice(0, 60));
   const shuffled = good.slice();
   const tmp = shuffled[17]; shuffled[17] = shuffled[19]; shuffled[19] = tmp;

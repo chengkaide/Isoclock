@@ -82,7 +82,7 @@ SUITES = ['test_fp.js', 'test_math.js', 'test_thermo.js', 'test_agilent.js',
 
 # 页面内自检的项数。真源是产物页面在 #selftest 下自己报出来的那个数
 # （标题形如 `SELFTEST-OK [56/56]`）。有 Edge 时用 --selftest 现场核一遍。
-SELFTEST_ITEMS = 56
+SELFTEST_ITEMS = 62
 
 SUM_RE = re.compile(r'总计\s*(\d+)\s*项：通过\s*(\d+)，失败\s*(\d+)'
                     r'|结果：\s*(\d+)\s*通过\s*/\s*(\d+)\s*失败')

@@ -195,7 +195,7 @@ function coefficients(ctx, withShort) {
   //      匹配 0 行 -> KeyError ； 匹配 1 行 -> 标量 numpy.float64 ； 匹配 ≥2 行 -> Series
   // 于是 `date_all[14][s][:]` 在"匹配 1 行"时抛 IndexError: invalid index to
   // scalar variable，在"匹配 0 行"时抛 KeyError —— 两者都被最外层 except 吞掉，
-  // 系数归零。这是个真实的用户陷阱：整批只插了一个标样时，微量元素列会静默变成 0。
+  // 系数取 0。这是需要提醒使用者的一种情形：整批只插了一个标样时，微量元素列为 0。
   if (idx.length < 2) return [0, 0, 0];
   const m = (k) => {
     const v = new Float64Array(idx.length);
@@ -257,7 +257,7 @@ function headerFor(linear, method) {
            28: '206Pb_238U', 29: '2s', 50: '204 Corrected isotop' };
   } else if (method === 4) {
     br = { 25: 'Cal 204Pb Corr. Age(Ma)', 26: '206Pb_238U', 27: '2s',
-           // 下面是原代码里的两处笔误，原样保留
+           // 下面两处列名沿用原程序的写法，不做改动
            28: linear ? '232Pb_232Th' : '208Pb_232Th', 29: '2s',
            50: linear ? '204 Corrected isotop' : 'Cal 204Pb Corrected isotop' };
   }
@@ -351,7 +351,7 @@ function averageAge(input) {
       let valid = true;
       let lg75 = 0, le75 = 0, lg68 = 0, le68 = 0, c75 = 0, c68 = 0;
       if (den === 0) {
-        valid = false;                        // 原代码这一支之后会除零，正常数据不会走到
+        valid = false;                        // 该分支分母为零（正常数据不会走到）
       } else {
         const cr75 = f207_235 * AG_R_U * corr207 / den;
         const cr68 = f206_238 * corr206 / den;

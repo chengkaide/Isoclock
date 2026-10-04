@@ -342,6 +342,47 @@ footer.foot .grow { flex: 1 1 auto; }
 .iso-bar button.go { border-color: var(--accent); color: var(--accent); font-weight: 600; }
 .iso-bar button.go:hover:not(:disabled) { background: var(--accent); color: #fff; }
 .iso-bar button:disabled { color: #b9c6d4; border-color: #e6ebef; cursor: not-allowed; }
+
+/*  「更多选项」面板。主工具条一个字没动 —— 与原版一致的参数全收在这里，
+    默认是收起来的，不点开就还是原来那一屏。 */
+.iso-more {
+  margin: 10px 0 0; border: 1px solid var(--line); border-radius: 8px;
+  background: #fbfcfd;
+}
+.iso-more > summary {
+  padding: 8px 12px; font-size: 12.5px; color: var(--ink-2);
+  cursor: pointer; user-select: none;
+}
+.iso-more[open] > summary { border-bottom: 1px solid var(--line); }
+.iso-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 8px 18px; padding: 12px;
+}
+.iso-grid .fld {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  font-size: 12.5px; color: var(--ink-2);
+}
+/*  联动隐藏：用类而不是 hidden 属性 —— 上面的 display:flex 会盖掉
+    [hidden] 的 display:none（作者样式优先于 UA 样式），这是踩过的坑。 */
+.iso-grid .fld.off { display: none; }
+.iso-grid .fld > span:first-child { flex: 0 0 auto; }
+.iso-grid .fld .pair { display: flex; gap: 4px; flex: 1 1 auto; min-width: 0; }
+.iso-grid .fld select,
+.iso-grid .fld input[type="text"] {
+  flex: 1 1 auto; min-width: 0; font: inherit; font-size: 12.5px; padding: 3px 6px;
+  border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--ink);
+}
+.iso-grid .fld .pair input { width: 100%; min-width: 0; }
+.iso-grid .fld input[type="color"] {
+  flex: 0 0 34px; width: 34px; height: 24px; padding: 0;
+  border: 1px solid var(--line); border-radius: 6px; background: #fff;
+}
+.iso-grid .fld.chk { justify-content: flex-start; }
+.iso-more-note {
+  margin: 0; padding: 0 12px 12px; font-size: 11.5px;
+  color: var(--ink-3); line-height: 1.7;
+}
+.iso-more-note b { color: var(--ink-2); }
 .iso-msg {
   margin: 10px 0 0; padding: 8px 10px; border-radius: 8px;
   font-size: 12.5px; line-height: 1.65; background: var(--accent-2); color: var(--ink-2);
@@ -364,6 +405,12 @@ table.iso-sum td.note { color: var(--ink-3); font-size: 11.5px; }
 table.iso-sum tr.head td { font-weight: 600; color: var(--ink-2); border-bottom-color: var(--line); }
 .iso-notes { margin: 10px 0 0; font-size: 12px; color: var(--ink-2); line-height: 1.7; }
 .iso-notes ul { margin: 4px 0 0; padding-left: 18px; }
+/*  本次真正传进 R 的参数：便于复现，所以用等宽字、不当成正文。 */
+.iso-notes p.iso-args { margin: 0 0 8px; font-size: 11.5px; color: var(--ink-3); }
+.iso-notes p.iso-args code {
+  font-family: var(--mono); font-size: 11.5px;
+  background: #eef2f6; padding: 1px 5px; border-radius: 4px; color: var(--ink-2);
+}
 </style>
 </head>
 <body>
@@ -399,7 +446,9 @@ table.iso-sum tr.head td { font-weight: 600; color: var(--ink-2); border-bottom-
     </div>
     <p class="hint">「真实锡石」是 <b><span id="demo-n">一批</span>真实的 iCAP Qtegra 导出</b>
       （锡石 LA-ICP-MS U-Pb，YS 方法对比那批）—— 样品代号已重编号、采集时间已归零，
-      <b>数值一个字节都没改</b>。里面有失败点、弱信号点和整行 NaN 的点，那是真数据的常态。
+      <b>数值一个字节都没改</b>。里面有失败点、弱信号点，也有少数几格 NaN —— 全落在
+      <b>²⁰⁸Pb/²³²Th</b> 那一族列上（²³²Th 通道太弱时那个比值算不出来，同一行其余列照常），
+      那是真数据的常态。
       <br>「合成数据」是人为拼的计数，只用来跑通流程、看版面，算出的年龄没有地质意义。</p>
     <p class="hint">文件顺序即处理顺序（原桌面版用 <code>os.listdir</code>，不保证稳定）。</p>
 
@@ -503,7 +552,7 @@ table.iso-sum tr.head td { font-weight: 600; color: var(--ink-2); border-bottom-
       把 Ɛ 改大改小，年龄一个数都不变，所有 <code>±</code> 跟着变大变小。
       只有 <b>rho</b>（相关系数）列也跟着动，因为它的公式里也用了 Ɛ。<br><br>
 
-      <b>三条必须知道的口径问题</b>：<br>
+      <b>三条需要注意的口径</b>：<br>
       ① 内部相对误差用的是表里的 <code>2s</code>，也就是 <b>2σ</b>，而程序把 Ɛ 直接与它
       平方相加 —— 相当于把 Ɛ 当成 2σ 同量级的量。你没量过 Ɛ 是 1σ 还是 2σ 的话，
       这里其实是混着用的，报出去的不确定度到底是几 σ 要自己心里有数。<br>
@@ -607,7 +656,7 @@ table.iso-sum tr.head td { font-weight: 600; color: var(--ink-2); border-bottom-
     <button data-tab="log">日志</button>
     <span class="spacer"></span>
     <label style="font-size:12px;color:var(--ink-2);white-space:nowrap"
-      title="导出的年龄表里，把沿自原实现的列名笔误改成正确写法：232Pb_232Th → 208Pb_232Th；以及四条校正路径各自那个末位缺 s 的 …Corrected isotop → …Corrected isotopes。默认关闭，保证与桌面版输出逐字节一致。">
+      title="导出的年龄表里，把沿用原程序的列名写法改成规范写法：232Pb_232Th → 208Pb_232Th；以及四条校正路径各自那个末尾少一个 s 的 …Corrected isotop → …Corrected isotopes。默认关闭，保证与桌面版输出逐字节一致。">
       <input type="checkbox" id="p-fixnames"> 修正列名笔误</label>
     <button class="act" id="btn-exp-all" disabled>result_all.csv</button>
     <button class="act" id="btn-exp-cps" disabled>Mean_Cps.csv</button>
@@ -648,6 +697,97 @@ table.iso-sum tr.head td { font-weight: 600; color: var(--ink-2); border-bottom-
         <button class="go" id="btn-iso-run" disabled>加载 IsoplotR 并作图</button>
         <button id="btn-iso-svg" disabled>另存 SVG</button>
       </div>
+      <!--  更多选项：逐项对应 IsoplotR 自己的图形界面（pvermees/IsoplotRgui 的
+            options/concordia.html）。规矩是「留空 = 不传 = 用它的默认值」，
+            所以这里所有输入框都不预填数字（sigdig 那格的 3 是本软件既有的默认，
+            与 IsoplotR 自己的 2 不同，格子里写明了）。见 isoplotr.js 文件头 ⑭。 -->
+      <details class="iso-more" id="iso-more">
+        <summary>更多选项 —— 逐项对应 IsoplotR 原版；留空即用它的默认值</summary>
+        <div class="iso-grid">
+          <label class="fld" title="anchor：只有拟合选 discordia（2/3/4）时才有效 —— 原版 GUI 也只在那一档显示它。选「强制交点落在指定年龄」时，右边那格要填年龄。">
+            <span>锚定 anchor</span>
+            <select id="iso-anchor"></select>
+          </label>
+          <label class="fld off" id="iso-anchor-age-wrap" title="anchor=c(2,年龄)：把交点钉在这个年龄上，再拟合另一头。">
+            <span>锚定年龄 (Ma)</span>
+            <input type="text" id="iso-anchor-age" placeholder="如 260">
+          </label>
+          <label class="fld" title="cutoff.disc：按不谐和度把点滤掉再拟合。原版第二档「按校正后的比值过滤」要求数据格式 ≥4（得有逐点的普通铅校正量），我们的年龄表是 5 列 U-Pb（format=1），所以这里只有两档。">
+            <span>不谐和度过滤</span>
+            <select id="iso-disc"></select>
+          </label>
+          <label class="fld off" id="iso-disc-opt-wrap" title="discfilter 的 option：不谐和度用什么量来度量。五档与原版一字不差。">
+            <span>过滤判据</span>
+            <select id="iso-disc-opt"></select>
+          </label>
+          <label class="fld off" id="iso-disc-cut-wrap" title="discfilter 的 cutoff。两格都留空 = 用原版按判据分的那套默认上下限（如 r 档是 -5~15%）；只填一格不生效。">
+            <span>过滤下限 / 上限</span>
+            <span class="pair">
+              <input type="text" id="iso-disc-min" placeholder="默认">
+              <input type="text" id="iso-disc-max" placeholder="默认">
+            </span>
+          </label>
+          <label class="fld" title="tlim：只画这一段年龄的谐和线，也决定纵轴范围。两格都填才生效。">
+            <span>谐和线年龄范围 (Ma)</span>
+            <span class="pair">
+              <input type="text" id="iso-tlim-min" placeholder="min">
+              <input type="text" id="iso-tlim-max" placeholder="max">
+            </span>
+          </label>
+          <label class="fld" title="xlim：横轴范围。Wetherill 图的横轴是 ²⁰⁷Pb/²³⁵U，Tera-Wasserburg 图是 ²³⁸U/²⁰⁶Pb。">
+            <span>横轴范围</span>
+            <span class="pair">
+              <input type="text" id="iso-xlim-min" placeholder="min">
+              <input type="text" id="iso-xlim-max" placeholder="max">
+            </span>
+          </label>
+          <label class="fld" title="ylim：纵轴范围。Wetherill 图的纵轴是 ²⁰⁶Pb/²³⁸U。">
+            <span>纵轴范围</span>
+            <span class="pair">
+              <input type="text" id="iso-ylim-min" placeholder="min">
+              <input type="text" id="iso-ylim-max" placeholder="max">
+            </span>
+          </label>
+          <label class="fld" title="ticks：谐和线上的年龄刻度。填一个数 = 放几条；填一串年龄（逗号分隔）= 就按你给的位置放。留空 = 原版默认的 5 条。">
+            <span>谐和线刻度 ticks</span>
+            <input type="text" id="iso-ticks" placeholder="5 或 249,250,251">
+          </label>
+          <label class="fld" title="sigdig：图上印的年龄保留几位有效数字。本软件默认 3（IsoplotR 自己的默认是 2）—— 只影响图上那个数，不影响下面的结果表。">
+            <span>有效数字 sigdig</span>
+            <input type="text" id="iso-sigdig" placeholder="3（原版默认 2）">
+          </label>
+          <label class="fld chk" title="exterr：把衰变常数的不确定度也算进去，误差椭圆的形状会跟着变。原版是勾选框，默认不勾。">
+            <input type="checkbox" id="iso-exterr"><span>计入衰变常数误差 (exterr)</span>
+          </label>
+          <label class="fld chk" title="show.numbers：给每个点标上序号，点多的时候用来对表。">
+            <input type="checkbox" id="iso-shownumbers"><span>显示点号</span>
+          </label>
+          <label class="fld chk" title="不勾就用 IsoplotR 自己的默认填色；勾上才把下面两个值传给它。">
+            <input type="checkbox" id="iso-fill-on"><span>自定义椭圆填色</span>
+          </label>
+          <label class="fld off" id="iso-fill-wrap" title="ellipse.fill：椭圆的填充色。透明度留空时用原版默认的 0.5。">
+            <span>填色 / 透明度</span>
+            <span class="pair">
+              <input type="color" id="iso-fill" value="#00ff00">
+              <input type="text" id="iso-fill-alpha" placeholder="0.5">
+            </span>
+          </label>
+          <label class="fld chk" title="不勾就用原版默认的黑色描边。">
+            <input type="checkbox" id="iso-stroke-on"><span>自定义椭圆描边</span>
+          </label>
+          <label class="fld off" id="iso-stroke-wrap" title="ellipse.stroke：椭圆描边的颜色。">
+            <span>描边色</span>
+            <input type="color" id="iso-stroke" value="#000000">
+          </label>
+        </div>
+        <p class="iso-more-note">
+          原版能选、这一页**做不到**的两项，写在这里而不是悄悄省掉：
+          <b>U–Th–Pb 图（type=3）</b>只对 IsoplotR 的 7/8 号数据格式开放，它要
+          ²⁰⁸Pb/²³²Th 那一列，而我们的年龄表是 5 列 U–Pb（format=1）；
+          <b>椭圆配色的彩虹/热力/viridis 那几档</b>是给"按某个变量给点上色"
+          （levels）用的，我们的表里没有这一列 —— 要做就得先决定按什么上色。
+        </p>
+      </details>
       <div class="iso-msg" id="iso-msg">
         这一页把当前结果交给 <b>IsoplotR</b>（Pieter Vermeesch 的 R 语言年代学工具箱）
         画谐和图，并可选地拟合谐和年龄或 discordia 交点年龄。
@@ -695,7 +835,7 @@ table.iso-sum tr.head td { font-weight: 600; color: var(--ink-2); border-bottom-
 
     <h3>结果可信到什么程度</h3>
     <p>同一批数据下，网页版的输出与桌面版<b>逐位相同</b>（bit-for-bit，包括浮点最后一位）。
-      这不是估计，是跑出来的：<b data-count="tests">409 项</b> Node 端自动比对
+      这不是估计，是跑出来的：<b data-count="tests">439 项</b> Node 端自动比对
       （<b data-count="suites">14 套</b> <code>webgui/test_*.js</code>：数值内核、
       Thermo/Agilent 解析、积分窗口、两个 CSV 的<b>逐字节</b>输出、
       年龄层 51 列 × 19 组参数、<b data-count="suite:test_agilent_e2e.js">20 项</b> Agilent 端到端、
@@ -703,8 +843,8 @@ table.iso-sum tr.head td { font-weight: 600; color: var(--ink-2); border-bottom-
       <b data-count="suite:test_qc.js">63 项</b> 质量统计、
       <b data-count="suite:test_report.js">50 项</b> 报告组装、
       <b data-count="suite:test_demo_real.js">22 项</b> 内置真实示例数据、
-      <b data-count="suite:test_isoplotr.js">73 项</b> IsoplotR 接入层）
-      ＋<b data-count="selftest">56 项</b>本页面内自检（走的是真按钮那条路）。<br>
+      <b data-count="suite:test_isoplotr.js">103 项</b> IsoplotR 接入层）
+      ＋<b data-count="selftest">62 项</b>本页面内自检（走的是真按钮那条路）。<br>
       上面这些数不是手写的：<code>docs/make_badges.py</code> 每次都会把测试真跑一遍，
       <b>连逐套的项数也一起核</b>，对不上就让 CI 红。真正手写的是这一句解释。</p>
       唯一一处曾经对不上的地方是 <code>exp</code> / <code>log</code>：宿主 C 运行时与浏览器的
@@ -712,26 +852,29 @@ table.iso-sum tr.head td { font-weight: 600; color: var(--ink-2); border-bottom-
       网页版因此自己实现了<b>正确舍入</b>的 exp/log（<code>fp.js</code>），
       顺带让结果不再依赖运行平台——同一批数据在任何浏览器、任何系统上都是同一串数字。</p>
 
-    <h3>保留的原实现缺陷（没有偷偷修）</h3>
+    <h3>默认与原程序逐位一致的行为</h3>
     <ul>
-      <li><b><code>Age76Pb</code> 的割线迭代写错了</b>：循环条件里的 <code>Rap</code> 从未更新，
-        收敛判据一旦为真就永远为真，于是实际是<b>固定迭代 10 次</b>。在 1.5–2.2 Ga 区间会
-        造成最大约 <b>+35 Ma</b> 的偏高；比值恰在起点附近时甚至直接返回 0 岁。
+      <li><b><code>Age76Pb</code> 为固定迭代 10 次</b>（循环条件里的 <code>Rap</code>
+        在循环体内不更新，收敛判据一旦为真就不再变化）。在 1.5–2.2 Ga 区间与收敛解
+        相差最大约 <b>35 Ma</b>；比值恰在迭代起点附近时返回 0 岁。
+        <b>²⁰⁶Pb/²³⁸U 与 ²⁰⁷Pb/²³⁵U 年龄有闭式解、不受影响</b>，可用来交叉核对。
         <b>默认已提供收敛修正</b>（左侧⑤勾选框），取消勾选则逐位回到桌面版数值。</li>
-      <li><b>微量元素系数会静默归零</b>：所选 NIST 标样在整批数据里出现 0 次或恰好 1 次时，
-        原代码内部抛异常并被 <code>except</code> 吞掉，系数直接变 0。已如实复现。</li>
-      <li><b>204Pb 路径会除零</b>：某些数据下 <code>204Pb</code> 计数差为 0，原代码不判。
-        网页版在界面上把这种行标成 <span style="color:#b3261e">NaN</span> 并给出提示，
-        数值本身仍与原实现一致。</li>
-      <li><b>Hg 校正恒为零</b>：原实现里 202Hg 通道参与了流程但结果始终是 0。</li>
-      <li><b>拼写笔误</b>：输出列名 <code>232Pb_232Th</code>，以及末位缺 <code>s</code> 的
+      <li><b>微量元素系数在个别情形下为 0</b>：所选 NIST 标样在整批数据里出现 0 次或
+        恰好 1 次时，该情形下系数取 0（对应的分支不产生结果）。已如实复现，
+        界面会给出提示。</li>
+      <li><b>204Pb 路径遇到分母为零</b>：某些数据下 <code>204Pb</code> 计数差为 0。
+        网页版把这种行标成 <span style="color:#b3261e">NaN</span> 并在日志里报出行数，
+        其余列仍与原实现逐位一致。</li>
+      <li><b>204 通道不含 Hg 干扰扣除</b>：该项在流程里的结果恒为 0。是否需要先扣 Hg，
+        取决于仪器软件如何导出数据，请核对你的导出设置。</li>
+      <li><b>输出列名沿用原写法</b>：<code>232Pb_232Th</code>，以及末尾少一个 <code>s</code> 的
         <code>…Corrected isotop</code>（四条校正路径各一版：
-        <code>204</code>／<code>207</code>／<code>208</code>／<code>Cal 204Pb</code>）
-        照抄保留，以免下游脚本按列名匹配时对不上。勾选"修正列名笔误"可换成正确写法。</li>
-      <li><b>外挂误差 Ɛ 的三处口径不齐</b>：桌面版界面上写作 <code>Ɛ(%)</code>，默认
+        <code>204</code>／<code>207</code>／<code>208</code>／<code>Cal 204Pb</code>），
+        默认照抄输出，以免下游脚本按列名匹配时对不上。勾选"修正列名笔误"可换成规范写法。</li>
+      <li><b>外挂误差 Ɛ 的口径有多处并存</b>：桌面版界面上写作 <code>Ɛ(%)</code>，默认
         <b>3%</b>；它以<b>平方和</b>并进各年龄的相对误差 —— <b>只改误差，不改年龄</b>。但
         ① 内部相对误差用的是比值的 <code>2s</code>（即 <b>2σ</b>），Ɛ 直接与它平方相加，
-        等于按 2σ 同量级对待，严格说混了置信水平；
+        等于按 2σ 同量级对待，两者未区分置信水平；
         ② ²⁰⁷Pb/²⁰⁶Pb 年龄的误差<b>不含</b> Ɛ，同一行四个年龄的误差口径并不一致；
         ③ Ɛ 调大会让 <b>MSWD 变小</b>，不能用它去"改善"一致性。
         左侧④那一格旁边写了完整说明。</li>
@@ -772,7 +915,14 @@ table.iso-sum tr.head td { font-weight: 600; color: var(--ink-2); border-bottom-
       <li>²⁰⁷Pb/²⁰⁶Pb 年龄迭代默认采用<b>收敛修正</b>（原实现的收敛判据因一处
         赋值缺失而失效，1.5–2.2 Ga 偏高最多约 +35 Ma，个别点甚至返回 0 岁）；
         取消勾选即逐位回到桌面版数值，用于与已发表结果核对。</li>
-      <li>鼠标交互不同：没有"点图取窗口"，积分窗口用数值输入配合信号图目视确定。</li>
+      <li><b>积分窗口能改的范围比原版窄。</b>原版的四个边界都能手输（<b>Bcg start/end</b>
+        与 <b>Sig start/end</b> 四个输入框 ＋「Set (Single)／Set (All)」，选中文件时旁边
+        画出多元素信号图与这四条虚线；<b>"点图取窗口"两边都没有</b>）。
+        网页版只保留<b>背景窗口</b>（<code>b0</code>/<code>b1</code>）与<b>信号阈值倍数</b>：
+        信号的起止由 <code>detectSignalWindow()</code> 按"越过阈值"自动定，
+        页面上<b>没有 <code>s0</code>/<code>s1</code> 的输入框</b> —— 自动识别若选错，
+        只能改这两个数间接绕。窗口层的行为与判据见 <code>webgui/src/window.js</code>
+        与 <code>webgui/test_window.js</code>。</li>
       <li>输出的是 CSV（两个中间文件 + 年龄表）与 JSON，不写 <code>.xls</code>。</li>
       <li>标样漂移回归 <code>regression()</code> 没有接线——它用 <code>scipy.curve_fit</code>，
         在原程序里也没有任何控件能改它的方法编号，属于从未生效的路径。</li>
@@ -815,15 +965,15 @@ table.iso-sum tr.head td { font-weight: 600; color: var(--ink-2); border-bottom-
    本文件由 webgui/build_ui.py 拼成，请勿手改。要改就改 ui/ 与 src/ 下的
    源头，然后重新运行：python webgui/build_ui.py
 
-   生成时间：2026-10-02 23:23:36（取全部源码里最新的那次改动时间，
+   生成时间：2026-10-04 16:37:23（取全部源码里最新的那次改动时间，
              所以同样的源码永远得到同样的文件）
 
-   模块指纹：style.css=23f279d85d68 src/fp.js=0ec13124f10d src/math.js=ed93964b9ba1 src/thermo.js=1596a3593c89 src/window.js=7e8dfba81ca9 src/report.js=2e5ac3aa5cb8 src/pipeline.js=6a7f362158c5 src/age.js=bfcb91404ec9 src/qc.js=7a96b7f3fc51 src/demo_real.js=2c445b347618 ui/report.js=b8d0f3beeb76 ui/isoplotr.js=70c81f4a0c7b ui/selftest.js=70df616e1376 ui/app.js=19cf0e8afa14 ui/app.html=1f7d86d194cf
-   源码指纹：6928c8b264d9（页脚显示的就是它，与本脚本末尾打印的那一行同值）
+   模块指纹：style.css=b67011bb3184 src/fp.js=0ec13124f10d src/math.js=c069afbfb348 src/thermo.js=1596a3593c89 src/window.js=d796f11140ec src/report.js=2e5ac3aa5cb8 src/pipeline.js=6a7f362158c5 src/age.js=de71144827e2 src/qc.js=073a99c707df src/demo_real.js=bc39e2008e74 ui/report.js=1468ac677124 ui/isoplotr.js=ef344cfd2ba6 ui/selftest.js=8f095914b580 ui/app.js=163e8fab70de ui/app.html=c5076dd102b0
+   源码指纹：a470457ec8e1（页脚显示的就是它，与本脚本末尾打印的那一行同值）
   ==========================================================================
 -->
 <script>
-window.__build = { built: "2026-10-02 23:23:36", fingerprint: "style.css=23f279d85d68 src/fp.js=0ec13124f10d src/math.js=ed93964b9ba1 src/thermo.js=1596a3593c89 src/window.js=7e8dfba81ca9 src/report.js=2e5ac3aa5cb8 src/pipeline.js=6a7f362158c5 src/age.js=bfcb91404ec9 src/qc.js=7a96b7f3fc51 src/demo_real.js=2c445b347618 ui/report.js=b8d0f3beeb76 ui/isoplotr.js=70c81f4a0c7b ui/selftest.js=70df616e1376 ui/app.js=19cf0e8afa14 ui/app.html=1f7d86d194cf", id: "6928c8b264d9" };
+window.__build = { built: "2026-10-04 16:37:23", fingerprint: "style.css=b67011bb3184 src/fp.js=0ec13124f10d src/math.js=c069afbfb348 src/thermo.js=1596a3593c89 src/window.js=d796f11140ec src/report.js=2e5ac3aa5cb8 src/pipeline.js=6a7f362158c5 src/age.js=de71144827e2 src/qc.js=073a99c707df src/demo_real.js=bc39e2008e74 ui/report.js=1468ac677124 ui/isoplotr.js=ef344cfd2ba6 ui/selftest.js=8f095914b580 ui/app.js=163e8fab70de ui/app.html=c5076dd102b0", id: "a470457ec8e1" };
 </script>
 
 <script>
@@ -852,13 +1002,13 @@ window.__build = { built: "2026-10-02 23:23:36", fingerprint: "style.css=23f279d
  *        页面因此比纯代码版大出 base64 那一段（精确值由 docs/make_badges.py 实算）。
  *
  *  这套数据按下面 params 跑出来的结果（由生成脚本用真管线量出，不是手写的）：
- *        标样 AY-4：n=14，加权平均 157.04 ± 1.43 Ma（2σ），MSWD 0.69
+ *        标样 AY-4：n=15，加权平均 157.06 ± 1.39 Ma（2σ），MSWD 0.70
  * ========================================================================== */
 (function () {
   'use strict';
 
   var B64 = [
-    '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',
+    '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',
@@ -1004,7 +1154,7 @@ window.__build = { built: "2026-10-02 23:23:36", fingerprint: "style.css=23f279d
      *
      * 这套值不是猜的，是拿**真管线**在这批数据上量出来的
      * （量法与判据见 webgui/make_real_demo.py 与 webgui/test_demo_real.js）。
-     * 标样 AY-4 出 157.04 ± 1.43 Ma（MSWD 0.69），与两个公开发表的 ID-TIMS 值：
+     * 标样 AY-4 出 157.06 ± 1.39 Ma（MSWD 0.70），与两个公开发表的 ID-TIMS 值：
      *   Yuan et al. (2011) 158.2 ± 0.4 Ma；Carr et al. (2020) 151.9 ± 2.2 Ma
      * 都对得上。这两个值本身相差 6.3 Ma —— AY-4 的"真值"在文献里就有争议，
      * 源方法文档花了一整节讨论这件事，所以判据取两者中点 155.05 ± 5 Ma。
@@ -1035,7 +1185,7 @@ window.__build = { built: "2026-10-02 23:23:36", fingerprint: "style.css=23f279d
      * se2 是 **2σ**：qcWavg 给的是 1σ 内部标准误，生成脚本乘 2 之后写进来，
      * 所以这里必须连口径一起记下来，别让读的人去猜。
      */
-    stdMeasured: { name: 'AY-4', mean: 157.037636362572, se2: 1.433728611578009, mswd: 0.6920879466769332, n: 14,
+    stdMeasured: { name: 'AY-4', mean: 157.06303880884167, se2: 1.3934984356588052, mswd: 0.7049575089824496, n: 15,
                    unit: 'Ma', sigma: '2σ' },
 
     /* ---- 这批数据自己的毛病：由生成脚本用真管线量出来的，不是手写的 ----
@@ -1050,7 +1200,7 @@ window.__build = { built: "2026-10-02 23:23:36", fingerprint: "style.css=23f279d
      *          "参与平均的点数"比"文件数"少，是**对的**，不是程序坏了。
      * weakFiles 净 ²⁰⁶Pb 计数低于本批中位数一半的文件（剥蚀失败或颗粒贫 U）。
      */
-    flaws: { nanRows: [{"file": "sample_10.csv", "sample": "S-06"}, {"file": "sample_23.csv", "sample": "S-16"}, {"file": "sample_25.csv", "sample": "AY-4"}, {"file": "sample_40.csv", "sample": "S-27"}], weakFiles: [{"file": "sample_30.csv", "netPb": 149.61299776120154}, {"file": "sample_29.csv", "netPb": 175.75388145610287}, {"file": "sample_31.csv", "netPb": 183.64920848835234}, {"file": "sample_28.csv", "netPb": 192.01178279080332}, {"file": "sample_27.csv", "netPb": 212.49253369887566}, {"file": "sample_33.csv", "netPb": 219.51255733336157}, {"file": "sample_32.csv", "netPb": 220.64812893379968}, {"file": "sample_44.csv", "netPb": 252.24356300137342}, {"file": "sample_43.csv", "netPb": 313.99757549587343}, {"file": "sample_34.csv", "netPb": 322.6665508492313}, {"file": "sample_45.csv", "netPb": 326.1560629570767}, {"file": "sample_41.csv", "netPb": 339.3135241812471}, {"file": "sample_42.csv", "netPb": 371.7283803944793}, {"file": "sample_38.csv", "netPb": 380.7040782867196}, {"file": "sample_39.csv", "netPb": 654.2945093153395}, {"file": "sample_10.csv", "netPb": null}, {"file": "sample_23.csv", "netPb": null}, {"file": "sample_25.csv", "netPb": null}, {"file": "sample_40.csv", "netPb": null}], netPbMedian: 3529.2119953166757 },
+    flaws: { nanRows: [], weakFiles: [{"file": "sample_30.csv", "netPb": 149.61299776120154}, {"file": "sample_29.csv", "netPb": 175.75388145610287}, {"file": "sample_31.csv", "netPb": 183.64920848835234}, {"file": "sample_28.csv", "netPb": 192.01178279080332}, {"file": "sample_27.csv", "netPb": 212.49253369887566}, {"file": "sample_33.csv", "netPb": 219.51255733336157}, {"file": "sample_32.csv", "netPb": 220.64812893379968}, {"file": "sample_44.csv", "netPb": 252.24356300137342}, {"file": "sample_43.csv", "netPb": 313.99757549587343}, {"file": "sample_34.csv", "netPb": 322.6665508492313}, {"file": "sample_45.csv", "netPb": 326.1560629570767}, {"file": "sample_41.csv", "netPb": 339.3135241812471}, {"file": "sample_42.csv", "netPb": 371.7283803944793}, {"file": "sample_40.csv", "netPb": 379.2078265937438}, {"file": "sample_38.csv", "netPb": 380.7040782867196}, {"file": "sample_39.csv", "netPb": 654.2945093153395}], netPbMedian: 3376.677243817144 },
     decode: decode,
   };
   if (typeof window !== 'undefined') window.DS_DEMO_REAL = DS_DEMO_REAL;
@@ -1480,10 +1630,11 @@ function rap76(t) {
 /**
  * Age76Pb(Rap76)，Isoclock2.0.py:48。
  *
- * 【已知缺陷，原样移植】循环条件里的 Rap 在循环体内**从未更新**，收敛判据
- * 一旦为真便永远为真，循环只能靠 N < 10 退出 —— 等价于固定迭代 10 次的试位法。
- * 在 1.5-2.2 Ga 区间造成最大约 +35 Ma 的相对偏差。
- * 这里不修，因为目标是复现原软件的结果；要修的地方在别处（见 README 的 Known issues）。
+ * 【与原程序一致】循环条件里的 Rap 在循环体内**不更新**，收敛判据一旦为真便不再变化，
+ * 于是迭代总是跑满 N < 10 —— 等价于固定迭代 10 次的试位法。
+ * 在 1.5-2.2 Ga 区间与收敛解相差最大约 +35 Ma。
+ * 这里保持原样，因为移植的目标是复现原软件的结果；
+ * 网页版另外提供可切换的收敛修正（见 README 的 Notes for users）。
  */
 function age76Pb(Rap76) {
   let Age = 0;
@@ -2395,11 +2546,15 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_THERMO;
  *  对齐它，否则同一批数据两边给出的默认窗口不同，结果就对不上，
  *  「两个实现相互对照」也就失去意义。
  *
- *  【原样保留，不顺手修】以下几处看着别扭，但都是既有行为：
+ *  【与本移植一致，不顺手改】以下几处看着别扭，但都保持既有行为：
  *
- *   1. 决定 s0/s1 的循环里 `posi=0` / `posj=0` 每次迭代都被重置，所以
- *      **只有 starts/ends 的最后一个元素起作用**，其余迭代白跑。
- *      看上去作者本想"逐段比较"，但实际不是。改掉会改变所有既有结果。
+ *   1. 决定 s0/s1 的循环里 `posi=0` / `posj=0` 每次迭代都被重置。于是取值几乎
+ *      总是 starts[0]/ends[0]，只有"最后一个元素落在背景窗内"这一种情形才会
+ *      取到 +1 个。看上去作者本想"逐段比较"，但实际不是。
+ *      ⚠ 本移植在这一处**只加了一层前置过滤**（见 detectSignalWindow 里
+ *      minSig 那段）：把持续时间过短的穿越段当噪声尖峰剔掉，再走同样的循环。
+ *      对连续单段信号（绝大多数文件）行为与原实现逐位相同；存在噪声尖峰时，
+ *      被选中的才是真正的剥蚀信号段，而不是那个尖峰。
  *   2. 落进 except 时固定 s0=30 / s1=60。
  *   3. `bcg_s=int(b0/Timeinternal)` 在 try 之外，Timeinternal 为 0 时抛
  *      ZeroDivisionError 且不被捕获 —— 也就是程序会直接崩，不会走默认窗口。
@@ -2512,33 +2667,59 @@ function detectSignalWindow(cfg) {
     (i % 2 === 0 ? starts : ends).push(index[i]);
   }
 
+  /* ---- 噪声尖峰过滤（本移植的修正，见文件头第 1 条）----
+   *
+   *  激光剥蚀信号是一段持续几十秒的平台；而偶发的单点计数尖峰同样会越过阈值，
+   *  在穿越点列表里形成一对 start/end —— 宽度只有 1 个采样点（约 0.2 s）。
+   *  这类段一旦参与下面的窗口选择，就会把窗口缩到尖峰上，甚至算出 s0 > s1，
+   *  使整行比值变成 NaN（真实示例里的 sample_10/23/25/40.csv 就是这样）。
+   *
+   *  这里把持续时间短于 minSig 秒的段剔除后再选窗口。剔除后若一段不剩，
+   *  回退到原始列表 —— 保证任何输入都不会因为这条过滤而失去候选段。
+   *  连续单段信号（绝大多数文件）不受影响：本来就只有一段，长度也远超 minSig。
+   *  对照证据见 test_window.js（16 个原程序用例逐位不变）与 test_demo_real.js。
+   */
+  const minSig = (cfg.minSig === undefined) ? 1.0 : cfg.minSig;
+  let useStarts = starts, useEnds = ends;
+  if (starts.length > 1 && ends.length > 1) {
+    const fs = [], fe = [];
+    const m = Math.min(starts.length, ends.length);
+    for (let k = 0; k < m; k++) {
+      if ((ends[k] - starts[k]) * Math.abs(cfg.timeinternal) >= minSig) {
+        fs.push(starts[k]);
+        fe.push(ends[k]);
+      }
+    }
+    if (fs.length > 0) { useStarts = fs; useEnds = fe; }
+  }
+
   // ---- 定 s0 / s1（原实现的 posi=0 重置行为原样保留）----
   let s0, s1;
   try {
-    if (ends.length > 1 && starts.length > 1) {
-      for (let i = 0; i < starts.length; i++) {
+    if (useEnds.length > 1 && useStarts.length > 1) {
+      for (let i = 0; i < useStarts.length; i++) {
         const posi = 0;
-        if (starts[i] < b1 / cfg.timeinternal) {
-          if (posi + 1 >= starts.length) throw new Error('list index out of range');
-          s0 = starts[posi + 1] * Math.abs(cfg.timeinternal);
+        if (useStarts[i] < b1 / cfg.timeinternal) {
+          if (posi + 1 >= useStarts.length) throw new Error('list index out of range');
+          s0 = useStarts[posi + 1] * Math.abs(cfg.timeinternal);
         } else {
-          s0 = starts[posi] * Math.abs(cfg.timeinternal);
+          s0 = useStarts[posi] * Math.abs(cfg.timeinternal);
         }
       }
-      for (let j = 0; j < ends.length; j++) {
+      for (let j = 0; j < useEnds.length; j++) {
         const posj = 0;
-        if (ends[j] < b1 / cfg.timeinternal) {
-          if (posj + 1 >= ends.length) throw new Error('list index out of range');
-          s1 = ends[posj + 1] * Math.abs(cfg.timeinternal);
+        if (useEnds[j] < b1 / cfg.timeinternal) {
+          if (posj + 1 >= useEnds.length) throw new Error('list index out of range');
+          s1 = useEnds[posj + 1] * Math.abs(cfg.timeinternal);
         } else {
-          s1 = ends[posj] * Math.abs(cfg.timeinternal);
+          s1 = useEnds[posj] * Math.abs(cfg.timeinternal);
         }
       }
     } else {
       // ends[0] / starts[0]：空列表时 Python 抛 IndexError，这里必须同样抛
-      if (ends.length < 1 || starts.length < 1) throw new Error('list index out of range');
-      s1 = ends[0] * Math.abs(cfg.timeinternal);
-      s0 = starts[0] * Math.abs(cfg.timeinternal);
+      if (useEnds.length < 1 || useStarts.length < 1) throw new Error('list index out of range');
+      s1 = useEnds[0] * Math.abs(cfg.timeinternal);
+      s0 = useStarts[0] * Math.abs(cfg.timeinternal);
     }
   } catch (err) {
     s0 = 30;                                   // 裸 except 的兜底值
@@ -3220,7 +3401,7 @@ function coefficients(ctx, withShort) {
   //      匹配 0 行 -> KeyError ； 匹配 1 行 -> 标量 numpy.float64 ； 匹配 ≥2 行 -> Series
   // 于是 `date_all[14][s][:]` 在"匹配 1 行"时抛 IndexError: invalid index to
   // scalar variable，在"匹配 0 行"时抛 KeyError —— 两者都被最外层 except 吞掉，
-  // 系数归零。这是个真实的用户陷阱：整批只插了一个标样时，微量元素列会静默变成 0。
+  // 系数取 0。这是需要提醒使用者的一种情形：整批只插了一个标样时，微量元素列为 0。
   if (idx.length < 2) return [0, 0, 0];
   const m = (k) => {
     const v = new Float64Array(idx.length);
@@ -3282,7 +3463,7 @@ function headerFor(linear, method) {
            28: '206Pb_238U', 29: '2s', 50: '204 Corrected isotop' };
   } else if (method === 4) {
     br = { 25: 'Cal 204Pb Corr. Age(Ma)', 26: '206Pb_238U', 27: '2s',
-           // 下面是原代码里的两处笔误，原样保留
+           // 下面两处列名沿用原程序的写法，不做改动
            28: linear ? '232Pb_232Th' : '208Pb_232Th', 29: '2s',
            50: linear ? '204 Corrected isotop' : 'Cal 204Pb Corrected isotop' };
   }
@@ -3376,7 +3557,7 @@ function averageAge(input) {
       let valid = true;
       let lg75 = 0, le75 = 0, lg68 = 0, le68 = 0, c75 = 0, c68 = 0;
       if (den === 0) {
-        valid = false;                        // 原代码这一支之后会除零，正常数据不会走到
+        valid = false;                        // 该分支分母为零（正常数据不会走到）
       } else {
         const cr75 = f207_235 * AG_R_U * corr207 / den;
         const cr68 = f206_238 * corr206 / den;
@@ -3744,7 +3925,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_AGE;
  *      21/22  208Pb_232Th  Age(Ma) / 2s        23/24  207Pb_206Pb  Age(Ma) / 2s
  *      26/27  校正路径的第 1 个年龄 / 2s       28/29  校正路径的第 2 个年龄 / 2s
  *
- *  ⚠ 第 25 列（0 基）是个**沿自原实现的错位**：表头写的是 `…Pb Corr. Age(Ma)`，
+ *  ⚠ 第 25 列（0 基）**表头与内容不一致**（沿用自原程序）：表头写的是 `…Pb Corr. Age(Ma)`，
  *  但数据里那一列装的是备注字符串（见 age.js 的 row 构造：尾部 concat 之前放的
  *  是 ctx.comments[...]）。所以校正后的年龄**不在第 25 列**，而在 26/28 列。
  *  checkLayout() 会把这件事显式报出来 —— 上一版界面里就有人（我）拿 r[25] 当
@@ -3847,10 +4028,10 @@ function qcCheckLayout(header, method) {
         want(i + QC_ERR_OFFSET, '2s', '校正后的 ' + k + ' 的 2s');
       }
     }
-    // 表头第 25 列写着校正年龄，数据却放备注 —— 沿自原实现，报告里要说出来
+    // 表头第 25 列写着校正年龄，数据却放备注（沿用自原程序），报告里要说出来
     if (has(25, 'Corr. Age')) {
       notes.push('表头第 26 列（1 起算）写着「' + header[25] + '」，但数据里那一列装的是'
-        + '备注文字而不是年龄 —— 这是沿自原程序的一处错位，校正后的年龄实际在'
+        + '备注文字而不是年龄 —— 表头与内容不一致（沿用自原程序），校正后的年龄实际在'
         + '第 27 / 29 列。本报告按实际列位置取数。');
     }
   }
@@ -4024,7 +4205,7 @@ function qcWorst(levels) {
  *   num         {文件: [Numbers,b0,b1,s0,s1]}，积分窗口
  *   coefficients 微量元素系数 [U, Th, Pb]
  *   factors     {f207_206, f206_238, f207_235, f208_232, std_68_2s, std_75_2s}
- *   divZero     204 路径除零的行数
+ *   divZero     204 路径分母为零的行数
  *   fileNotes   {文件: [提示]} 读取时的提示（如兼容模式、缺列补零）
  *   fixed76     是否用了 207Pb/206Pb 迭代修正
  *   thresholds  见 QC_DEFAULT_THRESHOLDS
@@ -4452,6 +4633,24 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_QC;
  *         `buildTable` 的 `drop` 只在合并选时生效（单点某个标样仍可画）。
  *       单看代码是发现不了这个错的 —— 它数值上完全正常（14 个近谐和点能拟合出
  *       157.29 Ma，很漂亮），错的是"这 14 个点是什么"。
+ *
+ *  ⑭ 选项**逐项对齐原版**而已（2026-10-04）。界面上的"更多选项"面板对应的是
+ *     IsoplotR 自己的图形界面（pvermees/IsoplotRgui，
+ *     inst/www/options/concordia.html），参数名、取值、默认值全部照抄，不自己发明：
+ *       · anchor      → `anchor=模式` 或 `anchor=c(2,年龄)`（anchor[1] 选模式、
+ *                       anchor[2] 是年龄；只有 show.age≥2 用得上，原版 GUI 也是
+ *                       只在选 discordia 时才显示这一栏）
+ *       · 不谐和度过滤 → `cutoff.disc=discfilter(option=,before=,cutoff=)`
+ *       · ticks       → 一个数（刻度条数）或一串年龄
+ *       · 椭圆样式     → `ellipse.fill="#RRGGBBAA"` / `ellipse.stroke="#RRGGBB"`
+ *       三条规矩：
+ *        (a) **留空就是不传这个参数** —— 让它用 IsoplotR 自己的默认值，而不是我们
+ *            另编一个。用户没动过的项，行为必须与没有这个面板时逐位相同。
+ *        (b) **只有经过校验的东西才能进 R 代码**：数字、受控布尔、正则校验过的
+ *            十六进制颜色。界面上的任意字符串绝不直接拼进 R（那就是代码注入）。
+ *        (c) 原版能选而我们做不到的，**要在界面上写明原因**，不能悄悄缺两项：
+ *            type=3（U-Th-Pb 图）只对 7/8 号数据格式开放，我们要的是 ²⁰⁸Pb/²³²Th 列；
+ *            椭圆配色的那些 ramp 是给"按变量上色"（levels）用的，我们没有这一列。
  * ========================================================================== */
 (function () {
   'use strict';
@@ -4464,8 +4663,11 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_QC;
   var PKG = 'IsoplotR';
 
   //  age.js 的 51 列行布局（0 基）。这几个列号是读 src/age.js 的 row 数组数出来的，
-  //  并用内置的 49 个真实样品核过：n=49 行里 [33][34][36][37][38][39][40]
-  //  各有 45 个有限值，缺的 4 行就是产物里 flaws.nanRows 声明的那几个。
+  //  并用内置的 49 个真实样品核过：n=49 行里 [33][34][36][37][38][39][40] **全部有限**
+  //  （积分窗口修正后不再有"整行算不出比值"的文件；剩下的 NaN 只在 ²⁰⁸Pb/²³²Th
+  //  那一族列上，与这里的五个量无关）。另有两行（sample_24 / sample_48）的 ρ 恰好
+  //  写成 ±1，交给 IsoplotR 会被它按退化协方差剔掉 —— 那是它自己的判据，
+  //  见 test_isoplotr.js 的 §G。
   var COL = { file: 0, name: 1, Z: 33, sZ: 34, X: 36, sX: 37, Y: 38, sY: 39, rho: 40 };
 
   //  read.data(format=1) 的表头。顺序即列序，改了就是另一个 format。
@@ -4499,6 +4701,53 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_QC;
     { v: 2, label: '用等时线截距作普通铅' },
     { v: 3, label: 'Stacey–Kramers 两阶段模型' }
   ];
+
+  //  —— 以下三组是"更多选项"面板用的，逐项照抄 IsoplotRgui 的 concordia 表单 ——
+
+  //  锚定（anchor）。原版的 anchor 是**向量**：anchor[1] 选模式，anchor=2 时
+  //  anchor[2] 才是那个年龄。只有 show.age≥2（discordia）用得上。
+  var ANCHORS = [
+    { v: 0, label: '不锚定（原版默认）',
+      note: '让 discordia 自由拟合，上下交点都由数据定。' },
+    { v: 1, label: '固定普通铅成分（用设定值）',
+      note: 'anchor=1：把普通铅的 ²⁰⁷Pb/²⁰⁶Pb 钉在设定值上，只拟合年龄。' },
+    { v: 2, label: '强制交点落在指定年龄',
+      note: 'anchor=c(2,年龄)：把上交点（Tera-Wasserburg 时是下交点）钉在你填的'
+        + '年龄上，再拟合另一头。右边要填那个年龄。' },
+    { v: 3, label: '锚到 Stacey–Kramers 地幔线',
+      note: 'anchor=3：把非放射成因组分锚在 Stacey–Kramers 地幔演化成分上。' }
+  ];
+
+  //  不谐和度过滤的档位。原版第一档是「校正前 / 校正后」二选一，而"校正后"
+  //  要求数据格式 ≥4（得能给出逐点的普通铅校正量）；我们的表是 format=1，
+  //  所以那一档在界面上不出现 —— 这是**如实缺一项**，不是漏写（见文件头 ⑭(c)）。
+  var DISCFILTERS = [
+    { v: 0, label: '不过滤（原版默认）' },
+    { v: 1, label: '按普通铅校正前的比值过滤',
+      note: 'before=TRUE：先用原始比值判不谐和度，再谈校正。' }
+  ];
+
+  //  过滤判据（discfilter 的 option），5 档与原版一字不差。
+  var DISCOPT = [
+    { v: 1, label: 't：²⁰⁶Pb/²³⁸U 与 ²⁰⁷Pb/²⁰⁶Pb 年龄之差（Ma）' },
+    { v: 2, label: 'r：同上，取相对值（%）' },
+    { v: 3, label: 'sk：沿 Stacey–Kramers 地幔连线的普通铅百分比' },
+    { v: 4, label: 'a：到 Tera-Wasserburg 谐和线的对数比距离（%）' },
+    { v: 5, label: 'c：到单点谐和年龄成分的对数比距离（%）' }
+  ];
+
+  //  discfilter() 在 cutoff 缺省时各自的上下限（照抄 R 里那串 if-else）。
+  //  界面上拿它当 placeholder：留空就真的是这套默认值，不是我们另编的。
+  var DISC_DEFAULT = { 1: [-48, 140], 2: [-5, 15], 3: [-0.36, 0.96],
+                       4: [-1.6, 4.7], 5: [-2, 5.8] };
+
+  //  render() 把界面上来的选项**原样透传**给 rArgs() 时认的 key。
+  //  这是这份清单唯一的一份拷贝 —— 加参数只改这里；漏了某个 key 的症状是
+  //  "界面填了、图没变"，单看代码看不出来，所以测试里有一条断言钉住它：
+  //  rArgs() 源码里出现的每一个 `a.xxx` 都必须在这张表里（见 test_isoplotr.js §H）。
+  var RARG_KEYS = ['type', 'showAge', 'commonPb', 'sigdig', 'anchor', 'anchorAge',
+                   'discFilter', 'discOpt', 'discCutoff', 'tlim', 'xlim', 'ylim',
+                   'ticks', 'exterr', 'shownumbers', 'fill', 'fillAlpha', 'stroke'];
 
   /* ------------------------------------------------------------------
    *  纯函数（可在 node 里单测，不碰网络）
@@ -4678,22 +4927,147 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_QC;
   }
 
   /**
+   * 把界面上的选项整理成 R 调用的实参表（形如 ['type=1', 'show.age=2', ...]）。
+   *
+   * **这是整个模块里唯一允许"拼出 R 代码"的地方**（见文件头 ⑭），所以每一条都
+   * 只由已经过校验的东西拼出来：数字、受控布尔、正则校验过的十六进制颜色。
+   * 界面上来的任意字符串绝不直接进 R —— 那等于把用户输入当代码执行。
+   *
+   * 另一条同样重要的规矩：**没填就不生成这个参数**。留空必须是"用 IsoplotR
+   * 自己的默认值"，而不是我们另编一个 —— 否则用户没动过的项也被我们改掉了，
+   * 行为就不再与"没有这个面板"时逐位相同。
+   */
+  function rArgs(a) {
+    /** 数值化；空 / 空白 / 非数字一律 null（null 的含义是"这一项没填"）。 */
+    function n1(v) {
+      if (v === null || v === undefined || String(v).trim() === '') return null;
+      var n = Number(String(v).trim());
+      return isFinite(n) ? n : null;
+    }
+    /**
+     * 有默认值的那几项：**留空 = 用默认值**，但填了非数字就是调用方的错，
+     * 要吵出来（NaN）。这两个含义必须分开 —— 混成一个就会踩到"界面上那格
+     * 留空，于是空串被当成非数字、整张图报'作图参数不是数字'"（实测撞过：
+     * sigdig 那格默认是空的）。
+     */
+    function numd(v, dflt) {
+      if (v === null || v === undefined || String(v).trim() === '') return dflt;
+      var n = Number(String(v).trim());
+      return isFinite(n) ? n : NaN;
+    }
+    /** "a,b,c" → [a,b,c]；want>=0 时个数必须正好是 want，否则当作没填。 */
+    function nList(v, want) {
+      if (v === null || v === undefined || String(v).trim() === '') return null;
+      var p = String(v).split(','), out = [];
+      if (want >= 0 && p.length !== want) return null;
+      for (var i = 0; i < p.length; i++) {
+        var n = n1(p[i]);
+        if (n === null) return null;
+        out.push(n);
+      }
+      return out.length ? out : null;
+    }
+    /** 只认 #RRGGBB（#RRGGBBAA 不接受，透明度走单独的输入框）。 */
+    function hx(v) {
+      return /^#[0-9a-fA-F]{6}$/.test(String(v)) ? String(v).toUpperCase() : null;
+    }
+    function tf(v) { return v === true || v === 1 || v === '1' || v === 'true'; }
+
+    var ty = numd(a.type, 1);
+    var sa = numd(a.showAge, 0);
+    var cp = numd(a.commonPb, 0);
+    //  作图的 sigdig 默认 3（IsoplotR 自己的默认是 2，这里保持本软件既有行为，
+    //  界面上那格写明了"原版默认 2"）。别拿文件头的 SIGDIG 当它 ——
+    //  那个 SIGDIG 是 ρ 的 10 位有效数字，两码事（见文件头 ⑫）。
+    var sd = numd(a.sigdig, 3);
+    [ty, sa, cp, sd].forEach(function (v) {
+      if (!isFinite(v)) throw new Error('作图参数不是数字');
+    });
+    var out = ['type=' + ty, 'show.age=' + sa, 'common.Pb=' + cp, 'sigdig=' + sd];
+
+    //  anchor：只有 discordia（show.age≥2）用得上，原版 GUI 也是只在那一档显示。
+    var an = n1(a.anchor) || 0;
+    if (an > 0 && sa >= 2) {
+      var aAge = n1(a.anchorAge);
+      if (an === 2) {
+        if (aAge !== null) out.push('anchor=c(2,' + aAge + ')');
+      } else {
+        out.push('anchor=' + an);
+      }
+    }
+
+    //  cutoff.disc = discfilter(option=, before=, cutoff=) —— 与 GUI 里的写法一致。
+    //  cutoff 留空就整个不传，用 R 里那套按 option 分的默认上下限。
+    var df = n1(a.discFilter) || 0;
+    if (df > 0) {
+      var opt = n1(a.discOpt);
+      if (opt === null) opt = 1;
+      //  判据只认 DISCOPT 里那 5 档。这一条防的是"调用方把参数接错了"，所以
+      //  要**吵**出来而不是悄悄退回某一档 —— 悄悄退回会让人以为过滤生效了。
+      if (!DISCOPT.some(function (o) { return o.v === opt; })) {
+        throw new Error('不谐和度判据只能是 1~5，收到 ' + opt);
+      }
+      var dv = ['option=' + opt, 'before=' + (df === 1 ? 'TRUE' : 'FALSE')];
+      var dcut = nList(a.discCutoff, 2);
+      if (dcut) dv.push('cutoff=c(' + dcut[0] + ',' + dcut[1] + ')');
+      out.push('cutoff.disc=discfilter(' + dv.join(',') + ')');
+    }
+
+    //  坐标范围：都是 [min,max] 两个数，格式不对就当作没填（不许半截参数进 R）。
+    [['tlim', a.tlim], ['xlim', a.xlim], ['ylim', a.ylim]].forEach(function (p) {
+      var v = nList(p[1], 2);
+      if (v) out.push(p[0] + '=c(' + v[0] + ',' + v[1] + ')');
+    });
+
+    //  ticks：一个数 = 刻度条数；一串数 = 指定这些年龄上放刻度（原版两种都收）。
+    var tk = nList(a.ticks, -1);
+    if (tk) out.push(tk.length === 1 ? 'ticks=' + tk[0] : 'ticks=c(' + tk.join(',') + ')');
+
+    if (tf(a.exterr)) out.push('exterr=TRUE');
+    if (tf(a.shownumbers)) out.push('shownumbers=TRUE');
+
+    //  椭圆样式。填色写成 8 位十六进制 #RRGGBBAA；透明度没填时用原版自己那套
+    //  默认的 0.5（它的默认填色就是 #00FF0080 / #FF000080，末两位正是 80）。
+    var fc = hx(a.fill);
+    if (fc) {
+      var al = n1(a.fillAlpha);
+      if (al === null) al = 0.5;
+      if (al < 0) al = 0; else if (al > 1) al = 1;
+      var aa = Math.round(al * 255).toString(16).toUpperCase();
+      if (aa.length < 2) aa = '0' + aa;
+      out.push('ellipse.fill="' + fc + aa + '"');
+    }
+    var sc = hx(a.stroke);
+    if (sc) out.push('ellipse.stroke="' + sc + '"');
+    return out;
+  }
+
+  /**
    * 生成 R 代码。这是**唯一**一处与 IsoplotR 打交道的地方，所以口径全写在这里：
    *   format=1 + ierr=2 + header=TRUE  ← 见文件头 ①②
+   *   实参表由 rArgs() 生成，没填的项不出现 ← 见文件头 ⑭
    *   整段包在 tryCatch 里，失败退回 show.age=0 并带回原文 ← 见文件头 ⑥
    *   结果摘成 key=value 纯文本，界面自己解析，不依赖 R 对象序列化
    */
   function rCode(a) {
     var csv = safePath(a.csv), svg = safePath(a.svg);
-    var ty = (a.type === undefined || a.type === null) ? 1 : Number(a.type);
-    var sa = (a.showAge === undefined || a.showAge === null) ? 0 : Number(a.showAge);
-    var cp = (a.commonPb === undefined || a.commonPb === null) ? 0 : Number(a.commonPb);
     var w = a.w || 7, h = a.h || 6, ps = a.ps || 11;
-    var sigdig = (a.sigdig === undefined || a.sigdig === null) ? 3 : Number(a.sigdig);
 
     //  这些值会原样进 R 代码，所以必须是纯数字
-    [ty, sa, cp, w, h, ps, sigdig].forEach(function (v) {
+    [w, h, ps].forEach(function (v) {
       if (!isFinite(v)) throw new Error('作图参数不是数字');
+    });
+
+    var A = rArgs(a);
+    var args = A.join(', ');
+    //  退回"只画点"时，把实参表里的 show.age 换成 0，其余原样保留。
+    var args0 = A.map(function (p) {
+      return p.indexOf('show.age=') === 0 ? 'show.age=0' : p;
+    }).join(', ');
+    //  退回的分支要不要执行，看的就是实参表里那个 show.age —— 不另算一遍。
+    var sa = 0;
+    A.forEach(function (p) {
+      if (p.indexOf('show.age=') === 0) sa = Number(p.slice('show.age='.length));
     });
 
     var L = [];
@@ -4710,16 +5084,14 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_QC;
     L.push('msg <- ""');
     L.push('o <- NULL');
     L.push('svg(' + rStr(svg) + ', width=' + w + ', height=' + h + ', pointsize=' + ps + ')');
-    L.push('o <- tryCatch(concordia(d, type=' + ty + ', show.age=' + sa
-      + ', common.Pb=' + cp + ', sigdig=' + sigdig + '),');
+    L.push('o <- tryCatch(concordia(d, ' + args + '),');
     L.push('              error = function(e) { msg <<- conditionMessage(e); NULL })');
     L.push('dev.off()');
     //  失败也要给一张图：退回只画点（show.age=0）。不能把面板留空。
     L.push('if (is.null(o) && ' + sa + ' > 0) {');
     L.push('  msg <- paste0("拟合失败，已退回只画点：", msg)');
     L.push('  svg(' + rStr(svg) + ', width=' + w + ', height=' + h + ', pointsize=' + ps + ')');
-    L.push('  try(concordia(d, type=' + ty + ', show.age=0, common.Pb=' + cp
-      + ', sigdig=' + sigdig + '), silent = TRUE)');
+    L.push('  try(concordia(d, ' + args0 + '), silent = TRUE)');
     L.push('  dev.off()');
     L.push('}');
     //  错误原文里可能有换行 —— [[:space:]] 不需要反斜杠转义，比 [\r\n] 稳
@@ -4970,11 +5342,13 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_QC;
 
   /**
    * 出一张图。会先确保运行时已加载。
-   * 返回 { svg, raw, result, summary, seconds }
+   * 返回 { svg, raw, result, summary, seconds, args }
+   *   args 是这一次真正传进 R 的实参表 —— 界面上原样列出来，好留痕/复现。
    */
   function render(table, opts, onProgress) {
     opts = opts || {};
     var say = function (s) { if (onProgress) onProgress(s); };
+    var argsList = [];              // 这一次真正传进 R 的实参表，回给界面做留痕
     return load(onProgress).then(function () {
       say('正在作图（' + table.n + ' 个点，' + AGES.filter(function (a) {
         return a.v === Number(opts.showAge || 0);
@@ -4984,11 +5358,15 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_QC;
       var svg = '/tmp/' + stamp + '.svg';
       return putLines(st.webR, csv, table.lines).then(function () {
         var t = now();
-        return st.webR.evalRString(rCode({
-          csv: csv, svg: svg,
-          type: opts.type, showAge: opts.showAge, commonPb: opts.commonPb,
-          w: opts.w, h: opts.h, ps: opts.ps, sigdig: opts.sigdig
-        })).then(function (raw) { return { raw: raw, ms: now() - t }; });
+        //  选项原样透传：传进来的 key 就是 rArgs() 认的那些，**不再一处一处抄**。
+        //  抄一份就一定会漏一项，而漏掉的那项照样能出图，最难发现。
+        var ra = { csv: csv, svg: svg };
+        RARG_KEYS.forEach(function (k) {
+          if (opts[k] !== undefined && opts[k] !== null) ra[k] = opts[k];
+        });
+        argsList = rArgs(ra);
+        return st.webR.evalRString(rCode(ra))
+          .then(function (raw) { return { raw: raw, ms: now() - t }; });
       }).then(function (o) {
         return st.webR.FS.readFile(svg).then(function (buf) {
           //  ⚠ 浏览器里 FS.readFile 回来的是 Uint8Array，不是字符串（踩过：
@@ -4999,7 +5377,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_QC;
           say('图已出（' + (o.ms / 1000).toFixed(1) + ' s，' + Math.round(text.length / 1024) + ' KB）'
             + (result.error ? ' —— 但拟合失败了，见下方说明' : ''));
           return { svg: text, raw: o.raw, result: result, summary: summary,
-                   seconds: o.ms / 1000 };
+                   seconds: o.ms / 1000, args: argsList };
         });
       });
     });
@@ -5009,9 +5387,11 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_QC;
     CDN: CDN, WEBR_ENTRY: WEBR_ENTRY, PKG: PKG,
     COL: COL, HEADER: HEADER, HEADER_SPEC: HEADER_SPEC, SIGDIG: SIGDIG,
     TYPES: TYPES, AGES: AGES, CPB: CPB, Z95: Z95,
+    ANCHORS: ANCHORS, DISCFILTERS: DISCFILTERS, DISCOPT: DISCOPT,
+    DISC_DEFAULT: DISC_DEFAULT, RARG_KEYS: RARG_KEYS,
     numOr: numOr, asWritten: asWritten, rowUsable: rowUsable, sampleNames: sampleNames,
     standardNames: standardNames,
-    buildTable: buildTable, rCode: rCode, parseResult: parseResult,
+    buildTable: buildTable, rArgs: rArgs, rCode: rCode, parseResult: parseResult,
     summarise: summarise, svgDataUri: svgDataUri, fnum: fnum, rStr: rStr,
     load: load, render: render,
     isReady: function () { return st.ready; },
@@ -5418,14 +5798,14 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_QC;
       + '<li><b>加权平均、MSWD、判据阈值都是网页版新增的</b>，'
       + '不是桌面版 Isoclock 的输出。原程序只输出逐点年龄，从不做归组统计。'
       + '引用时请区别对待。</li>'
-      + '<li><b>外挂误差 Ɛ 的口径不齐</b>：它以平方和并进各年龄的相对误差'
+      + '<li><b>外挂误差 Ɛ 的口径有多处并存</b>：它以平方和并进各年龄的相对误差'
       + '（只改误差、不改年龄），但内部相对误差用的是比值的 <code>2s</code>（2σ），'
-      + 'Ɛ 直接与它相加 —— 严格说混了置信水平；另外 <code>²⁰⁷Pb/²⁰⁶Pb</code> 年龄的'
+      + 'Ɛ 直接与它相加 —— 两者未区分置信水平；另外 <code>²⁰⁷Pb/²⁰⁶Pb</code> 年龄的'
       + '误差<b>不含</b> Ɛ，同一行四个年龄的误差口径并不一致。'
       + '还有：Ɛ 调大会让 MSWD 变小，<b>不能用调 Ɛ 的办法去"改善"一致性</b>。</li>'
-      + '<li><b>年龄表的表头有两处沿自原实现的错位</b>：第 17 列表头写着 '
-      + '<code>Age</code> 但数据是分隔线；第 26 列表头写着 '
-      + '<code>…Corr. Age(Ma)</code> 但数据是备注。校正后的年龄实际在第 27 / 29 列。'
+      + '<li><b>年龄表有两列表头与内容不一致</b>（沿用自原程序）：第 17 列表头写着 '
+      + '<code>Age</code> 而数据是分隔线；第 26 列表头写着 '
+      + '<code>…Corr. Age(Ma)</code> 而数据是备注。校正后的年龄实际在第 27 / 29 列。'
       + '本报告按实际列位置取数。</li>'
       + '<li><b>²⁰⁷Pb/²⁰⁶Pb 年龄迭代</b>：'
       + esc(info.fix76Text) + '</li>'
@@ -6122,6 +6502,79 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_QC;
       && $('iso-cpb').options.length === (ISO ? ISO.CPB.length : 0),
       $('iso-type').options.length + ' / ' + $('iso-age').options.length
       + ' / ' + $('iso-cpb').options.length + ' 项');
+
+    /*  「更多选项」面板（逐项对应 IsoplotR 原版）。这里验的是**接线**：
+     *  控件填满了没有、联动对不对、以及"留空是不是真的不传"。
+     *  参数本身怎么进 R 代码由 webgui/test_isoplotr.js 的 §I 负责。 */
+    var more = $('iso-more');
+    t('「更多选项」面板在，且默认是收起来的',
+      !!more && String(more.tagName).toLowerCase() === 'details' && more.open === false,
+      more ? (more.open ? '默认展开会挤掉首屏' : '默认收起') : '没有这个面板');
+    t('面板里三组候选值都填满了（锚定 / 过滤档 / 判据）',
+      $('iso-anchor').options.length === (ISO ? ISO.ANCHORS.length : 0)
+      && $('iso-disc').options.length === (ISO ? ISO.DISCFILTERS.length : 0)
+      && $('iso-disc-opt').options.length === (ISO ? ISO.DISCOPT.length : 0),
+      $('iso-anchor').options.length + ' / ' + $('iso-disc').options.length
+      + ' / ' + $('iso-disc-opt').options.length + ' 项');
+
+    /*  默认（什么都没碰）时必须**一个都不传** —— 这是"与原版一致"的前提：
+     *  用户没动过的项，行为必须和不加这个面板时一模一样。 */
+    t('默认状态下「更多选项」一个参数都不传（留空 = 用 IsoplotR 自己的默认值）',
+      (function () {
+        var o = ui.isoOpts();
+        return o.anchor === 0 && !o.anchorAge && o.discFilter === 0 && !o.discCutoff
+          && !o.tlim && !o.xlim && !o.ylim && !o.ticks && !o.exterr
+          && !o.shownumbers && !o.fill && !o.stroke;
+      })(), '默认就把参数传出去，等于偷偷改了用户没动过的东西');
+
+    t('联动：锚定年龄那格只在 anchor=2 且拟合选 discordia 时出现',
+      (function () {
+        var shown = function (a, sa) {
+          $('iso-anchor').value = String(a);
+          $('iso-age').value = String(sa);
+          ui.isoSyncMore();
+          return $('iso-anchor-age-wrap').className.indexOf('off') < 0;
+        };
+        var r = [shown(2, 2), shown(2, 1), shown(3, 2), shown(0, 2)];
+        $('iso-anchor').value = '0'; $('iso-age').value = '1'; ui.isoSyncMore();
+        return r[0] === true && r[1] === false && r[2] === false && r[3] === false;
+      })(), '原版 GUI 也是只在 discordia 那一档显示这一栏');
+
+    t('联动：颜色框挂在「自定义」勾选框上，不勾就不传颜色',
+      (function () {
+        var before = ui.isoOpts();
+        $('iso-fill-on').checked = true;
+        $('iso-fill').value = '#ff0000';
+        $('iso-fill-alpha').value = '0.35';
+        ui.isoSyncMore();
+        var shown = $('iso-fill-wrap').className.indexOf('off') < 0;
+        var on = ui.isoOpts();
+        $('iso-fill-on').checked = false;
+        ui.isoSyncMore();
+        var off = ui.isoOpts();
+        return !before.fill && shown && on.fill === '#ff0000'
+          && on.fillAlpha === '0.35' && off.fill === '';
+      })(), '颜色框永远有值，所以必须靠勾选框决定传不传');
+
+    t('填了更多选项后，生成的 R 代码里真的带上它们（anchor 也会按 show.age 决定传不传）',
+      (function () {
+        var mk = function () {
+          var o = ui.isoOpts();
+          return ISO.rCode({ csv: '/tmp/s.csv', svg: '/tmp/s.svg',
+                             showAge: o.showAge, ticks: o.ticks, anchor: o.anchor });
+        };
+        $('iso-anchor').value = '3';
+        $('iso-ticks').value = '5';
+        $('iso-age').value = '1';
+        var c1 = mk();                       // discordia 之外的档：anchor 不该传
+        $('iso-age').value = '2';
+        var c2 = mk();
+        $('iso-anchor').value = '0';
+        $('iso-age').value = '1';
+        $('iso-ticks').value = '';
+        ui.isoSyncMore();
+        return /ticks=5/.test(c1) && !/anchor=3/.test(c1) && /anchor=3/.test(c2);
+      })());
 
     var arIso = ui.state.ageResult;
     t('有结果时「加载 IsoplotR 并作图」可用；没结果时禁用',
@@ -7102,7 +7555,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_QC;
     wrap.appendChild(table);
     pane.appendChild(wrap);
 
-    // 说明：列号一律按 1 起算。这里要把两处**沿自原实现的表头错位**讲明白，
+    // 说明：列号一律按 1 起算。这里要把两处**表头与内容不一致**（沿用自原程序）讲明白，
     // 否则有人按表头文字去取数就会取错：
     //   · 第 17 列表头写着 Age，数据其实是分隔线 '-------'；
     //   · 第 26 列表头写着 '…Corr. Age(Ma)'，数据其实是**备注文字**。
@@ -7114,17 +7567,17 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_QC;
       + '每一列后面紧跟着它的 2s。';
     if (ageRes.header[25]) {
       note += ' 第 27-30 列是所选校正路径的两个年龄及其 2s。'
-        + '⚠ 第 26 列表头照着 ' + ageRes.header[25] + ' 写，但那一列实际装的是'
-        + '备注文字；第 17 列同理（表头 Age，数据是分隔线）—— 这是原实现留下的表头错位，'
-        + '照抄未改，取数请按实际列位置。';
+        + '⚠ 第 26 列表头写作 ' + ageRes.header[25] + '，但那一列实际装的是'
+        + '备注文字；第 17 列同理（表头 Age，数据是分隔线）。这两列的表头与内容不一致，'
+        + '沿用未改，取数请按实际列位置。';
     } else {
       note += ' 方式 0（不校正）下第 26-30 列为空。';
     }
     note += ' 第 51 列是微量元素含量（U / Th / Pb，ppm）。';
     if (typos.length) {
-      note += ' 表头里的 ' + typos.join('、') + ' 沿自原程序的笔误，'
+      note += ' 表头里的 ' + typos.join('、') + ' 沿用原程序的写法，'
         + (fixNames
-          ? '已按勾选换成正确写法（只动表头文字，数值不变）。'
+          ? '已按勾选换成规范写法（只动表头文字，数值不变）。'
           : '默认照抄保留，可在右上角勾选"修正列名笔误"换掉。');
     }
     pane.appendChild(el('p', 'colgroup-note', note));
@@ -7327,7 +7780,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_QC;
   }
 
   /** 年龄表按 Python 的 repr 排版导出，保证数值可无损往返。 */
-  //  沿自原实现的列名笔误。默认原样导出（与桌面版逐字节一致）；
+  //  沿用原程序的列名写法。默认原样导出（与桌面版逐字节一致）；
   //  勾选"修正列名笔误"后替换成正确写法，方便按列名取数的下游脚本。
   //
   //  **`isotop` 那一处不止一种形态**：第 51 列（1 起算）会随校正方式变成
@@ -7350,7 +7803,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_QC;
     });
   }
 
-  /** 找出表头里沿自原实现的笔误列，返回「第 N 列 xxx」这样的说明。 */
+  /** 找出表头里沿用原程序写法的列，返回「第 N 列 xxx」这样的说明。 */
   function typoColumns(header) {
     var out = [];
     header.forEach(function (name, i) {
@@ -7643,7 +8096,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_QC;
    * 当前选中项能进表几个点（决定"拟合"里哪些选项可用）。
    *
    * 合并选（'*'）时**不含标样** —— 必须与 buildTable 的 drop 口径一致，
-   * 否则下拉里写"41 个可用点"、真正送进 R 的只有 29 个（踩过：两处各算一遍）。
+   * 否则下拉里写"41 个可用点"、真正送进 R 的只有 29 个（踩过：两处各算一遍；这两个数是当时的现场值，现在的对应值一律由本函数现场算，别抄）。
    */
   function isoUsableCount(groups, sample, std) {
     if (!groups || !groups.length) return 0;
@@ -7762,6 +8215,40 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_QC;
     }
   }
 
+  /** 取控件的字符串值 / 勾选状态。控件不存在时也不炸（避免旧产物 + 新界面源码）。 */
+  function isoVal(id) { var e = $(id); return e ? String(e.value).trim() : ''; }
+  function isoChk(id) { var e = $(id); return !!(e && e.checked); }
+  /** 两个输入框 → "min,max"；只要有一格没填就返回空串 —— 空串的含义是"这一项不传"。 */
+  function isoPair(a, b) {
+    var x = isoVal(a), y = isoVal(b);
+    return (x !== '' && y !== '') ? (x + ',' + y) : '';
+  }
+
+  /**
+   * 「更多选项」里的联动显隐。规则照抄原版 GUI：只在用得上的时候才显示那一格，
+   * 看不到的控件不会被读进参数（isoOpts 里 anchor 还额外要求 show.age≥2，
+   * 见 isoplotr.js 的 rArgs —— 两处口径一致）。
+   */
+  function isoSyncMore() {
+    var on = function (id, yes) {
+      var e = $(id);
+      if (e) e.className = 'fld' + (yes ? '' : ' off');
+    };
+    var anchor = Number(isoVal('iso-anchor') || 0);
+    var showAge = Number(isoVal('iso-age') || 0);
+    on('iso-anchor-age-wrap', anchor === 2 && showAge >= 2);
+    var disc = Number(isoVal('iso-disc') || 0);
+    on('iso-disc-opt-wrap', disc > 0);
+    on('iso-disc-cut-wrap', disc > 0);
+    on('iso-fill-wrap', isoChk('iso-fill-on'));
+    on('iso-stroke-wrap', isoChk('iso-stroke-on'));
+    //  上下限的 placeholder 跟着判据走 —— "留空用默认"要让人看见默认是多少。
+    var dd = (ISO && ISO.DISC_DEFAULT && ISO.DISC_DEFAULT[Number(isoVal('iso-disc-opt') || 1)]) || [];
+    var mn = $('iso-disc-min'), mx = $('iso-disc-max');
+    if (mn) mn.placeholder = dd.length ? String(dd[0]) : '默认';
+    if (mx) mx.placeholder = dd.length ? String(dd[1]) : '默认';
+  }
+
   /** 把 <select> 的当前值读成参数。`drop` 只在"全部样品"时生效（见 buildTable）。 */
   function isoOpts() {
     return {
@@ -7769,7 +8256,26 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_QC;
       showAge: Number($('iso-age').value),
       commonPb: Number($('iso-cpb').value),
       sample: $('iso-sample').value,
-      drop: ISO.standardNames(state.cfg)
+      drop: ISO.standardNames(state.cfg),
+
+      //  —— 以下对应「更多选项」面板，参数名逐项照抄 IsoplotR 原版 ——
+      //  一律"留空/不勾 = 空串或 false = 不传这个参数"，让 IsoplotR 用自己的默认值。
+      anchor: Number(isoVal('iso-anchor') || 0),
+      anchorAge: isoVal('iso-anchor-age'),
+      discFilter: Number(isoVal('iso-disc') || 0),
+      discOpt: Number(isoVal('iso-disc-opt') || 1),
+      discCutoff: isoPair('iso-disc-min', 'iso-disc-max'),
+      tlim: isoPair('iso-tlim-min', 'iso-tlim-max'),
+      xlim: isoPair('iso-xlim-min', 'iso-xlim-max'),
+      ylim: isoPair('iso-ylim-min', 'iso-ylim-max'),
+      ticks: isoVal('iso-ticks'),
+      sigdig: isoVal('iso-sigdig'),
+      exterr: isoChk('iso-exterr'),
+      shownumbers: isoChk('iso-shownumbers'),
+      //  颜色框永远有值，所以各自挂一个"改不改"的勾选框：不勾就不传。
+      fill: isoChk('iso-fill-on') ? isoVal('iso-fill') : '',
+      fillAlpha: isoChk('iso-fill-on') ? isoVal('iso-fill-alpha') : '',
+      stroke: isoChk('iso-stroke-on') ? isoVal('iso-stroke') : ''
     };
   }
 
@@ -7841,9 +8347,12 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_QC;
     $('btn-iso-svg').disabled = true;
     isoMsg(head + '<br>正在加载…');
 
-    ISO.render(tab, {
-      type: o.type, showAge: o.showAge, commonPb: o.commonPb
-    }, function (s) {
+    //  选项**整份透传**，不再一项一项列。列一份就一定会漏一项，而漏掉的那项
+    //  照样能出图（只是悄悄用了默认值），最难发现 —— 所以清单只有
+    //  ISO.RARG_KEYS 那一份（见 isoplotr.js）。
+    var ropts = {};
+    (ISO.RARG_KEYS || []).forEach(function (k) { ropts[k] = o[k]; });
+    ISO.render(tab, ropts, function (s) {
       isoMsg(head + '<br>' + s);
     }).then(function (out) {
       svgText = out.svg;
@@ -7889,9 +8398,14 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_QC;
           + '参数与数据，而不是去改样品年龄。</p>';
       }
 
-      //  说明（口径、失败原因、地质含义）
+      //  说明（口径、失败原因、地质含义）+ 这一次真正传进 R 的参数。
+      //  参数必须原样留痕：结果要能复现，光有那张图是不够的。
+      var argTxt = (out.args && out.args.length)
+        ? '<p class="iso-args">本次传给 IsoplotR 的参数：<code>'
+          + out.args.join(', ') + '</code></p>'
+        : '';
       var nl = out.summary.notes.map(function (s) { return '<li>' + s + '</li>'; }).join('');
-      $('iso-notes').innerHTML = (stdCmp ? stdCmp : '')
+      $('iso-notes').innerHTML = argTxt + (stdCmp ? stdCmp : '')
         + (cross ? '<p>' + cross + '</p>' : '')
         + (nl ? '<ul>' + nl + '</ul>' : '');
 
@@ -7900,9 +8414,9 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_QC;
         + Math.round(svgText.length / 1024) + ' KB）。'
         + (out.result.error ? ' <b>但拟合失败了，已退回只画点 —— 见下方说明。</b>' : ''), cls);
       logLine('IsoplotR：' + tab.n + ' 点（'
-        + (o.sample === '*' ? '全部样品，不含标样' : o.sample) + '），图型 ' + o.type
-        + '，拟合 show.age='
-        + o.showAge + '，普通铅 ' + o.commonPb + '，' + out.seconds.toFixed(1) + ' s'
+        + (o.sample === '*' ? '全部样品，不含标样' : o.sample) + '），'
+        + (out.args && out.args.length ? out.args.join(', ') : '') + '，'
+        + out.seconds.toFixed(1) + ' s'
         + (out.result.error ? '（拟合失败：' + out.result.error + '）' : ''), out.result.error ? 'w' : 'g');
     }).catch(function (e) {
       var m = String(e && e.message || e);
@@ -7926,6 +8440,16 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_QC;
     isoFill($('iso-type'), ISO.TYPES, 1);
     isoFill($('iso-age'), ISO.AGES, 1);
     isoFill($('iso-cpb'), ISO.CPB, 0);
+    //  「更多选项」面板：三组候选值都由 isoplotr.js 提供，界面不另抄一份。
+    isoFill($('iso-anchor'), ISO.ANCHORS, 0);
+    isoFill($('iso-disc'), ISO.DISCFILTERS, 0);
+    isoFill($('iso-disc-opt'), ISO.DISCOPT, 1);
+    ['iso-age', 'iso-anchor', 'iso-disc', 'iso-disc-opt',
+     'iso-fill-on', 'iso-stroke-on'].forEach(function (id) {
+      var e = $(id);
+      if (e) e.addEventListener('change', isoSyncMore);
+    });
+    isoSyncMore();
     $('btn-iso-run').addEventListener('click', isoRender);
     $('btn-iso-svg').addEventListener('click', function () {
       var img = $('iso-fig');
@@ -8093,9 +8617,9 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_QC;
      *  这个单文件里，点一下才解压 —— 所以是异步的。
      *  它带的 DS_DEMO_REAL.params 是**推荐参数**、stdMeasured 是**这套参数跑出来的
      *  标样结果**，两样都由生成脚本用真管线在这批数据上量出来（AY-4 出
-     *  157.04 ± 1.43 Ma（2σ），与文献两个 ID-TIMS 值都对得上）。
+     *  157.06 ± 1.39 Ma（2σ），与文献两个 ID-TIMS 值都对得上）。
      *  界面不要再抄一份 —— 抄的那份迟早与数据脱节。口径尤其要跟着走：
-     *  质量报告里印的是 **1σ 内部标准误**（0.7），正文引的是 **2σ**（1.4），
+     *  质量报告里印的是 **1σ 内部标准误**（0.70），正文引的是 **2σ**（1.39），
      *  同一个数在两处看着像对不上，所以 stdMeasured 连 sigma 一起记下来。
      * ---------------------------------------------------------------- */
     function applyParams(P) {
@@ -8284,6 +8808,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_QC;
     //  IsoplotR 那一页：自检要能读它的控件状态，也要能直接调交叉验证那一段
     initIsoTab: initIsoTab, refreshIsoControls: refreshIsoControls,
     refreshIsoAgeOptions: refreshIsoAgeOptions, isoOpts: isoOpts,
+    isoSyncMore: isoSyncMore,
     isoOwnMean: isoOwnMean, isoRender: isoRender, isoMsg: isoMsg
   };
 })();
