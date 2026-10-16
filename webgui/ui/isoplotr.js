@@ -544,13 +544,33 @@
    *   结果摘成 key=value 纯文本，界面自己解析，不依赖 R 对象序列化
    */
   function rCode(a) {
-    var csv = safePath(a.csv), svg = safePath(a.svg);
+    //  a.svg 这个名字是历史遗留 —— 它装的是**输出文件路径**，现在既可能是
+    //  .svg 也可能是 .pdf，看 a.dev 是哪一档。改名会牵动界面与测试的调用面，
+    //  所以只在心里把它当 out 用（下面这个别名就是这么来的）。
+    var csv = safePath(a.csv), out = safePath(a.svg);
     var w = a.w || 7, h = a.h || 6, ps = a.ps || 11;
+    var pdf = (a.dev === 'pdf');
 
     //  这些值会原样进 R 代码，所以必须是纯数字
     [w, h, ps].forEach(function (v) {
       if (!isFinite(v)) throw new Error('作图参数不是数字');
     });
+
+    /**
+     * 开设备的调用。**svg 与 pdf 的公共参数是同一个位置序列**
+     * （file, width, height, pointsize），所以这里是同一段拼接，不是抄两份 ——
+     * 抄两份就会出现"改了宽高只改了其中一支"这种最难发现的偏差。
+     *
+     * pdf 多一个 `useDingbats = FALSE`：R 从 4.0 起这就是默认值，这里显式写死
+     * 是为了把它钉住 —— 它决定点号、希腊字母那些符号**用真字体而不是位图
+     * Dingbats**，而那正是"导出的 PDF 里文字还能选中、还能改"的前提。
+     * （svg 的 formals 里没有这个参数，传了会报 unused argument。）
+     */
+    function openDev(pad) {
+      return pad + (pdf ? 'pdf' : 'svg') + '(' + rStr(out)
+        + ', width=' + w + ', height=' + h + ', pointsize=' + ps
+        + (pdf ? ', useDingbats=FALSE' : '') + ')';
+    }
 
     var A = rArgs(a);
     var args = A.join(', ');
@@ -577,14 +597,14 @@
     L.push('kv <- c(paste0("n=", nrow(d$x)))');
     L.push('msg <- ""');
     L.push('o <- NULL');
-    L.push('svg(' + rStr(svg) + ', width=' + w + ', height=' + h + ', pointsize=' + ps + ')');
+    L.push(openDev(''));
     L.push('o <- tryCatch(concordia(d, ' + args + '),');
     L.push('              error = function(e) { msg <<- conditionMessage(e); NULL })');
     L.push('dev.off()');
     //  失败也要给一张图：退回只画点（show.age=0）。不能把面板留空。
     L.push('if (is.null(o) && ' + sa + ' > 0) {');
     L.push('  msg <- paste0("拟合失败，已退回只画点：", msg)');
-    L.push('  svg(' + rStr(svg) + ', width=' + w + ', height=' + h + ', pointsize=' + ps + ')');
+    L.push(openDev('  '));
     L.push('  try(concordia(d, ' + args0 + '), silent = TRUE)');
     L.push('  dev.off()');
     L.push('}');
@@ -835,44 +855,86 @@
   }
 
   /**
-   * 出一张图。会先确保运行时已加载。
-   * 返回 { svg, raw, result, summary, seconds, args }
-   *   args 是这一次真正传进 R 的实参表 —— 界面上原样列出来，好留痕/复现。
+   * 跑一遍作图：**同一份 table、同一份实参，只换输出设备**。
+   * dev = 'svg' → 读回来是文本；'pdf' → 读回来是 Uint8Array（二进制）。
+   *
+   * 抽成一个函数是有原因的：这两遍的参数必须逐项相同，抄一份就一定会漏一项，
+   * 而漏掉的那项照样能出图（只是安静地用了另一个值）—— 那样屏幕上那张图与
+   * 导出的那份就不是同一张了，还看不出来。见 render() 里的一致性核对。
    */
-  function render(table, opts, onProgress) {
+  function drawOnce(table, opts, dev) {
+    var stamp = 'iso' + Date.now() + (dev === 'pdf' ? 'p' : '');
+    var csv = '/tmp/' + stamp + '.csv';
+    var file = '/tmp/' + stamp + '.' + dev;
+    return putLines(st.webR, csv, table.lines).then(function () {
+      var t = now();
+      //  选项原样透传：传进来的 key 就是 rArgs() 认的那些，**不再一处一处抄**。
+      var ra = { csv: csv, svg: file, dev: dev };
+      RARG_KEYS.forEach(function (k) {
+        if (opts[k] !== undefined && opts[k] !== null) ra[k] = opts[k];
+      });
+      return st.webR.evalRString(rCode(ra))
+        .then(function (raw) { return { raw: raw, ms: now() - t, args: rArgs(ra) }; });
+    }).then(function (o) {
+      return st.webR.FS.readFile(file).then(function (buf) {
+        return { buf: buf, raw: o.raw, ms: o.ms, args: o.args, path: file };
+      });
+    });
+  }
+
+  /**
+   * 出一张图。会先确保运行时已加载。
+   * 返回 { svg, pdf, pdfSame, pdfErr, raw, result, summary, seconds, args }
+   *   svg      SVG 文本（界面上那张就是这个）
+   *   pdf      Uint8Array（真矢量、文字可改）；生成失败时是 null
+   *   pdfSame  两遍作图的 kv 文本是否**逐字节相同**
+   *   args     这一次真正传进 R 的实参表 —— 界面上原样列出来，好留痕/复现
+   *
+   * 为什么要多画一遍 PDF：R 的 pdf() 设备出的才是"文字能再编辑"的矢量图，
+   * 而把屏幕上的 SVG 转 PDF 要么得引第三方库（单文件零依赖就破了），要么得
+   * 自己写一个 SVG→PDF 转换器（坑深且难验）。让 R 自己再画一遍最干净。
+   *
+   * onSvg(text) 是可选回调：SVG 一画好就先把文本交出去，别让用户为了等那份
+   * PDF 而盯着空面板（第二遍要再跑一次拟合，点多的图会有可感的停顿）。
+   */
+  function render(table, opts, onProgress, onSvg) {
     opts = opts || {};
     var say = function (s) { if (onProgress) onProgress(s); };
-    var argsList = [];              // 这一次真正传进 R 的实参表，回给界面做留痕
     return load(onProgress).then(function () {
       say('正在作图（' + table.n + ' 个点，' + AGES.filter(function (a) {
         return a.v === Number(opts.showAge || 0);
       }).map(function (a) { return a.label; })[0] + '）…');
-      var stamp = 'iso' + Date.now();
-      var csv = '/tmp/' + stamp + '.csv';
-      var svg = '/tmp/' + stamp + '.svg';
-      return putLines(st.webR, csv, table.lines).then(function () {
-        var t = now();
-        //  选项原样透传：传进来的 key 就是 rArgs() 认的那些，**不再一处一处抄**。
-        //  抄一份就一定会漏一项，而漏掉的那项照样能出图，最难发现。
-        var ra = { csv: csv, svg: svg };
-        RARG_KEYS.forEach(function (k) {
-          if (opts[k] !== undefined && opts[k] !== null) ra[k] = opts[k];
-        });
-        argsList = rArgs(ra);
-        return st.webR.evalRString(rCode(ra))
-          .then(function (raw) { return { raw: raw, ms: now() - t }; });
-      }).then(function (o) {
-        return st.webR.FS.readFile(svg).then(function (buf) {
-          //  ⚠ 浏览器里 FS.readFile 回来的是 Uint8Array，不是字符串（踩过：
-          //     下一步 svg.match is not a function）
-          var text = (typeof buf === 'string') ? buf : new TextDecoder().decode(buf);
-          var result = parseResult(o.raw);
-          var summary = summarise(result, { type: opts.type, showAge: opts.showAge });
-          say('图已出（' + (o.ms / 1000).toFixed(1) + ' s，' + Math.round(text.length / 1024) + ' KB）'
-            + (result.error ? ' —— 但拟合失败了，见下方说明' : ''));
-          return { svg: text, raw: o.raw, result: result, summary: summary,
-                   seconds: o.ms / 1000, args: argsList };
-        });
+      return drawOnce(table, opts, 'svg');
+    }).then(function (o) {
+      //  ⚠ 浏览器里 FS.readFile 回来的是 Uint8Array，不是字符串（踩过：
+      //     下一步 svg.match is not a function）
+      var buf = o.buf;
+      var text = (typeof buf === 'string') ? buf : new TextDecoder().decode(buf);
+      var result = parseResult(o.raw);
+      var summary = summarise(result, { type: opts.type, showAge: opts.showAge });
+      if (onSvg) onSvg(text);
+      say('图已出（' + (o.ms / 1000).toFixed(1) + ' s，' + Math.round(text.length / 1024)
+        + ' KB）' + (result.error ? ' —— 但拟合失败了，见下方说明' : '')
+        + '，正在再画一份矢量 PDF…');
+
+      //  第二遍：换成 pdf() 设备。**这一遍失败不能拖垮整张图** —— 图已经有了，
+      //  用户要看的先是图。失败就如实记下来，界面把按钮禁掉并说明原因。
+      return drawOnce(table, opts, 'pdf').then(function (p) {
+        var pb = p.buf;
+        var bytes = (typeof pb === 'string')
+          ? (function () {                       // 万一回来是字符串（不该发生）
+            var u = new Uint8Array(pb.length);
+            for (var i = 0; i < pb.length; i++) u[i] = pb.charCodeAt(i) & 0xff;
+            return u;
+          })() : pb;
+        return { svg: text, raw: o.raw, result: result, summary: summary,
+                 seconds: o.ms / 1000, args: o.args,
+                 pdf: bytes, pdfRaw: p.raw, pdfSame: (p.raw === o.raw), pdfErr: '' };
+      }).catch(function (e) {
+        return { svg: text, raw: o.raw, result: result, summary: summary,
+                 seconds: o.ms / 1000, args: o.args,
+                 pdf: null, pdfRaw: '', pdfSame: false,
+                 pdfErr: String((e && e.message) || e) };
       });
     });
   }
@@ -887,7 +949,7 @@
     standardNames: standardNames,
     buildTable: buildTable, rArgs: rArgs, rCode: rCode, parseResult: parseResult,
     summarise: summarise, svgDataUri: svgDataUri, fnum: fnum, rStr: rStr,
-    load: load, render: render,
+    load: load, render: render, drawOnce: drawOnce,
     isReady: function () { return st.ready; },
     runtime: function () { return st.ready ? st.result : null; },
     _state: st

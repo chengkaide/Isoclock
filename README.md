@@ -24,7 +24,7 @@ Agilent and Element instruments, and can be extended with further export formats
 There is a **single-file, zero-dependency web version** of the whole reduction chain
 under [`webgui/`](webgui/) — no install, no server, works offline. Same numbers as the
 desktop program, verified **bit-for-bit** with the 207Pb/206Pb switch set to match
-(553 automated comparisons in 16 suites + 87 in-page checks) — see [Notes for users](#notes-for-users).
+(561 automated comparisons in 16 suites + 94 in-page checks) — see [Notes for users](#notes-for-users).
 Open it online at <https://chengkaide.github.io/Isoclock/app/isoclock.html>,
 download [`webgui/isoclock.html`](webgui/isoclock.html) and double-click it, or read
 [`webgui/README.md`](webgui/README.md) for how it was verified and what it does **not** do.

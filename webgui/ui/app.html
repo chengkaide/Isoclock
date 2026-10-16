@@ -308,7 +308,8 @@
         </label>
         <span class="spacer"></span>
         <button class="go" id="btn-iso-run" disabled>加载 IsoplotR 并作图</button>
-        <button id="btn-iso-svg" disabled>另存 SVG</button>
+        <button id="btn-iso-svg" disabled title="把屏幕上这张图存成 SVG（单文件矢量图，浏览器、Inkscape、Illustrator 都能开）">另存 SVG</button>
+        <button id="btn-iso-pdf" disabled title="把同一张图存成 PDF：纯矢量、没有一张位图，文字是真正的文本对象 —— 可以用 Illustrator / Inkscape / Affinity 打开后直接改文字、挪图例、换线型，拿去拼图排版或投稿。">另存 PDF</button>
       </div>
       <!--  更多选项：逐项对应 IsoplotR 自己的图形界面（pvermees/IsoplotRgui 的
             options/concordia.html）。规矩是「留空 = 不传 = 用它的默认值」，
@@ -411,6 +412,17 @@
         <p><b>图上的点应该是「样品」</b>：默认的「全部样品（不含标样）」把这一批的样品
           测点合在一张图上。标样（如 AY-4）不参与样品统计 —— 它是 QC 样，单独列在
           下拉最后那个分组里，选它出来的年龄是拿来对②里填的真值的。</p>
+        <p><b>导出的是矢量图，两份都可再编辑</b>：「另存 SVG」存屏幕上这一份；
+          「另存 PDF」是让 R 用自己的 <code>pdf()</code> 设备<b>拿同一份数据、同一份参数
+          再画一遍</b> —— 不是把屏幕上的图截下来塞进去。所以 PDF 里
+          <b>一张位图都没有</b>，文字是真正的文本对象（Helvetica / Symbol 标准字体），
+          在 Illustrator、Inkscape、Affinity 里能直接改字、挪图例、换线型、拆分组，
+          拿去拼图排版或投稿都行。两条出口的尺寸与点数完全一样（缺省 7 × 6 英寸）；
+          <b>字体是 PDF 标准字体、不内嵌</b>，换台机器打开若缺字体，编辑器会提示替换
+          —— 改字用的机器上装着 Helvetica 就没这回事。</p>
+        <p>两份图会各自独立跑一次拟合，所以界面会核对两次回来的数值
+          （<code>par</code> / 年龄 / MSWD 那一串）是否<b>逐字节相同</b>；
+          对不上会明确告诉你，不会默默给一份与屏幕上不同的 PDF。</p>
       </details>
       <div class="iso-msg" id="iso-msg">
         选好图型与样品，点上面那个按钮。<b>首次要下载约 16 MB</b>，之后走缓存。
@@ -451,7 +463,7 @@
 
     <h3>结果可信到什么程度</h3>
     <p>同一批数据下，网页版的输出与桌面版<b>逐位相同</b>（bit-for-bit，包括浮点最后一位）。
-      这不是估计，是跑出来的：<b data-count="tests">553 项</b> Node 端自动比对
+      这不是估计，是跑出来的：<b data-count="tests">561 项</b> Node 端自动比对
       （<b data-count="suites">16 套</b> <code>webgui/test_*.js</code>：数值内核、
       Thermo/Agilent 解析、积分窗口、两个 CSV 的<b>逐字节</b>输出、
       年龄层 51 列 × 19 组参数、<b data-count="suite:test_agilent_e2e.js">20 项</b> Agilent 端到端、
@@ -459,10 +471,10 @@
       <b data-count="suite:test_qc.js">63 项</b> 质量统计、
       <b data-count="suite:test_report.js">50 项</b> 报告组装、
       <b data-count="suite:test_demo_real.js">22 项</b> 内置真实示例数据、
-      <b data-count="suite:test_isoplotr.js">103 项</b> IsoplotR 接入层、
+      <b data-count="suite:test_isoplotr.js">111 项</b> IsoplotR 接入层、
       <b data-count="suite:test_api.js">59 项</b> 程序接口门面、
       <b data-count="suite:test_stages.js">55 项</b> 过程量表）
-      ＋<b data-count="selftest">87 项</b>本页面内自检（走的是真按钮那条路）。<br>
+      ＋<b data-count="selftest">94 项</b>本页面内自检（走的是真按钮那条路）。<br>
       上面这些数不是手写的：<code>docs/make_badges.py</code> 每次都会把测试真跑一遍，
       <b>连逐套的项数也一起核</b>，对不上就让 CI 红。真正手写的是这一句解释。</p>
       唯一一处曾经对不上的地方是 <code>exp</code> / <code>log</code>：宿主 C 运行时与浏览器的

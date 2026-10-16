@@ -782,6 +782,46 @@
       arIso ? ('当前 ' + arIso.rows.length + ' 行结果，按钮 enabled=' +
         !$('btn-iso-run').disabled) : '还没有结果');
 
+    /* --- PDF 出口 ---------------------------------------------------------
+       这一页多给了一条"能再编辑"的路：屏幕上那张 SVG 之外，再用 R 自己的
+       pdf() 设备画一份纯矢量 PDF。自检**不联网**（这一页本来就够不到网络），
+       所以这里查的是接线与文案；真出图由 G:/_isohtml/probe_pdf.py 那条
+       CDP 路验（它真点按钮、真读回来的字节）。 */
+    t('IsoplotR 那一页有「另存 PDF」按钮，且紧挨着「另存 SVG」',
+      (function () {
+        var pdf = $('btn-iso-pdf'), svg = $('btn-iso-svg');
+        if (!pdf || !svg || pdf.parentNode !== svg.parentNode) return false;
+        var kids = svg.parentNode.children;
+        return Array.prototype.indexOf.call(kids, pdf)
+          === Array.prototype.indexOf.call(kids, svg) + 1;
+      })(), '两个出口出的是同一张图的两种格式，挨着才看得出它们是一对');
+    t('「另存 PDF」的说明里写明它矢量、文字可再编辑',
+      (function () {
+        var el = $('btn-iso-pdf');
+        return !!el && /矢量/.test(el.title) && /(再编辑|编辑|改)/.test(el.title);
+      })(), $('btn-iso-pdf') ? $('btn-iso-pdf').title.slice(0, 70) : '（没有这个按钮）');
+    t('还没作图时「另存 PDF」是禁用的（没图就没有 PDF 可存）',
+      !!$('btn-iso-pdf') && $('btn-iso-pdf').disabled === true
+      && ui.state.isoPdf === null);
+    t('页面帮助里讲了 PDF 是拿同一份数据再画一遍、不是把屏幕上的图截下来',
+      (function () {
+        var d = document.querySelector('details.iso-help');
+        return !!d && d.textContent.indexOf('pdf()') >= 0
+          && d.textContent.indexOf('再画一遍') >= 0;
+      })(), '这条口径得写在用户看得到的地方，不能只写在代码注释里');
+    t('DS_ISOPLOTR 导出了 drawOnce（两遍作图共用同一个函数，不是抄一份）',
+      typeof ISO.drawOnce === 'function',
+      'typeof = ' + typeof ISO.drawOnce);
+    t('rCode 的 pdf 档位写死 useDingbats=FALSE，且整段里没有 svg(',
+      (function () {
+        var c = ISO.rCode({ csv: '/tmp/a.csv', svg: '/tmp/a.pdf', dev: 'pdf' });
+        return /useDingbats=FALSE/.test(c) && c.indexOf('svg(') < 0;
+      })(), 'Dingbats 是位图字体 —— 用了它 PDF 里的符号就没法再编辑了');
+    t('rCode 缺省那一档仍旧是 svg()，一个字没动',
+      /svg\("\/tmp\/a\.svg", width=7, height=6, pointsize=11\)/
+        .test(ISO.rCode({ csv: '/tmp/a.csv', svg: '/tmp/a.svg' })),
+      '老行为是逐位对照桌面版的基准，不能被新功能带偏');
+
     var tabIso = ISO ? ISO.buildTable(arIso ? arIso.rows : [], {}) : null;
     t('给 IsoplotR 的表按 format=1 的列序，且表头就是那五列',
       !!tabIso && tabIso.lines[0] === 'Pb207U235,errPb207U235,Pb206U238,errPb206U238,rhoXY',

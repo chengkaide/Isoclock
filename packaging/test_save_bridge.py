@@ -20,6 +20,7 @@
 用法:  python packaging/test_save_bridge.py
 """
 
+import base64
 import io
 import os
 import sys
@@ -138,7 +139,59 @@ def main():
         check('空文件名有兜底 (%r)' % bad, bool(saved.get('save_filename')),
               repr(saved.get('save_filename')))
 
-    # ---- 6) 外链只放行 http(s) ------------------------------------------
+    # ---- 6) 二进制出口：IsoplotR 导出的那份 PDF 走的就是这里 -------------
+    #  故意选一段**不是合法 UTF-8、还含 NUL** 的字节：文本那条路写它必崩，
+    #  所以这一组能证明二进制真的按二进制落了盘。
+    pdf_bytes = (b'%PDF-1.4\n%\xe2\xe3\xcf\xd3\n1 0 obj\n<< /Type /Page >>\n'
+                 b'endobj\n\x00\xff\xfe\nstream\n\x1f\x8b\x08\nendstream\n%%EOF\n')
+    dst = os.path.join(tmp, 'isoplotr_plot.pdf')
+    api, saved, restore = with_stub(dst)
+    try:
+        got = api.save_as_bytes('isoplotr_plot.pdf',
+                                base64.b64encode(pdf_bytes).decode('ascii'))
+    finally:
+        restore()
+    check('save_as_bytes 返回落盘路径', got == dst, repr(got))
+    check('save_as_bytes 逐字节还原二进制（含 NUL 与非 UTF-8 字节）',
+          io.open(dst, 'rb').read() == pdf_bytes,
+          repr(io.open(dst, 'rb').read()))
+    check('save_as_bytes 预填 .pdf 文件名',
+          saved.get('save_filename') == 'isoplotr_plot.pdf',
+          repr(saved.get('save_filename')))
+    check('save_as_bytes 的过滤器认 PDF',
+          any('PDF' in k for k in (saved.get('file_types') or ())),
+          repr(saved.get('file_types')))
+
+    #  取消 → 什么都不写
+    api, _, restore = with_stub(None)
+    try:
+        got = api.save_as_bytes('x.pdf', base64.b64encode(b'abc').decode('ascii'))
+    finally:
+        restore()
+    check('save_as_bytes 取消返回空串', got == '', repr(got))
+
+    #  反向自证：同一串 base64 走**文本**出口 → 落盘的不是那份二进制。
+    #  这条证明"不能拿 save_as 凑合"不是一句空话：那样写出来的 .pdf 打不开。
+    as_text = os.path.join(tmp, 'as_text.pdf')
+    api, _, restore = with_stub(as_text)
+    try:
+        api.save_as('as_text.pdf', base64.b64encode(pdf_bytes).decode('ascii'))
+    finally:
+        restore()
+    bad_raw = io.open(as_text, 'rb').read()
+    check('反向自证：二进制走文本出口就得到一个坏文件（说明两条路不能混）',
+          bad_raw != pdf_bytes and not bad_raw.startswith(b'%PDF-'),
+          repr(bad_raw[:40]))
+
+    #  坏 base64 不能把壳炸掉（页面上哪天传错东西，也只是这一次存不下来）
+    api, _, restore = with_stub(os.path.join(tmp, 'bad.pdf'))
+    try:
+        got = api.save_as_bytes('bad.pdf', '这不是 base64!!!')
+    finally:
+        restore()
+    check('坏 base64 不抛异常（返回空串，不是崩掉）', got == '', repr(got))
+
+    # ---- 7) 外链只放行 http(s) ------------------------------------------
     api, _, restore = with_stub(None)
     with_stub(None)
     try:

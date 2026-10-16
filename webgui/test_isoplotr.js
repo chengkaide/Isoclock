@@ -334,6 +334,62 @@ t('rCode 的 CSV 内容不会被拼进 R 代码（走 writeLines 的文件路径
   ISO.rCode({ csv: '/tmp/a.csv', svg: '/tmp/a.svg' }).indexOf('Pb207U235') < 0,
   '表内容只经虚拟文件系统进去，R 代码里只有路径');
 
+/* ---------------------------------------------------------------------
+ *  §D-2 PDF 那一份（dev='pdf'）—— 与 SVG 那份**只允许设备那一行不同**
+ *
+ *  导出的 PDF 与屏幕上那张图必须是同一个东西。而"另写一份差不多的代码"是这类
+ *  改动里最容易出的错：两次改参数只改了一支，画面上完全看不出来（两张都像图），
+ *  但导出的那份已经不是屏幕上那张了。所以这里**逐行比**，不是抽查几个关键词。
+ *
+ *  设备行本身另有两条硬要求：
+ *    · pdf 那份必须写 useDingbats=FALSE —— 它决定点号、希腊字母用真字体而不是
+ *      位图 Dingbats，那正是"PDF 里文字还能选中、还能改"的前提；
+ *    · svg 那份**不能**带这个参数（svg() 的 formals 里没有它，传了报
+ *      unused argument，整段脚本一行都不执行）。
+ * ------------------------------------------------------------------- */
+const CODE_PDF = ISO.rCode({ csv: '/tmp/a.csv', svg: '/tmp/a.pdf', dev: 'pdf',
+                             type: 1, showAge: 2, commonPb: 0 });
+const DEV_SVG = 'svg("/tmp/a.svg", width=7, height=6, pointsize=11)';
+const DEV_PDF = 'pdf("/tmp/a.pdf", width=7, height=6, pointsize=11, useDingbats=FALSE)';
+const countOf = (s, sub) => s.split(sub).length - 1;
+
+function codeLineDiff(a, b) {
+  const la = a.split('\n'), lb = b.split('\n');
+  if (la.length !== lb.length) {
+    return '行数不同：' + la.length + ' vs ' + lb.length;
+  }
+  const isDev = (s) => /(^|\s)(svg|pdf)\("/.test(s);
+  for (let i = 0; i < la.length; i++) {
+    if (la[i] === lb[i]) continue;
+    if (!isDev(la[i]) || !isDev(lb[i])) {
+      return '第 ' + (i + 1) + ' 行不同：\n      ' + la[i] + '\n      ' + lb[i];
+    }
+  }
+  return '';
+}
+
+t('缺省（不传 dev）仍旧走 svg()，设备行一字不改',
+  CODE.indexOf(DEV_SVG) >= 0, '老行为不能动 —— 它是逐位对照桌面版的基准');
+t('dev="pdf" 时设备行换成 pdf()，并显式钉住 useDingbats=FALSE',
+  CODE_PDF.indexOf(DEV_PDF) >= 0,
+  'Dingbats 是位图字体，用它画符号的话 PDF 里的符号就没法编辑了');
+t('pdf 那份里没有 svg() 调用',
+  CODE_PDF.indexOf('svg(') < 0, '剩下的 svg 字样数：' + countOf(CODE_PDF, 'svg'));
+t('svg 那份里没有 useDingbats（svg() 不认这个参数，传了整段脚本不执行）',
+  CODE.indexOf('useDingbats') < 0,
+  'svg() 的 formals 里没有它 —— 报 unused argument，一行都不会跑');
+t('两份代码只有设备那一行不同（其余逐行相同）',
+  codeLineDiff(CODE, CODE_PDF) === '', codeLineDiff(CODE, CODE_PDF));
+t('退回分支（拟合失败只画点）里的设备也跟着换，两份各出现两次',
+  countOf(CODE, DEV_SVG) === 2 && countOf(CODE_PDF, DEV_PDF) === 2,
+  'svg 出现 ' + countOf(CODE, DEV_SVG) + ' 次、pdf 出现 ' + countOf(CODE_PDF, DEV_PDF) + ' 次');
+t('两份传进 concordia() 的实参串完全相同',
+  CODE.indexOf('concordia(d, type=1, show.age=2, common.Pb=0, sigdig=3)') >= 0
+  && CODE_PDF.indexOf('concordia(d, type=1, show.age=2, common.Pb=0, sigdig=3)') >= 0);
+t('导出了 drawOnce（两遍作图走的是同一个函数，不是抄一份）',
+  typeof ISO.drawOnce === 'function' && typeof ISO.render === 'function',
+  'typeof drawOnce = ' + typeof ISO.drawOnce);
+
 /* ======================================================================
  *  §E parseResult
  * ==================================================================== */

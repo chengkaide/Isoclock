@@ -228,10 +228,10 @@ footer .wrap{display:flex;gap:22px;flex-wrap:wrap;align-items:baseline}
 
   <div class="badges">
     <!-- BADGES:BEGIN 由 docs/make_badges.py 生成；改数字请改源头并重跑 -->
-    <span class="b ok" title="16 套 webgui/test_*.js，与桌面版逐位对照；本行由脚本实跑得出">553 项数值比对全绿</span>
-    <span class="b ok" title="在产物页面里点真按钮跑（#selftest）；每次由脚本核这个数">87 项页面内自检</span>
+    <span class="b ok" title="16 套 webgui/test_*.js，与桌面版逐位对照；本行由脚本实跑得出">561 项数值比对全绿</span>
+    <span class="b ok" title="在产物页面里点真按钮跑（#selftest）；每次由脚本核这个数">94 项页面内自检</span>
     <span class="b ok" title="含浮点最后一位；由上面那批比对保证">与桌面版逐位相同</span>
-    <span class="b pu" title="isoclock.html = 995461 字节；零外链、零依赖，双击即用">单文件 972 KB · 离线</span>
+    <span class="b pu" title="isoclock.html = 1010046 字节；零外链、零依赖，双击即用">单文件 986 KB · 离线</span>
     <span class="b pu" title="guide.html = 482008 字节，56 张内联图">图解教程 471 KB</span>
     <span class="b" title="同一个页面装进系统自带的 WebView；Windows 出 exe，macOS 出 app">Windows / macOS 桌面程序</span>
     <span class="b" title="两种仪器导出都能读（Element 的 .fin 请用桌面版转换）">Thermo + Agilent</span>
@@ -542,6 +542,14 @@ footer .wrap{display:flex;gap:22px;flex-wrap:wrap;align-items:baseline}
   R 运行时与 IsoplotR 包，装完就在<b>本页内存</b>里跑真的 R —— <b>数据不出本机</b>。
   代价是这一页要联网，首次约 16 MB、约一分钟，之后走浏览器缓存。
   <b>不点它，一个字节都不会下载</b>，页面其余部分仍然是那份离线单文件。</p>
+
+  <p><b>图出来以后能存成什么。</b>两个出口，<b>都是矢量</b>：「另存 SVG」是屏幕上这一份；
+  <b>「另存 PDF」是让 R 用它自己的 <code>pdf()</code> 设备、拿同一份数据与同一份参数
+  再画一遍</b> —— 不是把屏幕上的图截下来塞进去，所以那份 PDF 里<b>一张位图都没有</b>，
+  文字是真正的文本对象（PDF 标准字体 Helvetica / Symbol），在 Illustrator、Inkscape、
+  Affinity 里能<b>直接改字、挪图例、换线型</b>，拿去拼图排版或投稿都行。
+  两份图各自跑一次拟合，所以界面会核对两次回来的数值是否<b>逐字节相同</b>；
+  对不上就把有差异的项列出来，不默默给一份与屏幕上不一样的 PDF。</p>
 
   <p><b>图上的点应该是「样品」，不是标样。</b>内置这批示例是<b>一个文件一个测点</b>：
   其中两个名字是标样（U-Pb 分馏标样 AY-4 与微量元素外标 SRM 612，它们的文件数

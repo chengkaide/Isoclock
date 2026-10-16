@@ -151,9 +151,31 @@ def _error_html(title, text):
 class Api:
     """页面通过 window.pywebview.api.xxx() 调用。
 
-    只有两个方法，都是"浏览器做不到"的事。**不碰任何数据**：
-    页面给什么文本就写什么文本，一个字节都不加工。
+    只有这几件事，都是"浏览器做不到"的事。**不碰任何数据**：
+    页面给什么就写什么，一个字节都不加工。
     """
+
+    def _ask_path(self, name, fallback):
+        """弹系统"另存为"，返回用户选的路径；取消返回空串。
+
+        文件名只取 basename（页面传什么都不许它跑到别的目录去），
+        过滤器按扩展名生成 —— 两个落盘出口（文本 / 二进制）共用这一段，
+        免得"改了其中一个忘了另一个"。
+        """
+        import webview
+        safe = os.path.basename(str(name or '').strip()) or fallback
+        ext = os.path.splitext(safe)[1]
+        if ext:
+            kinds = ('%s 文件 (*%s)' % (ext.lstrip('.').upper(), ext),
+                     '所有文件 (*.*)')
+        else:
+            kinds = ('所有文件 (*.*)',)
+        picked = _window.create_file_dialog(
+            webview.FileDialog.SAVE, save_filename=safe, file_types=kinds)
+        if not picked:
+            log('另存为取消: %s' % safe)
+            return ''
+        return picked[0] if isinstance(picked, (list, tuple)) else picked
 
     def save_as(self, name, text):
         """把导出内容写到用户选的位置，返回落盘路径（取消返回空串）。
@@ -162,28 +184,39 @@ class Api:
         页面里的字符串是浏览器 Blob 的原样内容（CSV 里的 CRLF 是 Python csv
         模块的写法），不去动换行，导出的 CSV / JSON 仍与桌面版逐字节相同。
         """
-        import webview
         try:
-            safe = os.path.basename(str(name or '').strip()) or 'isoclock_export.txt'
-            ext = os.path.splitext(safe)[1]
-            kinds = ()
-            if ext:
-                kinds = ('%s 文件 (*%s)' % (ext.lstrip('.').upper(), ext),
-                         '所有文件 (*.*)')
-            else:
-                kinds = ('所有文件 (*.*)',)
-            picked = _window.create_file_dialog(
-                webview.FileDialog.SAVE, save_filename=safe, file_types=kinds)
-            if not picked:
-                log('save_as 取消: %s' % safe)
+            path = self._ask_path(name, 'isoclock_export.txt')
+            if not path:
                 return ''
-            path = picked[0] if isinstance(picked, (list, tuple)) else picked
             with open(path, 'w', encoding='utf-8', newline='') as fh:
                 fh.write('' if text is None else str(text))
             log('save_as 写出 %s (%d 字符)' % (path, len('' if text is None else str(text))))
             return path
         except Exception as exc:
             log('save_as 失败: %r' % exc)
+            return ''
+
+    def save_as_bytes(self, name, b64):
+        """把**二进制**导出内容写到用户选的位置（现阶段只有 IsoplotR 那张 PDF）。
+
+        页面里的二进制过不来 —— 桥的 JS→Python 参数是走 JSON 的，
+        Uint8Array 到不了这边。所以页面先转 base64，这里解回来按二进制写。
+
+        **不能拿 save_as 凑合**：那会把 base64 字符串写进 .pdf，
+        用户拿到一个打不开的文件，而且全程不报错 —— 属于最难发现的那种坏。
+        """
+        import base64 as _b64
+        try:
+            path = self._ask_path(name, 'isoclock_export.bin')
+            if not path:
+                return ''
+            raw = _b64.b64decode(str(b64 or ''), validate=False)
+            with open(path, 'wb') as fh:
+                fh.write(raw)
+            log('save_as_bytes 写出 %s (%d 字节)' % (path, len(raw)))
+            return path
+        except Exception as exc:
+            log('save_as_bytes 失败: %r' % exc)
             return ''
 
     def open_external(self, url):

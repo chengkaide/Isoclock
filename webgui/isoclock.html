@@ -913,7 +913,8 @@ table.iso-sum tr.head td { font-weight: 600; color: var(--ink-2); border-bottom-
         </label>
         <span class="spacer"></span>
         <button class="go" id="btn-iso-run" disabled>加载 IsoplotR 并作图</button>
-        <button id="btn-iso-svg" disabled>另存 SVG</button>
+        <button id="btn-iso-svg" disabled title="把屏幕上这张图存成 SVG（单文件矢量图，浏览器、Inkscape、Illustrator 都能开）">另存 SVG</button>
+        <button id="btn-iso-pdf" disabled title="把同一张图存成 PDF：纯矢量、没有一张位图，文字是真正的文本对象 —— 可以用 Illustrator / Inkscape / Affinity 打开后直接改文字、挪图例、换线型，拿去拼图排版或投稿。">另存 PDF</button>
       </div>
       <!--  更多选项：逐项对应 IsoplotR 自己的图形界面（pvermees/IsoplotRgui 的
             options/concordia.html）。规矩是「留空 = 不传 = 用它的默认值」，
@@ -1016,6 +1017,17 @@ table.iso-sum tr.head td { font-weight: 600; color: var(--ink-2); border-bottom-
         <p><b>图上的点应该是「样品」</b>：默认的「全部样品（不含标样）」把这一批的样品
           测点合在一张图上。标样（如 AY-4）不参与样品统计 —— 它是 QC 样，单独列在
           下拉最后那个分组里，选它出来的年龄是拿来对②里填的真值的。</p>
+        <p><b>导出的是矢量图，两份都可再编辑</b>：「另存 SVG」存屏幕上这一份；
+          「另存 PDF」是让 R 用自己的 <code>pdf()</code> 设备<b>拿同一份数据、同一份参数
+          再画一遍</b> —— 不是把屏幕上的图截下来塞进去。所以 PDF 里
+          <b>一张位图都没有</b>，文字是真正的文本对象（Helvetica / Symbol 标准字体），
+          在 Illustrator、Inkscape、Affinity 里能直接改字、挪图例、换线型、拆分组，
+          拿去拼图排版或投稿都行。两条出口的尺寸与点数完全一样（缺省 7 × 6 英寸）；
+          <b>字体是 PDF 标准字体、不内嵌</b>，换台机器打开若缺字体，编辑器会提示替换
+          —— 改字用的机器上装着 Helvetica 就没这回事。</p>
+        <p>两份图会各自独立跑一次拟合，所以界面会核对两次回来的数值
+          （<code>par</code> / 年龄 / MSWD 那一串）是否<b>逐字节相同</b>；
+          对不上会明确告诉你，不会默默给一份与屏幕上不同的 PDF。</p>
       </details>
       <div class="iso-msg" id="iso-msg">
         选好图型与样品，点上面那个按钮。<b>首次要下载约 16 MB</b>，之后走缓存。
@@ -1056,7 +1068,7 @@ table.iso-sum tr.head td { font-weight: 600; color: var(--ink-2); border-bottom-
 
     <h3>结果可信到什么程度</h3>
     <p>同一批数据下，网页版的输出与桌面版<b>逐位相同</b>（bit-for-bit，包括浮点最后一位）。
-      这不是估计，是跑出来的：<b data-count="tests">553 项</b> Node 端自动比对
+      这不是估计，是跑出来的：<b data-count="tests">561 项</b> Node 端自动比对
       （<b data-count="suites">16 套</b> <code>webgui/test_*.js</code>：数值内核、
       Thermo/Agilent 解析、积分窗口、两个 CSV 的<b>逐字节</b>输出、
       年龄层 51 列 × 19 组参数、<b data-count="suite:test_agilent_e2e.js">20 项</b> Agilent 端到端、
@@ -1064,10 +1076,10 @@ table.iso-sum tr.head td { font-weight: 600; color: var(--ink-2); border-bottom-
       <b data-count="suite:test_qc.js">63 项</b> 质量统计、
       <b data-count="suite:test_report.js">50 项</b> 报告组装、
       <b data-count="suite:test_demo_real.js">22 项</b> 内置真实示例数据、
-      <b data-count="suite:test_isoplotr.js">103 项</b> IsoplotR 接入层、
+      <b data-count="suite:test_isoplotr.js">111 项</b> IsoplotR 接入层、
       <b data-count="suite:test_api.js">59 项</b> 程序接口门面、
       <b data-count="suite:test_stages.js">55 项</b> 过程量表）
-      ＋<b data-count="selftest">87 项</b>本页面内自检（走的是真按钮那条路）。<br>
+      ＋<b data-count="selftest">94 项</b>本页面内自检（走的是真按钮那条路）。<br>
       上面这些数不是手写的：<code>docs/make_badges.py</code> 每次都会把测试真跑一遍，
       <b>连逐套的项数也一起核</b>，对不上就让 CI 红。真正手写的是这一句解释。</p>
       唯一一处曾经对不上的地方是 <code>exp</code> / <code>log</code>：宿主 C 运行时与浏览器的
@@ -1233,15 +1245,15 @@ table.iso-sum tr.head td { font-weight: 600; color: var(--ink-2); border-bottom-
    本文件由 webgui/build_ui.py 拼成，请勿手改。要改就改 ui/ 与 src/ 下的
    源头，然后重新运行：python webgui/build_ui.py
 
-   生成时间：2026-10-16 09:07:07（取全部源码里最新的那次改动时间，
+   生成时间：2026-10-16 09:55:54（取全部源码里最新的那次改动时间，
              所以同样的源码永远得到同样的文件）
 
-   模块指纹：style.css=8ae74a5d14b4 src/fp.js=0ec13124f10d src/math.js=c069afbfb348 src/thermo.js=1596a3593c89 src/window.js=d796f11140ec src/report.js=2e5ac3aa5cb8 src/pipeline.js=014ae7c6b5e2 src/age.js=de71144827e2 src/qc.js=073a99c707df src/stages.js=e5b8788e667f src/demo_real.js=bc39e2008e74 ui/report.js=1468ac677124 ui/api.js=f38a11d99c4a ui/isoplotr.js=ef344cfd2ba6 ui/selftest.js=09bb0b7697e3 ui/splash.js=a4d24b851754 ui/app.js=ae843f0dff51 ui/app.html=760ccd445fe5
-   源码指纹：15a40419425f（页脚显示的就是它，与本脚本末尾打印的那一行同值）
+   模块指纹：style.css=8ae74a5d14b4 src/fp.js=0ec13124f10d src/math.js=c069afbfb348 src/thermo.js=1596a3593c89 src/window.js=d796f11140ec src/report.js=2e5ac3aa5cb8 src/pipeline.js=014ae7c6b5e2 src/age.js=de71144827e2 src/qc.js=073a99c707df src/stages.js=e5b8788e667f src/demo_real.js=bc39e2008e74 ui/report.js=1468ac677124 ui/api.js=f38a11d99c4a ui/isoplotr.js=76a8ec516770 ui/selftest.js=d693b5b1abb6 ui/splash.js=a4d24b851754 ui/app.js=9e038f4ebe07 ui/app.html=fe1653264955
+   源码指纹：2942bcafa427（页脚显示的就是它，与本脚本末尾打印的那一行同值）
   ==========================================================================
 -->
 <script>
-window.__build = { built: "2026-10-16 09:07:07", fingerprint: "style.css=8ae74a5d14b4 src/fp.js=0ec13124f10d src/math.js=c069afbfb348 src/thermo.js=1596a3593c89 src/window.js=d796f11140ec src/report.js=2e5ac3aa5cb8 src/pipeline.js=014ae7c6b5e2 src/age.js=de71144827e2 src/qc.js=073a99c707df src/stages.js=e5b8788e667f src/demo_real.js=bc39e2008e74 ui/report.js=1468ac677124 ui/api.js=f38a11d99c4a ui/isoplotr.js=ef344cfd2ba6 ui/selftest.js=09bb0b7697e3 ui/splash.js=a4d24b851754 ui/app.js=ae843f0dff51 ui/app.html=760ccd445fe5", id: "15a40419425f" };
+window.__build = { built: "2026-10-16 09:55:54", fingerprint: "style.css=8ae74a5d14b4 src/fp.js=0ec13124f10d src/math.js=c069afbfb348 src/thermo.js=1596a3593c89 src/window.js=d796f11140ec src/report.js=2e5ac3aa5cb8 src/pipeline.js=014ae7c6b5e2 src/age.js=de71144827e2 src/qc.js=073a99c707df src/stages.js=e5b8788e667f src/demo_real.js=bc39e2008e74 ui/report.js=1468ac677124 ui/api.js=f38a11d99c4a ui/isoplotr.js=76a8ec516770 ui/selftest.js=d693b5b1abb6 ui/splash.js=a4d24b851754 ui/app.js=9e038f4ebe07 ui/app.html=fe1653264955", id: "2942bcafa427" };
 </script>
 
 <script>
@@ -5904,13 +5916,33 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_STAGES;
    *   结果摘成 key=value 纯文本，界面自己解析，不依赖 R 对象序列化
    */
   function rCode(a) {
-    var csv = safePath(a.csv), svg = safePath(a.svg);
+    //  a.svg 这个名字是历史遗留 —— 它装的是**输出文件路径**，现在既可能是
+    //  .svg 也可能是 .pdf，看 a.dev 是哪一档。改名会牵动界面与测试的调用面，
+    //  所以只在心里把它当 out 用（下面这个别名就是这么来的）。
+    var csv = safePath(a.csv), out = safePath(a.svg);
     var w = a.w || 7, h = a.h || 6, ps = a.ps || 11;
+    var pdf = (a.dev === 'pdf');
 
     //  这些值会原样进 R 代码，所以必须是纯数字
     [w, h, ps].forEach(function (v) {
       if (!isFinite(v)) throw new Error('作图参数不是数字');
     });
+
+    /**
+     * 开设备的调用。**svg 与 pdf 的公共参数是同一个位置序列**
+     * （file, width, height, pointsize），所以这里是同一段拼接，不是抄两份 ——
+     * 抄两份就会出现"改了宽高只改了其中一支"这种最难发现的偏差。
+     *
+     * pdf 多一个 `useDingbats = FALSE`：R 从 4.0 起这就是默认值，这里显式写死
+     * 是为了把它钉住 —— 它决定点号、希腊字母那些符号**用真字体而不是位图
+     * Dingbats**，而那正是"导出的 PDF 里文字还能选中、还能改"的前提。
+     * （svg 的 formals 里没有这个参数，传了会报 unused argument。）
+     */
+    function openDev(pad) {
+      return pad + (pdf ? 'pdf' : 'svg') + '(' + rStr(out)
+        + ', width=' + w + ', height=' + h + ', pointsize=' + ps
+        + (pdf ? ', useDingbats=FALSE' : '') + ')';
+    }
 
     var A = rArgs(a);
     var args = A.join(', ');
@@ -5937,14 +5969,14 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_STAGES;
     L.push('kv <- c(paste0("n=", nrow(d$x)))');
     L.push('msg <- ""');
     L.push('o <- NULL');
-    L.push('svg(' + rStr(svg) + ', width=' + w + ', height=' + h + ', pointsize=' + ps + ')');
+    L.push(openDev(''));
     L.push('o <- tryCatch(concordia(d, ' + args + '),');
     L.push('              error = function(e) { msg <<- conditionMessage(e); NULL })');
     L.push('dev.off()');
     //  失败也要给一张图：退回只画点（show.age=0）。不能把面板留空。
     L.push('if (is.null(o) && ' + sa + ' > 0) {');
     L.push('  msg <- paste0("拟合失败，已退回只画点：", msg)');
-    L.push('  svg(' + rStr(svg) + ', width=' + w + ', height=' + h + ', pointsize=' + ps + ')');
+    L.push(openDev('  '));
     L.push('  try(concordia(d, ' + args0 + '), silent = TRUE)');
     L.push('  dev.off()');
     L.push('}');
@@ -6195,44 +6227,86 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_STAGES;
   }
 
   /**
-   * 出一张图。会先确保运行时已加载。
-   * 返回 { svg, raw, result, summary, seconds, args }
-   *   args 是这一次真正传进 R 的实参表 —— 界面上原样列出来，好留痕/复现。
+   * 跑一遍作图：**同一份 table、同一份实参，只换输出设备**。
+   * dev = 'svg' → 读回来是文本；'pdf' → 读回来是 Uint8Array（二进制）。
+   *
+   * 抽成一个函数是有原因的：这两遍的参数必须逐项相同，抄一份就一定会漏一项，
+   * 而漏掉的那项照样能出图（只是安静地用了另一个值）—— 那样屏幕上那张图与
+   * 导出的那份就不是同一张了，还看不出来。见 render() 里的一致性核对。
    */
-  function render(table, opts, onProgress) {
+  function drawOnce(table, opts, dev) {
+    var stamp = 'iso' + Date.now() + (dev === 'pdf' ? 'p' : '');
+    var csv = '/tmp/' + stamp + '.csv';
+    var file = '/tmp/' + stamp + '.' + dev;
+    return putLines(st.webR, csv, table.lines).then(function () {
+      var t = now();
+      //  选项原样透传：传进来的 key 就是 rArgs() 认的那些，**不再一处一处抄**。
+      var ra = { csv: csv, svg: file, dev: dev };
+      RARG_KEYS.forEach(function (k) {
+        if (opts[k] !== undefined && opts[k] !== null) ra[k] = opts[k];
+      });
+      return st.webR.evalRString(rCode(ra))
+        .then(function (raw) { return { raw: raw, ms: now() - t, args: rArgs(ra) }; });
+    }).then(function (o) {
+      return st.webR.FS.readFile(file).then(function (buf) {
+        return { buf: buf, raw: o.raw, ms: o.ms, args: o.args, path: file };
+      });
+    });
+  }
+
+  /**
+   * 出一张图。会先确保运行时已加载。
+   * 返回 { svg, pdf, pdfSame, pdfErr, raw, result, summary, seconds, args }
+   *   svg      SVG 文本（界面上那张就是这个）
+   *   pdf      Uint8Array（真矢量、文字可改）；生成失败时是 null
+   *   pdfSame  两遍作图的 kv 文本是否**逐字节相同**
+   *   args     这一次真正传进 R 的实参表 —— 界面上原样列出来，好留痕/复现
+   *
+   * 为什么要多画一遍 PDF：R 的 pdf() 设备出的才是"文字能再编辑"的矢量图，
+   * 而把屏幕上的 SVG 转 PDF 要么得引第三方库（单文件零依赖就破了），要么得
+   * 自己写一个 SVG→PDF 转换器（坑深且难验）。让 R 自己再画一遍最干净。
+   *
+   * onSvg(text) 是可选回调：SVG 一画好就先把文本交出去，别让用户为了等那份
+   * PDF 而盯着空面板（第二遍要再跑一次拟合，点多的图会有可感的停顿）。
+   */
+  function render(table, opts, onProgress, onSvg) {
     opts = opts || {};
     var say = function (s) { if (onProgress) onProgress(s); };
-    var argsList = [];              // 这一次真正传进 R 的实参表，回给界面做留痕
     return load(onProgress).then(function () {
       say('正在作图（' + table.n + ' 个点，' + AGES.filter(function (a) {
         return a.v === Number(opts.showAge || 0);
       }).map(function (a) { return a.label; })[0] + '）…');
-      var stamp = 'iso' + Date.now();
-      var csv = '/tmp/' + stamp + '.csv';
-      var svg = '/tmp/' + stamp + '.svg';
-      return putLines(st.webR, csv, table.lines).then(function () {
-        var t = now();
-        //  选项原样透传：传进来的 key 就是 rArgs() 认的那些，**不再一处一处抄**。
-        //  抄一份就一定会漏一项，而漏掉的那项照样能出图，最难发现。
-        var ra = { csv: csv, svg: svg };
-        RARG_KEYS.forEach(function (k) {
-          if (opts[k] !== undefined && opts[k] !== null) ra[k] = opts[k];
-        });
-        argsList = rArgs(ra);
-        return st.webR.evalRString(rCode(ra))
-          .then(function (raw) { return { raw: raw, ms: now() - t }; });
-      }).then(function (o) {
-        return st.webR.FS.readFile(svg).then(function (buf) {
-          //  ⚠ 浏览器里 FS.readFile 回来的是 Uint8Array，不是字符串（踩过：
-          //     下一步 svg.match is not a function）
-          var text = (typeof buf === 'string') ? buf : new TextDecoder().decode(buf);
-          var result = parseResult(o.raw);
-          var summary = summarise(result, { type: opts.type, showAge: opts.showAge });
-          say('图已出（' + (o.ms / 1000).toFixed(1) + ' s，' + Math.round(text.length / 1024) + ' KB）'
-            + (result.error ? ' —— 但拟合失败了，见下方说明' : ''));
-          return { svg: text, raw: o.raw, result: result, summary: summary,
-                   seconds: o.ms / 1000, args: argsList };
-        });
+      return drawOnce(table, opts, 'svg');
+    }).then(function (o) {
+      //  ⚠ 浏览器里 FS.readFile 回来的是 Uint8Array，不是字符串（踩过：
+      //     下一步 svg.match is not a function）
+      var buf = o.buf;
+      var text = (typeof buf === 'string') ? buf : new TextDecoder().decode(buf);
+      var result = parseResult(o.raw);
+      var summary = summarise(result, { type: opts.type, showAge: opts.showAge });
+      if (onSvg) onSvg(text);
+      say('图已出（' + (o.ms / 1000).toFixed(1) + ' s，' + Math.round(text.length / 1024)
+        + ' KB）' + (result.error ? ' —— 但拟合失败了，见下方说明' : '')
+        + '，正在再画一份矢量 PDF…');
+
+      //  第二遍：换成 pdf() 设备。**这一遍失败不能拖垮整张图** —— 图已经有了，
+      //  用户要看的先是图。失败就如实记下来，界面把按钮禁掉并说明原因。
+      return drawOnce(table, opts, 'pdf').then(function (p) {
+        var pb = p.buf;
+        var bytes = (typeof pb === 'string')
+          ? (function () {                       // 万一回来是字符串（不该发生）
+            var u = new Uint8Array(pb.length);
+            for (var i = 0; i < pb.length; i++) u[i] = pb.charCodeAt(i) & 0xff;
+            return u;
+          })() : pb;
+        return { svg: text, raw: o.raw, result: result, summary: summary,
+                 seconds: o.ms / 1000, args: o.args,
+                 pdf: bytes, pdfRaw: p.raw, pdfSame: (p.raw === o.raw), pdfErr: '' };
+      }).catch(function (e) {
+        return { svg: text, raw: o.raw, result: result, summary: summary,
+                 seconds: o.ms / 1000, args: o.args,
+                 pdf: null, pdfRaw: '', pdfSame: false,
+                 pdfErr: String((e && e.message) || e) };
       });
     });
   }
@@ -6247,7 +6321,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_STAGES;
     standardNames: standardNames,
     buildTable: buildTable, rArgs: rArgs, rCode: rCode, parseResult: parseResult,
     summarise: summarise, svgDataUri: svgDataUri, fnum: fnum, rStr: rStr,
-    load: load, render: render,
+    load: load, render: render, drawOnce: drawOnce,
     isReady: function () { return st.ready; },
     runtime: function () { return st.ready ? st.result : null; },
     _state: st
@@ -8895,6 +8969,46 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_STAGES;
       arIso ? ('当前 ' + arIso.rows.length + ' 行结果，按钮 enabled=' +
         !$('btn-iso-run').disabled) : '还没有结果');
 
+    /* --- PDF 出口 ---------------------------------------------------------
+       这一页多给了一条"能再编辑"的路：屏幕上那张 SVG 之外，再用 R 自己的
+       pdf() 设备画一份纯矢量 PDF。自检**不联网**（这一页本来就够不到网络），
+       所以这里查的是接线与文案；真出图由 G:/_isohtml/probe_pdf.py 那条
+       CDP 路验（它真点按钮、真读回来的字节）。 */
+    t('IsoplotR 那一页有「另存 PDF」按钮，且紧挨着「另存 SVG」',
+      (function () {
+        var pdf = $('btn-iso-pdf'), svg = $('btn-iso-svg');
+        if (!pdf || !svg || pdf.parentNode !== svg.parentNode) return false;
+        var kids = svg.parentNode.children;
+        return Array.prototype.indexOf.call(kids, pdf)
+          === Array.prototype.indexOf.call(kids, svg) + 1;
+      })(), '两个出口出的是同一张图的两种格式，挨着才看得出它们是一对');
+    t('「另存 PDF」的说明里写明它矢量、文字可再编辑',
+      (function () {
+        var el = $('btn-iso-pdf');
+        return !!el && /矢量/.test(el.title) && /(再编辑|编辑|改)/.test(el.title);
+      })(), $('btn-iso-pdf') ? $('btn-iso-pdf').title.slice(0, 70) : '（没有这个按钮）');
+    t('还没作图时「另存 PDF」是禁用的（没图就没有 PDF 可存）',
+      !!$('btn-iso-pdf') && $('btn-iso-pdf').disabled === true
+      && ui.state.isoPdf === null);
+    t('页面帮助里讲了 PDF 是拿同一份数据再画一遍、不是把屏幕上的图截下来',
+      (function () {
+        var d = document.querySelector('details.iso-help');
+        return !!d && d.textContent.indexOf('pdf()') >= 0
+          && d.textContent.indexOf('再画一遍') >= 0;
+      })(), '这条口径得写在用户看得到的地方，不能只写在代码注释里');
+    t('DS_ISOPLOTR 导出了 drawOnce（两遍作图共用同一个函数，不是抄一份）',
+      typeof ISO.drawOnce === 'function',
+      'typeof = ' + typeof ISO.drawOnce);
+    t('rCode 的 pdf 档位写死 useDingbats=FALSE，且整段里没有 svg(',
+      (function () {
+        var c = ISO.rCode({ csv: '/tmp/a.csv', svg: '/tmp/a.pdf', dev: 'pdf' });
+        return /useDingbats=FALSE/.test(c) && c.indexOf('svg(') < 0;
+      })(), 'Dingbats 是位图字体 —— 用了它 PDF 里的符号就没法再编辑了');
+    t('rCode 缺省那一档仍旧是 svg()，一个字没动',
+      /svg\("\/tmp\/a\.svg", width=7, height=6, pointsize=11\)/
+        .test(ISO.rCode({ csv: '/tmp/a.csv', svg: '/tmp/a.svg' })),
+      '老行为是逐位对照桌面版的基准，不能被新功能带偏');
+
     var tabIso = ISO ? ISO.buildTable(arIso ? arIso.rows : [], {}) : null;
     t('给 IsoplotR 的表按 format=1 的列序，且表头就是那五列',
       !!tabIso && tabIso.lines[0] === 'Pb207U235,errPb207U235,Pb206U238,errPb206U238,rhoXY',
@@ -9542,6 +9656,9 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_STAGES;
     compute: null,               // 最近一次 compute() 的完整返回（过程量表要用）
     stage: null,                 // 最近一次渲染的过程量表（点行展开时复用）
     stageAt: null,               // 那张表的生成时刻 —— 导出时必须用同一个
+    isoPdf: null,                // IsoplotR 那一份矢量 PDF（Uint8Array），没生成就是 null
+    isoPdfSame: false,           // 它与屏幕上那张 SVG 的数值是否逐字节一致
+    isoPdfErr: '',               // 生成失败时的原因，界面要如实说出来
     probeKey: '', probeMap: null };   // 文件/仪器 → 轻量解析结果的缓存
 
   function readFileText(file, cb) {
@@ -10310,6 +10427,84 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_STAGES;
     setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
   }
 
+  /** 只给等宽代码块用：把 & < > 换掉，免得 R 回来的原文把版面撕开。 */
+  function codeEsc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  /** Uint8Array → base64。分块做 —— 一次 apply 几 MB 会炸调用栈。 */
+  function toBase64(bytes) {
+    var CH = 0x8000, out = '';
+    for (var i = 0; i < bytes.length; i += CH) {
+      out += String.fromCharCode.apply(null, bytes.subarray(i, i + CH));
+    }
+    return btoa(out);
+  }
+
+  /**
+   * 这个环境能不能把**二进制**存下来。浏览器里能；桌面壳里要看壳有没有
+   * `save_as_bytes`（壳是我们自己重打的，正常都有）。
+   * 这条防的是"页面更新了、壳还是老的"—— 那种情况下退回下面那条 blob 路
+   * 在 WebView2 里是**存不下来**的（文件名会变成一串 GUID，甚至根本不落盘），
+   * 用户会以为存了。所以宁可把按钮禁掉、把话说清楚。
+   */
+  function canSaveBytes() {
+    var api = window.pywebview && window.pywebview.api;
+    if (!api) return true;
+    return typeof api.save_as_bytes === 'function';
+  }
+
+  /**
+   * 存**二进制**（现在只有 IsoplotR 那张 PDF 走这里）。
+   *
+   * 为什么不复用 download()：文本那条路是直接给 pywebview 桥一个字符串，
+   * 二进制过不去 —— 桥的 JS→Python 参数走 JSON。所以先转 base64，
+   * 由壳里的 `save_as_bytes` 解回来按二进制写。
+   */
+  function downloadBytes(name, bytes, mime) {
+    var api = window.pywebview && window.pywebview.api;
+    if (api && typeof api.save_as_bytes === 'function') {
+      api.save_as_bytes(name, toBase64(bytes));
+      return;
+    }
+    var blob = new Blob([bytes], { type: mime || 'application/octet-stream' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
+  }
+
+  /**
+   * 两份 kv 文本（IsoplotR 那两次作图回来的）取值不同的键。
+   * 只回键名与两边截短的值 —— 值里可能是 R 的错误原文，长了会糊满一屏。
+   */
+  function kvDiff(a, b) {
+    var split = function (s) {
+      var m = {}, i, ls = String(s === null || s === undefined ? '' : s).split('\n');
+      for (i = 0; i < ls.length; i++) {
+        var e = ls[i].indexOf('=');
+        if (e > 0) m[ls[i].slice(0, e)] = ls[i].slice(e + 1);
+      }
+      return m;
+    };
+    var A = split(a), B = split(b), ks = {}, out = [];
+    Object.keys(A).forEach(function (k) { ks[k] = 1; });
+    Object.keys(B).forEach(function (k) { ks[k] = 1; });
+    Object.keys(ks).forEach(function (k) {
+      if (A[k] === B[k]) return;
+      var cut = function (v) {
+        return v === undefined ? '（没有这一项）'
+          : (v.length > 48 ? v.slice(0, 48) + '…' : v);
+      };
+      out.push(k + '：' + cut(A[k]) + ' → ' + cut(B[k]));
+    });
+    return out.length ? out.join('；') : '（键与值都相同，只有顺序或行数不同）';
+  }
+
   /** 年龄表按 Python 的 repr 排版导出，保证数值可无损往返。 */
   //  沿用原程序的列名写法。默认原样导出（与桌面版逐字节一致）；
   //  勾选"修正列名笔误"后替换成正确写法，方便按列名取数的下游脚本。
@@ -10652,6 +10847,9 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_STAGES;
     if (!ar || !ar.rows || !ar.rows.length) {
       $('iso-sample').innerHTML = '<option value="*">（还没有结果）</option>';
       btn.disabled = true;
+      //  没有结果就没有图，图没有就没有 PDF 可存
+      $('btn-iso-pdf').disabled = true;
+      state.isoPdf = null;
       return;
     }
 
@@ -10869,6 +11067,8 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_STAGES;
     var btn = $('btn-iso-run');
     btn.disabled = true;
     $('btn-iso-svg').disabled = true;
+    $('btn-iso-pdf').disabled = true;
+    state.isoPdf = null; state.isoPdfSame = false; state.isoPdfErr = '';
     isoMsg(head + '<br>正在加载…');
 
     //  选项**整份透传**，不再一项一项列。列一份就一定会漏一项，而漏掉的那项
@@ -10878,11 +11078,20 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_STAGES;
     (ISO.RARG_KEYS || []).forEach(function (k) { ropts[k] = o[k]; });
     ISO.render(tab, ropts, function (s) {
       isoMsg(head + '<br>' + s);
-    }).then(function (out) {
-      svgText = out.svg;
-      $('iso-fig').src = ISO.svgDataUri(svgText);
+    }, function (text) {
+      //  SVG 一画好就先摆上去。后面那份 PDF 要**再跑一次拟合**，点多的图
+      //  会有可感的停顿 —— 不能为了等它让面板一直空着。
+      svgText = text;
+      $('iso-fig').src = ISO.svgDataUri(text);
       $('iso-fig').style.display = '';
       $('btn-iso-svg').disabled = false;
+    }).then(function (out) {
+      if (!svgText) {                  // 兜底：万一 onSvg 那条路没被调到
+        svgText = out.svg;
+        $('iso-fig').src = ISO.svgDataUri(svgText);
+        $('iso-fig').style.display = '';
+        $('btn-iso-svg').disabled = false;
+      }
 
       //  汇总表
       var html = '<tbody>';
@@ -10928,19 +11137,58 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_STAGES;
         ? '<p class="iso-args">本次传给 IsoplotR 的参数：<code>'
           + out.args.join(', ') + '</code></p>'
         : '';
+      //  矢量 PDF：成了就挂上按钮，没成要把原因说出来 —— 安静地不给，
+      //  用户只会以为"这个功能不存在"。
+      var pdfNote = '';
+      var pdfOk = !!(out.pdf && out.pdf.length);
+      if (pdfOk) {
+        state.isoPdf = out.pdf;
+        state.isoPdfSame = !!out.pdfSame;
+        state.isoPdfErr = '';
+        if (canSaveBytes()) {
+          $('btn-iso-pdf').disabled = false;
+        } else {
+          pdfNote = '<p class="hint"><b>PDF 已经画好了，但这个桌面外壳存不下来</b>'
+            + ' —— 壳里的「另存为」只认文本，存二进制的方法它没有。'
+            + '用浏览器打开 <code>isoclock.html</code> 就能正常取这份 PDF'
+            + '（「另存 SVG」不受影响，这里照样能用）。</p>';
+        }
+        //  两次独立拟合本该给出逐字节相同的结果。不同就是"重画不可复现"，
+        //  那 PDF 上画的就可能不是屏幕上这一份 —— 必须吵出来，不能默默给。
+        if (!out.pdfSame) {
+          state.isoPdfSame = false;
+          pdfNote += '<p class="hint" style="color:var(--warn)">'
+            + '<b>⚠ 这份 PDF 与屏幕上那一张来自两次独立拟合，回来的数值对不上。</b>'
+            + '两份用的是同一份数据、同一份实参，本该逐字节相同 —— '
+            + '对不上说明这次重画不完全可复现，<b>用之前请自己核一遍</b>。'
+            + '差异在这些项上：<code>' + codeEsc(kvDiff(out.raw, out.pdfRaw)) + '</code></p>';
+        }
+      } else {
+        state.isoPdfErr = out.pdfErr || '（没有说明）';
+        pdfNote = '<p class="hint"><b>矢量 PDF 没能生成</b>：<code>'
+          + codeEsc(state.isoPdfErr) + '</code>'
+          + '。「另存 SVG」与其余功能都照常 —— 这一页本来就是可选的。</p>';
+      }
+
       var nl = out.summary.notes.map(function (s) { return '<li>' + s + '</li>'; }).join('');
       $('iso-notes').innerHTML = argTxt + (stdCmp ? stdCmp : '')
         + (cross ? '<p>' + cross + '</p>' : '')
+        + pdfNote
         + (nl ? '<ul>' + nl + '</ul>' : '');
 
       var cls = out.result.error ? 'err' : '';
       isoMsg(head + '<br>图已出（' + out.seconds.toFixed(1) + ' s，'
         + Math.round(svgText.length / 1024) + ' KB）。'
+        + (pdfOk ? ' 矢量 PDF（' + Math.round(out.pdf.length / 1024) + ' KB，'
+          + (out.pdfSame ? '数值与这张图逐字节一致' : '<b>数值与这张图有出入，见下</b>')
+          + '）也备好了，可「另存 PDF」。' : ' <b>矢量 PDF 没生成出来，见下方说明。</b>')
         + (out.result.error ? ' <b>但拟合失败了，已退回只画点 —— 见下方说明。</b>' : ''), cls);
       logLine('IsoplotR：' + tab.n + ' 点（'
         + (o.sample === '*' ? '全部样品，不含标样' : o.sample) + '），'
         + (out.args && out.args.length ? out.args.join(', ') : '') + '，'
         + out.seconds.toFixed(1) + ' s'
+        + (pdfOk ? '，PDF ' + out.pdf.length + ' B' + (out.pdfSame ? '（同源）' : '（！与 SVG 数值不一致）')
+          : '，PDF 未生成' + (out.pdfErr ? '：' + out.pdfErr : ''))
         + (out.result.error ? '（拟合失败：' + out.result.error + '）' : ''), out.result.error ? 'w' : 'g');
     }).catch(function (e) {
       var m = String(e && e.message || e);
@@ -10980,6 +11228,12 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_STAGES;
       if (!img || !img.src) return;
       var svg = decodeURIComponent(img.src.slice(img.src.indexOf(',') + 1));
       download('isoplotr_谐和图.svg', svg, 'image/svg+xml;charset=utf-8');
+    });
+    //  PDF 是作图时就画好、存在内存里的（见 isoplotr.js 的 render），
+    //  这里只管把它交出去 —— 文件名与 SVG 那份只差扩展名，一眼能看出同源。
+    $('btn-iso-pdf').addEventListener('click', function () {
+      if (!state.isoPdf) return;
+      downloadBytes('isoplotr_谐和图.pdf', state.isoPdf, 'application/pdf');
     });
     $('iso-sample').addEventListener('change', refreshIsoAgeOptions);
     refreshIsoControls();
