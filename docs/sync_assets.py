@@ -55,6 +55,10 @@ SHOT_MAP = {
     "ui-splash.png": "0_启动界面.png",
     "ui-signal.png": "1_信号图.png",
     "ui-ages.png": "2_年龄表.png",
+    #  11 号（过程量页）2026-10-16 加：表格自己滚（max-height 50vh），
+    #  所以"全局量 + 宽表 + 点行展开的明细"能同屏 —— 视口高给到 2200 才装得下，
+    #  注入脚本点完行之后会再滚回页顶（否则明细的 scrollIntoView 会把表格顶出去）。
+    "ui-stages.png": "11_过程量.png",
     "ui-report-panel.png": "5_质量报告面板.png",
     "ui-compat.png": "6_兼容读取.png",
     "ui-report.png": "7_质量报告节选.png",

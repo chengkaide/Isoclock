@@ -803,6 +803,9 @@
       if (sec.note) box.appendChild(el('p', 'hint', sec.note));
       host.appendChild(box);
     });
+    //  明细就贴在表格下面，但表格高时它仍可能露不出来 —— 点完行把它带进视野。
+    //  用默认的即时滚动（不是 smooth）：既有动画时截图的时机就不可控了。
+    if (host.scrollIntoView) host.scrollIntoView({ block: 'nearest' });
   }
 
   /** 导出过程量.csv —— 与屏幕上那张表出自同一次调用（同一份 generatedAt）。 */

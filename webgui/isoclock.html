@@ -303,8 +303,11 @@ table.data td.na { color: var(--ink-3); }
 }
 .stagebar button:hover { border-color: var(--line-strong); color: var(--ink); }
 
-/* 过程量自己不用内层滚动条：让整个面板滚，明细才跟得上表格 */
-.stage-tablewrap { max-height: none; }
+/* 表格**自己**滚：49 行样品一铺开就把下面的明细推到屏幕外，
+   点一行只会看到行变蓝、看不到任何展开的内容。给它一个视口相关的高度，
+   明细就常驻在表格下面（点行后 scrollIntoView 也只滚一点点）。
+   高度用 vh 而不是固定值：窄窗口下才不至于把明细挤出可视区。 */
+.stage-tablewrap { max-height: min(50vh, 520px); }
 table.data.stage { font-size: 11.5px; }
 /* 分组表头第一行钉在表头第二行之上（sticky 的 top 要错开） */
 table.data.stage thead tr.grow th {
@@ -1230,15 +1233,15 @@ table.iso-sum tr.head td { font-weight: 600; color: var(--ink-2); border-bottom-
    本文件由 webgui/build_ui.py 拼成，请勿手改。要改就改 ui/ 与 src/ 下的
    源头，然后重新运行：python webgui/build_ui.py
 
-   生成时间：2026-10-16 08:38:59（取全部源码里最新的那次改动时间，
+   生成时间：2026-10-16 09:07:07（取全部源码里最新的那次改动时间，
              所以同样的源码永远得到同样的文件）
 
-   模块指纹：style.css=61b6dee3fb95 src/fp.js=0ec13124f10d src/math.js=c069afbfb348 src/thermo.js=1596a3593c89 src/window.js=d796f11140ec src/report.js=2e5ac3aa5cb8 src/pipeline.js=014ae7c6b5e2 src/age.js=de71144827e2 src/qc.js=073a99c707df src/stages.js=e5b8788e667f src/demo_real.js=bc39e2008e74 ui/report.js=1468ac677124 ui/api.js=f38a11d99c4a ui/isoplotr.js=ef344cfd2ba6 ui/selftest.js=09bb0b7697e3 ui/splash.js=a4d24b851754 ui/app.js=aa777cdf4318 ui/app.html=760ccd445fe5
-   源码指纹：d26eaf53278c（页脚显示的就是它，与本脚本末尾打印的那一行同值）
+   模块指纹：style.css=8ae74a5d14b4 src/fp.js=0ec13124f10d src/math.js=c069afbfb348 src/thermo.js=1596a3593c89 src/window.js=d796f11140ec src/report.js=2e5ac3aa5cb8 src/pipeline.js=014ae7c6b5e2 src/age.js=de71144827e2 src/qc.js=073a99c707df src/stages.js=e5b8788e667f src/demo_real.js=bc39e2008e74 ui/report.js=1468ac677124 ui/api.js=f38a11d99c4a ui/isoplotr.js=ef344cfd2ba6 ui/selftest.js=09bb0b7697e3 ui/splash.js=a4d24b851754 ui/app.js=ae843f0dff51 ui/app.html=760ccd445fe5
+   源码指纹：15a40419425f（页脚显示的就是它，与本脚本末尾打印的那一行同值）
   ==========================================================================
 -->
 <script>
-window.__build = { built: "2026-10-16 08:38:59", fingerprint: "style.css=61b6dee3fb95 src/fp.js=0ec13124f10d src/math.js=c069afbfb348 src/thermo.js=1596a3593c89 src/window.js=d796f11140ec src/report.js=2e5ac3aa5cb8 src/pipeline.js=014ae7c6b5e2 src/age.js=de71144827e2 src/qc.js=073a99c707df src/stages.js=e5b8788e667f src/demo_real.js=bc39e2008e74 ui/report.js=1468ac677124 ui/api.js=f38a11d99c4a ui/isoplotr.js=ef344cfd2ba6 ui/selftest.js=09bb0b7697e3 ui/splash.js=a4d24b851754 ui/app.js=aa777cdf4318 ui/app.html=760ccd445fe5", id: "d26eaf53278c" };
+window.__build = { built: "2026-10-16 09:07:07", fingerprint: "style.css=8ae74a5d14b4 src/fp.js=0ec13124f10d src/math.js=c069afbfb348 src/thermo.js=1596a3593c89 src/window.js=d796f11140ec src/report.js=2e5ac3aa5cb8 src/pipeline.js=014ae7c6b5e2 src/age.js=de71144827e2 src/qc.js=073a99c707df src/stages.js=e5b8788e667f src/demo_real.js=bc39e2008e74 ui/report.js=1468ac677124 ui/api.js=f38a11d99c4a ui/isoplotr.js=ef344cfd2ba6 ui/selftest.js=09bb0b7697e3 ui/splash.js=a4d24b851754 ui/app.js=ae843f0dff51 ui/app.html=760ccd445fe5", id: "15a40419425f" };
 </script>
 
 <script>
@@ -10098,6 +10101,9 @@ if (typeof module !== 'undefined' && module.exports) module.exports = DS_STAGES;
       if (sec.note) box.appendChild(el('p', 'hint', sec.note));
       host.appendChild(box);
     });
+    //  明细就贴在表格下面，但表格高时它仍可能露不出来 —— 点完行把它带进视野。
+    //  用默认的即时滚动（不是 smooth）：既有动画时截图的时机就不可控了。
+    if (host.scrollIntoView) host.scrollIntoView({ block: 'nearest' });
   }
 
   /** 导出过程量.csv —— 与屏幕上那张表出自同一次调用（同一份 generatedAt）。 */

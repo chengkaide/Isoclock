@@ -105,7 +105,7 @@ xls 用假 `Workbook` 截获 `worksheet.write`）—— 不是把算法再抄一
 | `webgui/src/demo_real.js` | **产物**：内置的真实示例数据（gzip+base64 内嵌 + params + 实测结果），由 `make_real_demo.py` 生成，别手改 |
 | `webgui/make_real_demo.py` | 上一条的生成器：脱敏 → 内嵌 → 用真管线量出推荐参数与标样结果 → **自检不通过就不落盘** |
 | `webgui/test_demo_real.js` | 上一条的判据（22 项）：脱敏门禁 / 字节门禁 / 地质门禁 |
-| `webgui/screenshots/` | 界面截图（**启动界面** / 信号图 / 年龄表 / 说明弹窗 / 窄窗口 / ⑥质量报告 / 兼容读取标记 / **IsoplotR 谐和图（样品视图）** / **IsoplotR 标样 QC 对照** / **IsoplotR 更多选项**），无头 Edge 实拍（**用的是内置的真实数据**；0 号那张开屏走 `G:/_isohtml/shot_splash.py`——无头 `--virtual-time-budget` 不推进 CSS 动画，拍不到终态） |
+| `webgui/screenshots/` | 界面截图（**启动界面** / 信号图 / 年龄表 / 说明弹窗 / 窄窗口 / ⑥质量报告 / 兼容读取标记 / **过程量（宽表 + 点行展开的明细）** / **IsoplotR 谐和图（样品视图）** / **IsoplotR 标样 QC 对照** / **IsoplotR 更多选项**），无头 Edge 实拍（**用的是内置的真实数据**；0 号那张开屏走 `G:/_isohtml/shot_splash.py`——无头 `--virtual-time-budget` 不推进 CSS 动画，拍不到终态） |
 
 界面概览：左侧竖排六步参数（①数据 ②标样 ③读取与积分窗口 ④普通铅校正 ⑤年龄层
 ⑥质量报告），右侧七个标签页（信号图 / Mean_Cps / result_all / 年龄表 /
@@ -492,8 +492,10 @@ python webgui/make_real_demo.py --src "<原始导出目录>" --check   # 只核�
 与另外两个 CSV 同一套写法、可无损往返。文件带 UTF-8 BOM，Excel 双击打开中文表头不乱码。
 
 界面里点表格任意一行，下面展开那个样品从窗口到年龄的"流水账"，每一段都写明
-这一步在做什么、这一步的数从哪儿来。表格上方可以按分组收起列 —— 57 列一次全铺开
-确实太长。
+这一步在做什么、这一步的数从哪儿来。表格上方可以按分组收起列 —— 61 列一次全铺开
+确实太长。表格**自己带滚动条**（`max-height: min(50vh, 520px)`）：49 行一铺就把下面的
+明细顶到屏幕外，那样的"点一行什么都没发生"最劝退；限高之后明细常驻在表格下面，
+点行时 `scrollIntoView({block:'nearest'})` 再把它带进视野。
 
 验证分两处：`test_stages.js`（55 项）在 Node 里跑真管线，逐格往回追；
 页面自检里 8 条断言额外验**接线** —— 标签页与按钮存在、导出按钮**真点一下**
