@@ -20,37 +20,30 @@
 (function () {
   'use strict';
 
-  var DS = window.DS;
-  var AGE = window.DS_AGE;
   var PL = window.DS_PIPELINE;
   var RP = window.DS_REPORT;
   var TH = window.DS_THERMO;
-  var FP = window.DS_FP;
   var QC = window.DS_QC;
   var QR = window.DS_QCREPORT;
 
-  /* ---------- 模块接线（与 test_e2e.js 完全一致）---------- */
-  window.DS_WINDOW.setNumeric(DS);
-  PL.attach({
-    thermoLoad: TH.thermoLoad,
-    agilentLoad: TH.agilentLoad,
-    thermoSampleName: TH.thermoSampleName,
-    detectSignalWindow: window.DS_WINDOW.detectSignalWindow,
-    nmean: DS.nmean,
-    untagInt: DS.untagInt,
-    reduceSample: DS.reduceSample,
-    buildMeanCpsCsv: RP.buildMeanCpsCsv,
-    buildResultAllCsv: RP.buildResultAllCsv,
-  });
-  AGE.attach({
-    pwSum: DS.pwSum, nnanmean: DS.nnanmean,
-    age76Pb: DS.age76Pb, age76PbFixed: DS.age76PbFixed, sk2model: DS.sk2model,
-  });
+  /*  程序接口门面。模块接线、参数归一化、管线编排都在 ui/api.js ——
+   *  那是唯一真源。界面与 DS_API.run() 用的是同一份实现，不是两条并行的路。 */
+  var API = window.DS_API;
 
-  var ISONAME = ['Time', '202Hg', '204Pb', '206Pb', '207Pb', '208Pb', '232Th', '238U'];
-  // Agilent 的 isoname 来自桌面版 instructure1()：202Hg 按原列名匹配，
-  // 其余同位素按"只留数字"匹配（列名 204Pb / 206Pb / … 都能命中）。
-  var ISO_AGILENT = ['时间 [s]', '202', '204', '206', '207', '208', '232', '238'];
+  if (!API) {
+    //  产物被手工改过、或来自旧版构建时才会走到这里。与其让后面在某个
+    //  莫名其妙的 `API.calAge is not a function` 上炸掉，不如现在说清楚。
+    document.body.innerHTML = '<pre style="padding:24px;font:14px/1.6 monospace">'
+      + '这份 isoclock.html 缺少程序接口模块（window.DS_API）。\n'
+      + '文件可能被手工改过，或来自旧版构建 —— 请用 webgui/build_ui.py 重新构建。</pre>';
+    return;
+  }
+
+  /* ---------- 模块接线（与 test_e2e.js 完全一致；幂等）---------- */
+  API.wire();
+
+  var ISONAME = API.ISO_THERMO;
+  var ISO_AGILENT = API.ISO_AGILENT;
 
   /* ======================================================================
    *  小工具
@@ -113,67 +106,22 @@
   /* ======================================================================
    *  Cal_age —— 原 main() 里的那个闭式函数（Isoclock2.0.py:3096）
    *
-   *  写成字面量逐一对应，不做化简：0.000000000155125 就是 1.55125e-10，
-   *  但保持和源码一样的乘序，免得浮点末位出现无谓的差别。
+   *  ★ 实现在 ui/api.js。搬家的理由：参数归一化（把朴素 JSON 变成管线认的
+   *    cfg）必须能脱离 DOM 做 —— 智能体与 Node 调用者不会去填输入框。
+   *    所以 Cal_age、普通铅参数表、出厂默认值都跟管线编排放在一起，
+   *    界面与 DS_API.run() 用的是同一份，不在这里再抄一遍。
    * ==================================================================== */
-  function calAge(age) {
-    var a = FP.dexp(0.000000000155125 * age * 1000000) - 1;
-    var b = FP.dexp(0.00000000098485 * age * 1000000) - 1;
-    var c = FP.dexp(0.000000000049475 * age * 1000000) - 1;
-    var P382 = 1 / 137.818 * (b / a);
-    var Q8 = 18.700 - a * 9.735;
-    var R8 = 15.628 - b * (9.735 / 137.818);
-    var S8 = 38.630 - c * 36.837;
-    return { a: a, b: b, c: c, P382: P382, Q8: Q8, R8: R8, S8: S8,
-      Pbc: R8 / Q8, Standard_age: age };
-  }
+  var calAge = API.calAge;
 
   /* ======================================================================
    *  普通铅参数：对应 PbCorrSamples()（Isoclock2.0.py:2809）
    *
-   *  注意原实现里 method 2/4 的"按年龄推算"用的是系数 36.630，
-   *  而 Cal_age 里 S8 用的是 36.837 —— 两处不一致，这里按 PbCorrSamples 的写法。
+   *  ★ 表与每条路径的 def / byAge 都在 ui/api.js（唯一真源）。界面用它生成
+   *    输入框，程序接口用它算默认值 —— 同一份表，不会各走各的。
    * ==================================================================== */
-  //  "按年龄推算"里的 age 是**估算的样品年龄**（界面上那个 100 Ma 的输入框），
-  //  不是标样年龄 —— 原实现 PbCorrSamples() 里是自己用 age 重算 exp 的。
-  //  所以下面每个 byAge(eg) 收到的 eg 是 calAge(估算年龄)，不是 calAge(标样年龄)。
-  var PB_SPEC = {
-    0: [],
-    1: [
-      { k: 'Radioactive_Pb', label: '放射性 207Pb/206Pb', def: '0.048015',
-        byAge: function (eg) { return eg.P382; } },
-      { k: 'common_Pb', label: '初始 207Pb/206Pb', def: '0.842185',
-        byAge: function (eg) { return eg.Pbc; } }
-    ],
-    2: [
-      { k: 'common_Pb206_208', label: '初始 206Pb/208Pb', def: '0.48240',
-        byAge: function (eg) { return eg.Q8 / (38.630 - eg.c * 36.630); } },
-      { k: 'common_Pb207_208', label: '初始 207Pb/208Pb', def: '0.40628',
-        byAge: function (eg) { return eg.R8 / (38.630 - eg.c * 36.630); } }
-    ],
-    3: [
-      { k: 'common_Pb207_204', label: '初始 207Pb/204Pb', def: '15.6207',
-        byAge: function (eg) { return eg.R8; } },
-      { k: 'common_Pb206_204', label: '初始 206Pb/204Pb', def: '18.5478',
-        byAge: function (eg) { return eg.Q8; } }
-    ],
-    4: [
-      { k: 'common_Pb207_204', label: '初始 207Pb/204Pb', def: '15.6207',
-        byAge: function (eg) { return eg.R8; } },
-      { k: 'common_Pb206_204', label: '初始 206Pb/204Pb', def: '18.5478',
-        byAge: function (eg) { return eg.Q8; } },
-      { k: 'common_Pb208_204', label: '初始 208Pb/204Pb', def: '38.447',
-        byAge: function (eg) { return 38.630 - eg.c * 36.630; } },
-      // fromAge：原实现**从不问用户**，两个分支都用当前全局 age 现算（= P382）。
-      // 照抄：界面上这一格恒为灰（不可编辑），值随估算年龄联动。
-      // 附注：原实现在"直接输入同位素"分支下用的是**残留的全局 age**，
-      //       首次运行就直接 NameError。网页版固定按估算年龄算，去掉这个不确定性。
-      { k: 'radioactiveS_Pb207_206', label: '样品放射性 207Pb/206Pb',
-        fromAge: true }
-    ]
-  };
+  var PB_SPEC = API.PB_SPEC;
 
-  var EST_AGE_DEFAULT = 100;
+  var EST_AGE_DEFAULT = API.EST_AGE_DEFAULT;
 
   function buildPbParams() {
     var m = parseInt($('p-method').value, 10) || 0;
@@ -293,6 +241,9 @@
                                  // 说成"不是真实样品"。
     sampleNames: null,           // 样品名清单：{文件名键: 样品名}
     sampleListName: null,        // 清单的来源文件名，仅用于显示
+    compute: null,               // 最近一次 compute() 的完整返回（过程量表要用）
+    stage: null,                 // 最近一次渲染的过程量表（点行展开时复用）
+    stageAt: null,               // 那张表的生成时刻 —— 导出时必须用同一个
     probeKey: '', probeMap: null };   // 文件/仪器 → 轻量解析结果的缓存
 
   function readFileText(file, cb) {
@@ -333,7 +284,8 @@
     var s = $('p-inst');
     return (s && s.value === 'agilent') ? 'agilent' : 'thermo';
   }
-  function isonameFor(inst) { return inst === 'agilent' ? ISO_AGILENT : ISONAME; }
+  //  通道名表与"按仪器选表"的规则在 ui/api.js（探针与管线都用它）。
+  var isonameFor = API.isonameFor;
 
   /**
    * 轻量解析：只为列表显示文件名/样品名/点数。
@@ -529,171 +481,34 @@
   function run() {
     logClear();
     var cfg = readConfig();
-    var bad = [];
-    if (!state.files.length) bad.push('没有数据文件');
-    if (!cfg.stdName) bad.push('没有填标样名');
-    if (!isFinite(cfg.stdAge)) bad.push('标样年龄不是数字');
-    if (!(cfg.excessV >= 0)) bad.push('外挂误差不是数字');
-    if (!cfg.standard) bad.push('没有填分馏校正标样');
-    if (bad.length) { toast(bad[0], true); logLine('!! ' + bad.join('；'), 'e'); return; }
-
-    var pm = probeAll();
-    var badFiles = state.files.filter(function (f) { return !pm[f.file].ok; });
-    if (badFiles.length) {
-      logLine('!! ' + badFiles.length + ' 个文件没能解析：' + badFiles.slice(0, 5).map(function (f) {
-        return f.file;
-      }).join('、') + (badFiles.length > 5 ? ' 等' : ''), 'e');
-      logLine('   原因（第一个）：' + pm[badFiles[0].file].err, 'e');
-      if (badFiles.length === state.files.length) {
-        toast('所有文件都解析失败，见日志', true);
-        return;
-      }
-    }
-    if (cfg.inst === 'agilent' && !state.sampleNames) {
-      var stemCount = state.files.filter(function (f) {
-        return pm[f.file].ok && pm[f.file].sampleFrom === 'file';
-      }).length;
-      logLine('  提示：Agilent 的样品名在桌面版来自那份 Excel 清单，本次没提供清单，'
-        + stemCount + ' 个文件的样品名是取文件名（第一个点之前）得到的 —— 请核对列表里的样品名。', 'w');
-    }
-
-    var stdFiles = state.files.filter(function (f) { return probe(f).sample === cfg.stdName; });
-    logLine('标样「' + cfg.stdName + '」在数据里出现 ' + stdFiles.length + ' 个文件');
-    if (!stdFiles.length) {
-      logLine('!! 没有任何文件属于这个标样名 —— 分馏因子会取到空集合。', 'e');
-      if (cfg.algo === 'avg') { toast('标样名在数据里找不到', true); return; }
-    }
-    if (cfg.nistStd) {
-      var nistFiles = state.files.filter(function (f) { return probe(f).sample === cfg.nistStd; });
-      if (nistFiles.length < 2) {
-        logLine('!! 微量元素外标「' + cfg.nistStd + '」只出现 ' + nistFiles.length
-          + ' 次。原实现在这种情况下会把系数静默置 0（网页版照抄了这个行为）。', 'w');
-      }
-    }
-
-    logLine('开始：' + state.files.length + ' 个文件，仪器 '
-      + (cfg.inst === 'agilent' ? 'Agilent' : 'Thermo')
-      + '，Pb 校正方式 ' + cfg.method
-      + '，年龄层用' + (cfg.algo === 'avg' ? '平均法' : '线性法')
-      + '，²⁰⁷Pb/²⁰⁶Pb 迭代' + (cfg.fix76 ? '已修正' : '按桌面版原样'));
-    var t0 = (window.performance || Date).now();
-
-    var stdSet = {};
-    stdSet[cfg.stdName] = cfg.stdAge;
-    var pipeCfg = {
-      files: state.files,
-      isoname: isonameFor(cfg.inst),
-      b0: cfg.b0, b1: cfg.b1, multi: cfg.multi,
-      stdcor: 0, method: cfg.method, standardNames: stdSet,
-      ctx: cfg.cal, eleIndex: 2, instrument: cfg.inst,
-      sampleNames: state.sampleNames
-    };
-
-    var out;
-    try {
-      out = PL.run(pipeCfg);
-    } catch (e) {
-      logLine('!! 读取/还原阶段出错：' + (e && e.stack || e), 'e');
-      toast('计算失败，见日志', true);
+    /*  校验 → 探针 → 管线 → 年龄，这一段的实现在 ui/api.js。
+     *  程序接口（DS_API.run / DS_API.compute）跑的就是同一段代码 ——
+     *  不是"界面一套、接口另一套"。日志经 logLine 原样回到这个面板上，
+     *  文案与顺序都与以前逐字相同（截图里的日志面板因此没变）。 */
+    var R = API.compute(cfg, state.files, {
+      log: logLine,
+      probeMap: probeAll(),
+      sampleNames: state.sampleNames,
+      keepRaw: true
+    });
+    if (!R.ok) {
+      //  日志已经逐条打出来了，这里只把那句最要紧的提示弹出来
+      toast(R.errors[0].message, true);
       return;
     }
-    logLine('  还原阶段完成：' + out.resultRows.length + ' 行，'
-      + out.meanRows.length + ' 行计数');
-
-    var input = AGE.buildInput(out.resultAllCsv, out.meanCpsCsv, null);
-    input.fix76 = cfg.fix76;
-    input.cfg = {
-      method: cfg.method, excessV: cfg.excessV,
-      nistStd: cfg.nistStd, standard: cfg.standard,
-      P382: cfg.cal.P382, a: cfg.cal.a, b: cfg.cal.b, c: cfg.cal.c,
-      Pbc: cfg.cal.Pbc,
-      age: cfg.params.age,
-      radioactivePb: cfg.params.Radioactive_Pb,
-      commonPb: cfg.params.common_Pb,
-      commonPb206_208: cfg.params.common_Pb206_208,
-      commonPb207_208: cfg.params.common_Pb207_208,
-      commonPb206_204: cfg.params.common_Pb206_204,
-      commonPb207_204: cfg.params.common_Pb207_204,
-      commonPb208_204: cfg.params.common_Pb208_204,
-      radioactiveSPb207_206: cfg.params.radioactiveS_Pb207_206
-    };
-
-    var ageRes;
-    try {
-      ageRes = (cfg.algo === 'avg') ? AGE.averageAge(input) : AGE.linearAge(input);
-    } catch (e) {
-      logLine('!! 年龄层出错：' + (e && e.stack || e), 'e');
-      toast('年龄层计算失败，见日志', true);
-      return;
-    }
-    var dt = (window.performance || Date).now() - t0;
+    var out = R.out;
+    var ageRes = R.ageRes;
 
     state.cfg = cfg;
     state.result = out;
     state.ageResult = ageRes;
-    state.ageInput = input;
-
-    logLine('  年龄层完成：' + ageRes.rows.length + ' 行 × 51 列', 'g');
-    if (ageRes.warnings && ageRes.warnings.divZero) {
-      logLine('  ' + ageRes.warnings.divZero + ' 行因分母为零无法完成普通铅校正'
-        + '（204 通道过弱或普通铅参数退化），相关列已置为 NaN。', 'w');
-    }
-    //  两种算法的诊断信息不一样：平均法只有一个全局分馏因子；
-    //  线性法是每个标样段各自一套 A/B 因子，报"段数"更实在。
-    if (ageRes.factors) {
-      logLine('  分馏因子：207/206 f=' + ageRes.factors.f207_206.toPrecision(6)
-        + '  206/238 f=' + ageRes.factors.f206_238.toPrecision(6)
-        + '  207/235 f=' + ageRes.factors.f207_235.toPrecision(6)
-        + '  208/232 f=' + ageRes.factors.f208_232.toPrecision(6));
-    } else if (ageRes.groups) {
-      logLine('  标样段 ' + ageRes.groups.std.length + ' 组，非标样段 '
-        + ageRes.groups.sample.length + ' 组（相邻标样插值）');
-    }
-    if (ageRes.coefficients) {
-      var co = ageRes.coefficients;
-      var zero = co.every(function (v) { return v === 0; });
-      logLine('  微量元素系数：U238=' + fmtNum(co[0]) + '  Th232=' + fmtNum(co[1])
-        + '  Pb=' + fmtNum(co[2]));
-      if (zero && cfg.nistStd) {
-        logLine('  ! 系数全是 0 —— 外标「' + cfg.nistStd + '」在这批数据里出现 '
-          + '0 次或 1 次时原实现就会这样（异常被吞掉），属已知行为。', 'w');
-      }
-    }
-    //  哪里才算"校正后年龄"，交给 qc.js 的列映射去说 —— 别在这里硬编码列号。
-    //  ⚠ 第 25 列（1 起算）在数据里装的是**备注文字**，不是表头写的校正年龄：
-    //     age.js 的 row 在 concat 那两段之前放的就是 comments。之前这里判 r[25]，
-    //     备注一非空（比如 'CMT-1'）就会 !isFinite 成立，虚报一堆"校正后年龄是 NaN"。
-    var corrCols = [];
-    if (cfg.method > 0) {
-      var cc = QC.QC_CORR_COL[cfg.method];
-      if (cc) corrCols = Object.keys(cc).map(function (k) { return cc[k]; });
-    }
-    var nanRows = 0;
-    var nanCorr = 0;
-    ageRes.rows.forEach(function (r) {
-      if (!isFinite(r[17]) || !isFinite(r[23])) nanRows++;
-      //  两个校正年龄都为 NaN 才算这一行没校正成功（只有一个坏，另一个还能用）
-      if (corrCols.length && corrCols.every(function (c) { return !isFinite(r[c]); })) {
-        nanCorr++;
-      }
-    });
-    if (nanRows) {
-      logLine('  ' + nanRows + '/' + ageRes.rows.length + ' 行的年龄是 NaN 或 Inf。', 'w');
-      logLine('  最常见的三个原因：① 积分窗口没取对 —— 背景窗落在信号里，'
-        + '净信号就成了 0，比值自然算不出来，先看"信号图"页的蓝、绿两条底色；'
-        + '② 某个通道计数全为 0（204Pb 路径尤其容易除零）；'
-        + '③ 该行的标样名对不上，分馏因子取到了空集合。', 'w');
-    }
-    if (nanCorr) {
-      logLine('  另外 ' + nanCorr + ' 行的校正后年龄全是 NaN（第 27 / 29 列）—— '
-        + '这些行的普通铅校正没有完成，上面未校正年龄可能仍是好的。', 'w');
-    }
-    logLine('  用时 ' + dt.toFixed(0) + ' ms', 'g');
+    state.ageInput = R.ageInput;
 
     renderMeanCps(out);
     renderResultAll(out);
     renderAge(ageRes);
-    ['btn-exp-all', 'btn-exp-cps', 'btn-exp-age', 'btn-exp-json', 'btn-report'].forEach(function (id) {
+    renderStage(R);                       // 过程量：只读 R，不参与数值链
+    ['btn-exp-all', 'btn-exp-cps', 'btn-exp-age', 'btn-exp-stage', 'btn-exp-json', 'btn-report'].forEach(function (id) {
       $(id).disabled = false;
     });
     if (state.selected) showPlot(state.selected);
@@ -814,6 +629,188 @@
           : '默认照抄保留，可在右上角勾选"修正列名笔误"换掉。');
     }
     pane.appendChild(el('p', 'colgroup-note', note));
+  }
+
+  /* ======================================================================
+   *  过程量（中间环节）
+   *
+   *  这张表**一个数都不新算**：列定义、取值、口径说明全在 src/stages.js，
+   *  这里只做两件事 ——
+   *      ① 把它渲染成一张带分组表头的宽表，分组可以单独收起来；
+   *      ② 点某一行，展开那个样品从积分窗口到年龄的"流水账"。
+   *  这样做的好处是"表里看到的"与"过程量.csv 导出的"、"DS_API.stages()
+   *  给智能体的"是同一份数据，而不是三份长得一样的东西。
+   * ==================================================================== */
+  var stageFileCol = -1;                 // 列定义里"文件"那一列的下标
+
+  function renderStage(R) {
+    var pane = $('pane-stage');
+    pane.textContent = '';
+    var at = nowText();
+    var st = API.stages(R, { keepByFile: true, generatedAt: at });
+    if (!st.ok) {
+      pane.appendChild(el('div', 'empty', st.errors[0].message));
+      toast('过程量表没能生成：' + st.errors[0].message, true);
+      return;
+    }
+    state.compute = R;
+    state.stage = st;
+    state.stageAt = at;
+    stageFileCol = -1;
+    st.columns.forEach(function (c, i) { if (c.key === 'file') stageFileCol = i; });
+
+    var wrap = el('div', 'stagewrap');
+
+    /* —— 全局量：这一次算的是什么 —— */
+    var meta = el('div', 'stagemeta');
+    meta.appendChild(el('h4', '', '这一次算的是什么'));
+    var kv = el('div', 'kv grid');
+    st.meta.forEach(function (m) {
+      var d = el('div');
+      d.appendChild(el('span', 'k', m.k));
+      d.appendChild(el('span', 'v', String(m.v)));
+      kv.appendChild(d);
+    });
+    meta.appendChild(kv);
+    wrap.appendChild(meta);
+
+    /* —— 分组开关：61 列一次全铺出来太长，按分组收 —— */
+    var bar = el('div', 'stagebar');
+    bar.appendChild(el('span', 'lbl', '显示分组：'));
+    var boxes = [];
+    Object.keys(st.groups).forEach(function (g) {
+      var lab = el('label', 'chk');
+      var cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = true;
+      cb.setAttribute('data-group', g);
+      lab.appendChild(cb);
+      lab.appendChild(document.createTextNode(st.groups[g]));
+      bar.appendChild(lab);
+      boxes.push(cb);
+    });
+    var allBtn = el('button', 'plain', '全选');
+    var noneBtn = el('button', 'plain', '只看窗口');
+    allBtn.addEventListener('click', function () { setStageGroups(boxes, true); });
+    noneBtn.addEventListener('click', function () { setStageGroups(boxes, false, ['id', 'win']); });
+    bar.appendChild(allBtn);
+    bar.appendChild(noneBtn);
+    wrap.appendChild(bar);
+
+    /* —— 宽表 —— */
+    var tw = el('div', 'tablewrap stage-tablewrap');
+    var table = el('table', 'data stage');
+    table.id = 'stage-table';
+    var thead = el('thead');
+    var gtr = el('tr', 'grow');
+    var counts = {};
+    st.columns.forEach(function (c) { counts[c.g] = (counts[c.g] || 0) + 1; });
+    Object.keys(counts).forEach(function (g) {
+      var th = el('th', 'g-' + g, st.groups[g]);
+      th.colSpan = counts[g];
+      th.title = st.notes[g] || '';
+      gtr.appendChild(th);
+    });
+    thead.appendChild(gtr);
+    var hr = el('tr');
+    st.columns.forEach(function (c, i) {
+      var th = el('th', 'g-' + c.g, st.headers[i]);
+      th.title = (st.notes[c.g] ? st.notes[c.g] + '\n' : '') + c.label
+        + (c.unit ? '（单位 ' + c.unit + '）' : '');
+      hr.appendChild(th);
+    });
+    thead.appendChild(hr);
+    table.appendChild(thead);
+
+    var tb = el('tbody');
+    tb.id = 'stage-body';
+    st.rows.forEach(function (r, i) {
+      var tr = el('tr', 'pick');
+      r.forEach(function (v, k) {
+        var g = 'g-' + st.columns[k].g;
+        var td;
+        if (typeof v === 'string') td = el('td', 's ' + g, v);
+        else if (!isFinite(v)) {
+          td = el('td', 'na ' + g, typeof v === 'number' ? (Number.isNaN(v) ? 'NaN' : String(v)) : '');
+        } else td = el('td', g, fmtNum(v));
+        tr.appendChild(td);
+      });
+      tr.addEventListener('click', function () { showStageDetail(i); });
+      tb.appendChild(tr);
+    });
+    table.appendChild(tb);
+    tw.appendChild(table);
+    wrap.appendChild(tw);
+
+    wrap.appendChild(el('p', 'colgroup-note',
+      '一行一个样品，列按链条顺序排：' + Object.keys(st.groups).map(function (g) {
+        return st.groups[g];
+      }).join(' → ') + '。'
+      + '每格的来历见表头提示与「说明 / 局限」里那一节；导出的「过程量.csv」'
+      + '就是这张表（外加一段 # 元信息），两者出自同一份数据。'));
+
+    /* —— 明细：点一行展开 —— */
+    var detail = el('div', 'stagedetail');
+    detail.id = 'stage-detail';
+    detail.appendChild(el('div', 'empty',
+      '点表格里的任意一行，这里展开那个样品从头到尾的每一步。'));
+    wrap.appendChild(detail);
+
+    pane.appendChild(wrap);
+  }
+
+  /** 分组开关：勾上/取消，并同步表格上的 data-hide。 */
+  function setStageGroups(boxes, on, only) {
+    boxes.forEach(function (cb) {
+      var g = cb.getAttribute('data-group');
+      cb.checked = on || (only ? only.indexOf(g) >= 0 : false);
+    });
+    applyStageGroups(boxes);
+  }
+  function applyStageGroups(boxes) {
+    var hide = boxes.filter(function (cb) { return !cb.checked; })
+      .map(function (cb) { return cb.getAttribute('data-group'); });
+    var t = $('stage-table');
+    if (t) t.setAttribute('data-hide', hide.join(' '));
+  }
+
+  /** 单样品的"流水账"—— 分段与口径说明都由 src/stages.js 给，这里只排版。 */
+  function showStageDetail(i) {
+    var st = state.stage;
+    if (!st || !st.rows[i] || !st.byFile) return;
+    var file = st.rows[i][stageFileCol];
+    var rowsAll = document.querySelectorAll('#stage-body tr');
+    for (var j = 0; j < rowsAll.length; j++) {
+      rowsAll[j].className = (j === i) ? 'pick sel' : 'pick';
+    }
+    var host = $('stage-detail');
+    host.textContent = '';
+    var e = st.byFile[file];
+    host.appendChild(el('div', 'sdhead',
+      '第 ' + (i + 1) + ' 行 · ' + st.rows[i][1] + ' · ' + file
+      + (e && e.notes && e.notes.length ? '（读取提示：' + e.notes.join('；') + '）' : '')));
+    API.sampleChain(st, file).forEach(function (sec) {
+      var box = el('div', 'sdsec');
+      box.appendChild(el('h5', '', sec.title));
+      var kv = el('div', 'kv');
+      sec.items.forEach(function (it) {
+        var d = el('div');
+        d.appendChild(el('span', 'k', it.name));
+        d.appendChild(el('span', 'v', String(it.value)));
+        kv.appendChild(d);
+      });
+      box.appendChild(kv);
+      if (sec.note) box.appendChild(el('p', 'hint', sec.note));
+      host.appendChild(box);
+    });
+  }
+
+  /** 导出过程量.csv —— 与屏幕上那张表出自同一次调用（同一份 generatedAt）。 */
+  function exportStages() {
+    if (!state.compute) { toast('先点一次"开始计算"', true); return; }
+    var st = API.stages(state.compute, { csv: true, generatedAt: state.stageAt || '' });
+    if (!st.ok) { toast(st.errors[0].message, true); return; }
+    download('isoclock_stages.csv', st.csv, 'text/csv;charset=utf-8');
   }
 
   /* ======================================================================
@@ -1165,12 +1162,6 @@
     //  自动退到未校正列，并在日志与报告里都说一句 —— 不静默换列。
     var ageKey = ($('p-agekey') && $('p-agekey').value) || QC.QC_KEY68;
     var wantCorr = !($('p-agecorr') && !$('p-agecorr').checked);
-    var pick = QC.qcDefaultAge(c.method, ageKey);
-    var useCorr = wantCorr && pick.corrected;
-    if (wantCorr && !pick.corrected) {
-      logLine('  报告：校正方式 ' + c.method + ' 下没有「校正后的 ' + pick.key
-        + '」这一列，已改用同一比值的未校正年龄，报告里会注明。', 'w');
-    }
 
     //  读取阶段的提示（兼容读取、缺列补零……）要带进报告
     var fileNotes = {};
@@ -1179,25 +1170,24 @@
       if (pr.ok && pr.notes && pr.notes.length) fileNotes[f.file] = pr.notes.slice();
     });
 
-    var qc;
-    try {
-      qc = QC.qcAnalyze({
-        header: r.header, rows: r.rows, method: c.method,
-        ageKey: pick.key, ageCorrected: useCorr,
-        stdName: c.stdName, stdAge: c.stdAge, fracStd: c.standard,
-        nistStd: c.nistStd, algo: c.algo, instrument: c.inst,
-        sampleNames: o.sampleslist,
-        meanRows: o.meanRows, num: o.num,
-        coefficients: r.coefficients,
-        divZero: (r.warnings && r.warnings.divZero) || 0,
-        fileNotes: fileNotes,
-        thresholds: readThresholds()
-      });
-    } catch (e) {
-      logLine('!! 报告统计出错：' + (e && e.stack || e), 'e');
+    /*  统计走 DS_API.quality —— 与程序接口（DS_API.run 附带的质检）是
+     *  同一条路：列怎么选、上下文传哪几个字段、阈值判据，都只有一份。
+     *  界面在这里多做的只有两件事：阈值来自输入框、自动换列要写进日志。 */
+    var qr = API.quality({
+      cfg: c, ageRes: r,
+      meanRows: o.meanRows, num: o.num,
+      stats: { samples: o.sampleslist },
+      fileNotes: fileNotes
+    }, { ageKey: ageKey, corrected: wantCorr, thresholds: readThresholds() });
+    if (!qr.ok) {
+      logLine('!! 报告统计出错：' + qr.errors[0].message, 'e');
       toast('出报告失败，见日志', true);
       return;
     }
+    var qc = qr.qc;
+    var useCorr = qr.corrected;
+    var pick = { key: qr.ageKey, corrected: qr.corrected };
+    if (qr.note) logLine('  报告：' + qr.note, 'w');
 
     //  普通铅参数的实况：报告要说清"这次到底代入了哪些数"
     var pbText = '未使用';
@@ -1702,7 +1692,7 @@
     for (var i = 0; i < btns.length; i++) {
       btns[i].className = btns[i].getAttribute('data-tab') === name ? 'on' : '';
     }
-    ['plot', 'cps', 'all', 'age', 'iso', 'log'].forEach(function (k) {
+    ['plot', 'cps', 'all', 'age', 'stage', 'iso', 'log'].forEach(function (k) {
       $('pane-' + k).className = 'pane' + (k === name ? ' on' : '')
         + (k === 'plot' ? ' center' : '');
     });
@@ -1738,11 +1728,12 @@
       var hadList = !!state.sampleNames;
       state.files = []; state.entries = null; state.selected = null;
       state.result = null; state.ageResult = null; state.ageInput = null;
+      state.compute = null; state.stage = null; state.stageAt = null;
       state.demo = false;
       state.sampleNames = null; state.sampleListName = null;
       dropProbeCache();
-      ['cps', 'all', 'age'].forEach(function (k) { resetPane('pane-' + k); });
-      ['btn-exp-all', 'btn-exp-cps', 'btn-exp-age', 'btn-exp-json', 'btn-report'].forEach(function (id) {
+      ['cps', 'all', 'age', 'stage'].forEach(function (k) { resetPane('pane-' + k); });
+      ['btn-exp-all', 'btn-exp-cps', 'btn-exp-age', 'btn-exp-stage', 'btn-exp-json', 'btn-report'].forEach(function (id) {
         $(id).disabled = true;
       });
       refreshFileList();
@@ -1835,6 +1826,7 @@
       download('age_result.csv', ageCsv(), 'text/csv;charset=utf-8');
     });
     $('btn-exp-json').addEventListener('click', exportJson);
+    $('btn-exp-stage').addEventListener('click', exportStages);
     $('btn-report').addEventListener('click', doReport);
 
     $('btn-help').addEventListener('click', function () { $('modal').className = 'on'; });
@@ -1997,6 +1989,19 @@
     fillDemoCount();
     renderQcDoc();          // ⑥ 里那些阈值说明取自 qc.js，不在 HTML 里重复一遍
     initIsoTab();           // IsoplotR 那一页：只填下拉文案，不碰网络
+    if (location.hash === '#api') {
+      /*  程序接口模式。智能体 / 自动化脚本在地址里带上 #api：
+       *      · 开屏不建 DOM（splash.js 按同一个 hash 跳过）
+       *      · 界面照样渲染，但调用方不必碰它 —— 等 __apiReady 为真
+       *        就可以直接 await window.DS_API.run(...)
+       *  标题里带上版本与就绪数，是为了让"只看得到 <title> 的无头浏览器"
+       *  也能判断到底准备好了没有（日志面板的文本读不出来，这个坑踩过）。 */
+      var caps = API.capabilities();
+      window.__apiReady = caps.ready;
+      document.title = (caps.ready ? 'API-READY' : 'API-MISSING')
+        + ' [isoclock/' + API.version + '] v' + caps.version
+        + ' —— ' + document.title;
+    }
     if (location.hash === '#selftest') {
       window.__selftest = { done: false, results: [] };
       setTimeout(function () {

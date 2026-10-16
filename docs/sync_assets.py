@@ -49,6 +49,10 @@ DEFAULT_GUIDE = Path(
 
 # 站点里引用的截图名 -> 上游截图名
 SHOT_MAP = {
+    #  0 号是启动界面（开屏），上游脚本 G:/_isohtml/shot_splash.py —— 它**不能**走
+    #  mkshots.py 的 `--virtual-time-budget` 那条路：实测虚拟时钟不推进 CSS 动画，
+    #  拍到的是"曲线刚画出一小截、数据点还没弹出"的那一帧，而不是开屏真正的样子。
+    "ui-splash.png": "0_启动界面.png",
     "ui-signal.png": "1_信号图.png",
     "ui-ages.png": "2_年龄表.png",
     "ui-report-panel.png": "5_质量报告面板.png",

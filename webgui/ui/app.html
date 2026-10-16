@@ -11,7 +11,8 @@
 <body>
 
 <header class="top">
-  <h1>Isoclock 网页版</h1>
+  <h1>Isoclock <span class="tag">网页版</span></h1>
+  <span class="motto" title="启动界面上印的就是这一句">每一个计数，都算数。<span class="en">Every count counts.</span></span>
   <span class="sub">LA-ICP-MS 锆石 U-Pb 定年 · 单文件离线 · 数值结果与原桌面版逐位一致</span>
   <span class="grow"></span>
   <button class="plain" id="btn-help">说明 / 局限</button>
@@ -39,13 +40,18 @@
     <div class="row" style="margin-top:6px">
       <button class="plain" id="btn-demo-syn" style="flex:2">载入示例：合成数据</button>
     </div>
-    <p class="hint">「真实锡石」是 <b><span id="demo-n">一批</span>真实的 iCAP Qtegra 导出</b>
-      （锡石 LA-ICP-MS U-Pb，YS 方法对比那批）—— 样品代号已重编号、采集时间已归零，
-      <b>数值一个字节都没改</b>。里面有失败点、弱信号点，也有少数几格 NaN —— 全落在
-      <b>²⁰⁸Pb/²³²Th</b> 那一族列上（²³²Th 通道太弱时那个比值算不出来，同一行其余列照常），
-      那是真数据的常态。
-      <br>「合成数据」是人为拼的计数，只用来跑通流程、看版面，算出的年龄没有地质意义。</p>
-    <p class="hint">文件顺序即处理顺序（原桌面版用 <code>os.listdir</code>，不保证稳定）。</p>
+    <p class="hint">「真实锡石」是<b><span id="demo-n">一批</span>真实的 iCAP Qtegra 导出</b>，
+      数值一个字节都没改；「合成数据」只用来跑通流程，年龄没有地质意义。</p>
+    <details class="more">
+      <summary>两份示例的来历 · 文件顺序的规矩</summary>
+      <p>「真实锡石」是<b>一批真实的 iCAP Qtegra 导出</b>
+        （锡石 LA-ICP-MS U-Pb，YS 方法对比那批）—— 样品代号已重编号、采集时间已归零，
+        <b>数值一个字节都没改</b>。里面有失败点、弱信号点，也有少数几格 NaN —— 全落在
+        <b>²⁰⁸Pb/²³²Th</b> 那一族列上（²³²Th 通道太弱时那个比值算不出来，同一行其余列照常），
+        那是真数据的常态。</p>
+      <p>「合成数据」是人为拼的计数，只用来跑通流程、看版面，算出的年龄没有地质意义。</p>
+      <p><b>文件顺序即处理顺序</b>（原桌面版用 <code>os.listdir</code>，不保证稳定）。</p>
+    </details>
 
     <div class="row" style="margin-top:6px">
       <label class="w">样品名清单</label>
@@ -53,14 +59,17 @@
     </div>
     <div class="hint" id="listinfo">未提供 —— 样品名按该仪器的规则取（Thermo 读第一行 / Agilent 取文件名）。</div>
     <input type="file" id="listfile" accept=".csv,.txt,.tsv" hidden>
-    <p class="hint">两列：<b>第一列是文件名的键，第二列是样品名</b>。原来那份
-      Excel LIST 就是这两列，存成 CSV/TSV 即可（有表头也没关系）。<br>
-      键的规则照抄原实现：<code>文件名.split('.')[0]</code>，即<b>第一个点之前</b>——
-      <code>MAD-NEW-1.csv</code> 的键是 <code>MAD-NEW-1</code>，而
-      <code>MAD.NEW.1.csv</code> 的键是 <code>MAD</code>。<br>
-      只有 <b>Agilent</b> 的原实现需要这份清单（Thermo 一律读文件第一行）。
-      清单里查不到时：Thermo 退回读第一行，Agilent 退回取文件名——
-      <b>不能</b>读 Agilent 文件的第一行，那几行是仪器元信息，所有文件都一个样。</p>
+    <p class="hint">两列：<b>第一列是文件名的键，第二列是样品名</b>（原来那份 Excel LIST 就长这样）。</p>
+    <details class="more">
+      <summary>键怎么取 · 清单里查不到时会怎样</summary>
+      <p>存成 CSV / TSV 即可（有表头也没关系）。键的规则照抄原实现：
+        <code>文件名.split('.')[0]</code>，即<b>第一个点之前</b> ——
+        <code>MAD-NEW-1.csv</code> 的键是 <code>MAD-NEW-1</code>，而
+        <code>MAD.NEW.1.csv</code> 的键是 <code>MAD</code>。</p>
+      <p>只有 <b>Agilent</b> 的原实现需要这份清单（Thermo 一律读文件第一行）。
+        清单里查不到时：Thermo 退回读第一行，Agilent 退回取文件名 ——
+        <b>不能</b>读 Agilent 文件的第一行，那几行是仪器元信息，所有文件都一个样。</p>
+    </details>
   </fieldset>
 
   <fieldset>
@@ -126,39 +135,36 @@
       <div class="grow"><input type="number" id="p-excess" value="3" step="0.1"></div>
       <span class="unit">%</span>
     </div>
-    <p class="hint" style="border-left:2px solid var(--line);padding-left:8px">
-      桌面版界面上这一格写作 <code>Ɛ(%)</code>，源码里的变量是 <code>excess_V</code>
-      （= 这里填的数 ÷ 100），桌面版默认 <b>3</b>，本页默认与之相同。<br><br>
-
-      <b>它是什么</b>：除了"数计数"本身的统计波动之外，还会有的那部分<b>额外分散</b>。
-      同一台仪器反复测同一样品，分散往往大于计数统计所预期的量 —— 来源是剥蚀效率波动、
-      气溶胶传输不均匀、标样与样品的基体差异、标样不匹配、数据处理软件的拟合残差等。
-      只用计数误差会<b>低估</b>不确定度，Ɛ 就是用来补这一块的。<br><br>
-
-      <b>它怎么用</b>：以<b>平方和</b>（正交相加）并进每一个年龄的相对误差 ——<br>
-      <code>&nbsp;&nbsp;年龄的相对误差 = √(内部相对误差² + Ɛ²)</code><br>
-      <code>&nbsp;&nbsp;年龄的误差 = 年龄 × 上面那个相对误差</code><br>
-      代码依据是 <code>Isoclock2.0.py</code> 第 397 / 399 / 401 行，三处是同一个模板：<br>
-      <code>&nbsp;&nbsp;sqrt(pow(date_all[3][i]/(date_all[2][i]*f206_238), 2)</code><br>
-      <code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ excess_V*excess_V)</code><br>
-      其中 <code>date_all[3]</code> 是该比值的 2s，除以比值本身就是内部相对误差。<br><br>
-
-      <b>它不影响年龄本身</b>。年龄是 <code>ln(比值+1)/λ</code>，与 Ɛ 无关；
-      把 Ɛ 改大改小，年龄一个数都不变，所有 <code>±</code> 跟着变大变小。
-      只有 <b>rho</b>（相关系数）列也跟着动，因为它的公式里也用了 Ɛ。<br><br>
-
-      <b>三条需要注意的口径</b>：<br>
-      ① 内部相对误差用的是表里的 <code>2s</code>，也就是 <b>2σ</b>，而程序把 Ɛ 直接与它
-      平方相加 —— 相当于把 Ɛ 当成 2σ 同量级的量。你没量过 Ɛ 是 1σ 还是 2σ 的话，
-      这里其实是混着用的，报出去的不确定度到底是几 σ 要自己心里有数。<br>
-      ② <b>²⁰⁷Pb/²⁰⁶Pb 年龄（第 24 列）的误差（第 25 列）不含 Ɛ</b>：它是
-      <code>solve76(R76+d1) − solve76(R76)</code>，只由该比值自身的误差传播而来。
-      所以同一行里四个年龄的误差口径<b>并不一致</b>，横向比较要小心。<br>
-      ③ Ɛ 调大会让 <b>MSWD 变小</b>：每个点的误差都变大，点与点之间就显得更一致了。
-      当 Ɛ 远大于内部误差时，各点误差趋于同一比例，MSWD 会趋近 0，
-      加权平均退化成普通平均 —— <b>不要用调 Ɛ 的办法去"改善"一致性</b>，
-      那是把不确定度人为灌水换来的表面一致。
-    </p>
+    <p class="hint">桌面版这一格写作 <code>Ɛ(%)</code>（源码变量 <code>excess_V</code>
+      = 这里填的数 ÷ 100），默认 <b>3</b>。<b>只改误差，不改年龄</b>。</p>
+    <details class="more">
+      <summary>Ɛ 是什么、怎么用、三条口径（推荐读一遍）</summary>
+      <p><b>它是什么</b>：除了"数计数"本身的统计波动之外，还会有的那部分<b>额外分散</b>。
+        同一台仪器反复测同一样品，分散往往大于计数统计所预期的量 —— 来源是剥蚀效率波动、
+        气溶胶传输不均匀、标样与样品的基体差异、标样不匹配、数据处理软件的拟合残差等。
+        只用计数误差会<b>低估</b>不确定度，Ɛ 就是用来补这一块的。</p>
+      <p><b>它怎么用</b>：以<b>平方和</b>（正交相加）并进每一个年龄的相对误差 ——<br>
+        <code>&nbsp;&nbsp;年龄的相对误差 = √(内部相对误差² + Ɛ²)</code><br>
+        <code>&nbsp;&nbsp;年龄的误差 = 年龄 × 上面那个相对误差</code><br>
+        代码依据是 <code>Isoclock2.0.py</code> 第 397 / 399 / 401 行，三处是同一个模板：<br>
+        <code>&nbsp;&nbsp;sqrt(pow(date_all[3][i]/(date_all[2][i]*f206_238), 2)</code><br>
+        <code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ excess_V*excess_V)</code><br>
+        其中 <code>date_all[3]</code> 是该比值的 2s，除以比值本身就是内部相对误差。</p>
+      <p><b>它不影响年龄本身</b>。年龄是 <code>ln(比值+1)/λ</code>，与 Ɛ 无关；
+        把 Ɛ 改大改小，年龄一个数都不变，所有 <code>±</code> 跟着变大变小。
+        只有 <b>rho</b>（相关系数）列也跟着动，因为它的公式里也用了 Ɛ。</p>
+      <p><b>三条需要注意的口径</b>：<br>
+        ① 内部相对误差用的是表里的 <code>2s</code>，也就是 <b>2σ</b>，而程序把 Ɛ 直接与它
+        平方相加 —— 相当于把 Ɛ 当成 2σ 同量级的量。你没量过 Ɛ 是 1σ 还是 2σ 的话，
+        这里其实是混着用的，报出去的不确定度到底是几 σ 要自己心里有数。<br>
+        ② <b>²⁰⁷Pb/²⁰⁶Pb 年龄（第 24 列）的误差（第 25 列）不含 Ɛ</b>：它是
+        <code>solve76(R76+d1) − solve76(R76)</code>，只由该比值自身的误差传播而来。
+        所以同一行里四个年龄的误差口径<b>并不一致</b>，横向比较要小心。<br>
+        ③ Ɛ 调大会让 <b>MSWD 变小</b>：每个点的误差都变大，点与点之间就显得更一致了。
+        当 Ɛ 远大于内部误差时，各点误差趋于同一比例，MSWD 会趋近 0，
+        加权平均退化成普通平均 —— <b>不要用调 Ɛ 的办法去"改善"一致性</b>，
+        那是把不确定度人为灌水换来的表面一致。</p>
+    </details>
   </fieldset>
 
   <fieldset>
@@ -181,9 +187,12 @@
       <label class="w" style="white-space:normal"><input type="checkbox" id="p-fix76" checked>
         修正 ²⁰⁷Pb/²⁰⁶Pb 年龄迭代</label>
     </div>
-    <p class="hint">原实现的收敛判据因一处赋值缺失而失效，实际只迭代 10 次，
-      1.5–2.2 Ga 区间年龄偏高最多约 +35 Ma。勾选（默认）后按收敛判据正常迭代；
-      取消勾选则逐位复现桌面版数值 —— 用于与已发表结果核对。</p>
+    <details class="more">
+      <summary>勾与不勾分别会怎样（写论文时要看清）</summary>
+      <p>原实现的收敛判据因一处赋值缺失而失效，实际只迭代 10 次，
+        1.5–2.2 Ga 区间年龄偏高最多约 +35 Ma。勾选（默认）后按收敛判据正常迭代；
+        取消勾选则逐位复现桌面版数值 —— 用于与已发表结果核对。</p>
+    </details>
   </fieldset>
 
   <fieldset>
@@ -230,11 +239,14 @@
       <div id="qcdoc"></div>
     </details>
 
-    <p class="hint">点右侧工具栏的<b>质量报告</b>导出。报告是一份
-      <b>单文件 HTML</b>，内联样式与图，双击就能开，<kbd>Ctrl</kbd>+<kbd>P</kbd>
-      可存成 PDF —— 可以直接发给别人看，对方不需要装这个软件、也不需要联网。<br>
-      报告里的<b>加权平均与 MSWD 是网页版新增的算法</b>（桌面版只输出逐点年龄，
-      从不做归组统计），报告里会注明。</p>
+    <p class="hint">点右侧工具栏的<b>质量报告</b>导出：一份<b>单文件 HTML</b>，
+      双击就能开、可直接转发（对方不用装软件、也不用联网）。</p>
+    <details class="more">
+      <summary>报告里有什么 · 哪些是网页版新增的</summary>
+      <p>报告把样式与图都内联在同一个文件里，<kbd>Ctrl</kbd>+<kbd>P</kbd> 可存成 PDF。</p>
+      <p>报告里的<b>加权平均与 MSWD 是网页版新增的算法</b>（桌面版只输出逐点年龄，
+        从不做归组统计），报告里会注明。</p>
+    </details>
   </fieldset>
 
   <button class="primary" id="btn-run" disabled>开始计算</button>
@@ -247,6 +259,7 @@
     <button data-tab="cps">Mean_Cps</button>
     <button data-tab="all">result_all</button>
     <button data-tab="age">年龄表</button>
+    <button data-tab="stage" title="把这一次计算的中间量并成一张表：积分窗口 → 背景/信号均值 → 净计数 → 比值 → 年龄 → 微量元素。点表格里任意一行，看这一个样品从头到尾的每一步。">过程量</button>
     <button data-tab="iso" title="用 IsoplotR 画谐和图 / 拟合 discordia 交点年龄。这是本软件里唯一需要联网的部分：点了里面的按钮才会去下载（首次约 16 MB），数据不出本机。">IsoplotR 谐和图</button>
     <button data-tab="log">日志</button>
     <span class="spacer"></span>
@@ -256,6 +269,8 @@
     <button class="act" id="btn-exp-all" disabled>result_all.csv</button>
     <button class="act" id="btn-exp-cps" disabled>Mean_Cps.csv</button>
     <button class="act" id="btn-exp-age" disabled>年龄表.csv</button>
+    <button class="act" id="btn-exp-stage" disabled
+      title="把中间环节（积分窗口、背景/信号均值、净计数、比值、年龄、微量元素）并成一张宽表，一行一个样品。表头带一段 # 元信息：参数、分馏因子、微量元素系数。">过程量.csv</button>
     <button class="act" id="btn-exp-json" disabled>全部.json</button>
     <button class="act go" id="btn-report" disabled title="导出一份单文件、离线可看的 HTML 质量报告">质量报告</button>
   </div>
@@ -272,6 +287,9 @@
       <div class="empty">还没有结果。</div>
     </div>
     <div class="pane" id="pane-age">
+      <div class="empty">还没有结果。</div>
+    </div>
+    <div class="pane" id="pane-stage">
       <div class="empty">还没有结果。</div>
     </div>
     <div class="pane" id="pane-iso">
@@ -383,16 +401,19 @@
           （levels）用的，我们的表里没有这一列 —— 要做就得先决定按什么上色。
         </p>
       </details>
+      <details class="more iso-help">
+        <summary>这一页在做什么 · 图上画的是谁（点开看）</summary>
+        <p>这一页把当前结果交给 <b>IsoplotR</b>（Pieter Vermeesch 的 R 语言年代学工具箱）
+          画谐和图，并可选地拟合谐和年龄或 discordia 交点年龄。
+          这是本软件里<b>唯一需要联网</b>的部分：点上面那个按钮才会去下载
+          webR（WebAssembly 版 R）与 IsoplotR 包，<b>首次约 16 MB、约 1 分钟</b>，
+          之后走浏览器缓存。<b>数据不出本机</b> —— 只在本页内存里交给 wasm 里的 R。</p>
+        <p><b>图上的点应该是「样品」</b>：默认的「全部样品（不含标样）」把这一批的样品
+          测点合在一张图上。标样（如 AY-4）不参与样品统计 —— 它是 QC 样，单独列在
+          下拉最后那个分组里，选它出来的年龄是拿来对②里填的真值的。</p>
+      </details>
       <div class="iso-msg" id="iso-msg">
-        这一页把当前结果交给 <b>IsoplotR</b>（Pieter Vermeesch 的 R 语言年代学工具箱）
-        画谐和图，并可选地拟合谐和年龄或 discordia 交点年龄。
-        这是本软件里<b>唯一需要联网</b>的部分：点上面那个按钮才会去下载
-        webR（WebAssembly 版 R）与 IsoplotR 包，<b>首次约 16 MB、约 1 分钟</b>，
-        之后走浏览器缓存。<b>数据不出本机</b>—— 只在本页内存里交给 wasm 里的 R。
-        <br>
-        <b>图上的点应该是「样品」</b>：默认的「全部样品（不含标样）」把这一批的样品
-        测点合在一张图上。标样（如 AY-4）不参与样品统计 —— 它是 QC 样，单独列在
-        下拉最后那个分组里，选它出来的年龄是拿来对②里填的真值的。
+        选好图型与样品，点上面那个按钮。<b>首次要下载约 16 MB</b>，之后走缓存。
       </div>
       <div class="iso-figwrap"><img id="iso-fig" alt="" style="display:none"></div>
       <table class="iso-sum" id="iso-sum" style="display:none"></table>
@@ -430,16 +451,18 @@
 
     <h3>结果可信到什么程度</h3>
     <p>同一批数据下，网页版的输出与桌面版<b>逐位相同</b>（bit-for-bit，包括浮点最后一位）。
-      这不是估计，是跑出来的：<b data-count="tests">439 项</b> Node 端自动比对
-      （<b data-count="suites">14 套</b> <code>webgui/test_*.js</code>：数值内核、
+      这不是估计，是跑出来的：<b data-count="tests">553 项</b> Node 端自动比对
+      （<b data-count="suites">16 套</b> <code>webgui/test_*.js</code>：数值内核、
       Thermo/Agilent 解析、积分窗口、两个 CSV 的<b>逐字节</b>输出、
       年龄层 51 列 × 19 组参数、<b data-count="suite:test_agilent_e2e.js">20 项</b> Agilent 端到端、
       <b data-count="suite:test_thermo_compat.js">47 项</b> Thermo 兼容读取、
       <b data-count="suite:test_qc.js">63 项</b> 质量统计、
       <b data-count="suite:test_report.js">50 项</b> 报告组装、
       <b data-count="suite:test_demo_real.js">22 项</b> 内置真实示例数据、
-      <b data-count="suite:test_isoplotr.js">103 项</b> IsoplotR 接入层）
-      ＋<b data-count="selftest">62 项</b>本页面内自检（走的是真按钮那条路）。<br>
+      <b data-count="suite:test_isoplotr.js">103 项</b> IsoplotR 接入层、
+      <b data-count="suite:test_api.js">59 项</b> 程序接口门面、
+      <b data-count="suite:test_stages.js">55 项</b> 过程量表）
+      ＋<b data-count="selftest">87 项</b>本页面内自检（走的是真按钮那条路）。<br>
       上面这些数不是手写的：<code>docs/make_badges.py</code> 每次都会把测试真跑一遍，
       <b>连逐套的项数也一起核</b>，对不上就让 CI 红。真正手写的是这一句解释。</p>
       唯一一处曾经对不上的地方是 <code>exp</code> / <code>log</code>：宿主 C 运行时与浏览器的
@@ -518,12 +541,57 @@
         页面上<b>没有 <code>s0</code>/<code>s1</code> 的输入框</b> —— 自动识别若选错，
         只能改这两个数间接绕。窗口层的行为与判据见 <code>webgui/src/window.js</code>
         与 <code>webgui/test_window.js</code>。</li>
-      <li>输出的是 CSV（两个中间文件 + 年龄表）与 JSON，不写 <code>.xls</code>。</li>
+      <li><b>新增"过程量"标签页与"过程量.csv"</b>：把<b>一次计算的全部中间环节</b>
+        并成一张宽表，一行一个样品，列按链条顺序排 —— 积分窗口（含真正切进数组的
+        点数）→ 背景 / 信号均值 → 净计数 → 比值 + 2s → 年龄 → 微量元素。
+        点表格里任意一行，下面展开那个样品从头到尾的"流水账"。
+        <b>这张表一个新数都不算</b>：比值与年龄直接搬年龄表的同名列，
+        净计数逐格追回 <code>result_all</code> 或"信号均值 − 背景均值"，
+        均值列逐格追回 <code>Mean_Cps</code> —— 所以它只是<b>视图</b>，
+        不是第二条算式。CSV 带一段 <code>#</code> 元信息（参数、分馏因子、
+        微量元素系数、每段的口径），方便连口径一起存档。</li>
+      <li><b>左栏的解释长文默认收起。</b>判据、坑、口径<b>一个字都没删</b>，
+        只是搬进了折叠块（点标题展开），界面上只留一行要点。</li>
+      <li>输出的是 CSV（两个中间文件 + 年龄表 + 过程量表）与 JSON，
+        不写 <code>.xls</code>。</li>
       <li>标样漂移回归 <code>regression()</code> 没有接线——它用 <code>scipy.curve_fit</code>，
         在原程序里也没有任何控件能改它的方法编号，属于从未生效的路径。</li>
       <li>年龄结果里的"备注"列恒为空：原实现的 <code>Coments</code> 也是在读取阶段
         一律写成空串，桌面上没有录入入口。</li>
+      <li><b>多了一个启动界面（开屏）</b>：打开时先盖一层标志 + 标语 + 三条承诺，
+        约 1.4 s 自动淡出；这期间<b>点一下、按任意键、滚一下滚轮都会立刻进入</b>，
+        不会耽误事。它<b>不写任何本地存储、不联网</b>，所以每次打开的行为都一样
+        （不会出现"记得你看过、这次不弹"这种不确定）。
+        排查问题时不想要它：在地址栏后面加 <code>#nosplash</code> 打开即可完全跳过。
+        标志是内联 SVG 画的（表盘 + 谐和线 + 数据点），没有外链图片。</li>
     </ul>
+
+    <h3>维护状态</h3>
+    <p><b>以后主要更新网页版。</b>桌面版（<code>Isoclock2.0.py</code> 与 <code>packaging/</code>）
+      <b>只维护、不加新功能</b>：它留在仓库里、照常能用，数值输出仍然是网页版逐位比对的
+      基准；但新标签页、新导出、新读取器一律只做在网页版这边。数值链两侧共用 ——
+      凡是会改动数字的，两边一起改，不一致就构建不过。</p>
+
+    <h3>给程序用的接口</h3>
+    <p>这一页里的每个数都是算出来的、不是画上去的，所以它同时是<b>一个可以调用的接口</b>：
+      按 <kbd>F12</kbd> 打开控制台，输入 <code>await DS_API.runDemo()</code>，就会用内置的
+      49 个真实文件跑一遍，拿回一份结构化结果（年龄表、标样 QC、批次质量等级、日志）。
+      <b>界面上"开始计算"走的就是这同一条链</b>，所以接口算出来的数字与界面上看到的
+      一模一样 —— 自检里有一条专门钉它：同一批文件、同一份配置，两边跑出来的
+      51 列逐位相同。</p>
+    <p>几个最常用的入口：<code>DS_API.runDemo()</code>（跑内置示例）、
+      <code>DS_API.run(params, files)</code>（跑自己的数据）、
+      <code>DS_API.stages(compute结果)</code>（拿"过程量"那张表，
+      与界面、与导出的 CSV 是同一份数据）、
+      <code>DS_API.schema()</code> 与 <code>DS_API.tool()</code>
+      （自描述 —— 给智能体生成调用参数用的 JSON Schema 与 function-calling 定义）。
+      参数名与内置示例自带的那份推荐参数完全一致，所以示例参数可以原样喂进去。
+      失败不抛异常，一律返回 <code>{ ok:false, errors:[{code, message}] }</code>，
+      调用方靠一个字段就能判断；完整的参数表、返回结构与错误码见仓库里的
+      <code>webgui/API.md</code>。</p>
+    <p>不想被开屏耽误、也不想让程序去点按钮：地址后面加 <code>#api</code> ——
+      开屏不建 DOM，等 <code>window.__apiReady</code> 变成真就能直接调。
+      接口同样<b>不联网、不写本地存储</b>，数据不出本机。</p>
 
     <h3>怎么验证</h3>
     <p><b>想自己验一遍</b>：在地址栏后面加 <code>#selftest</code> 打开（变成
@@ -562,7 +630,13 @@
 <!--@QCREPORT@-->
 </script>
 <script>
+<!--@API@-->
+</script>
+<script>
 <!--@SELFTEST@-->
+</script>
+<script>
+<!--@SPLASH@-->
 </script>
 <script>
 <!--@APP@-->

@@ -78,11 +78,19 @@ SUITES = ['test_fp.js', 'test_math.js', 'test_thermo.js', 'test_agilent.js',
           #  IsoplotR 接入层。这一套**不联网**：验的是"送给 IsoplotR 的表按
           #  format=1 的列序、口径是 ierr=2、结果字段解析对不对"，
           #  以及拿内置真实数据核一遍列号。真正跑 R 的部分在浏览器里验。
-          'test_isoplotr.js']
+          'test_isoplotr.js',
+          #  程序接口门面（ui/api.js）。这一套在无 DOM 的 Node 里跑 ——
+          #  验自描述（schema/tool）、参数归一化、五条校验判据的错误码与顺序、
+          #  全链路结果与产物声明的标样值是否对得上、列映射有没有抄错。
+          'test_api.js',
+          #  过程量表（src/stages.js）。验的是"这张表里一个新数都没有" ——
+          #  净值/比值/年龄逐格追回 meanRows / result_all / 年龄表，外加
+          #  CSV 的 BOM、# 元信息段与 Python repr 排版。
+          'test_stages.js']
 
 # 页面内自检的项数。真源是产物页面在 #selftest 下自己报出来的那个数
 # （标题形如 `SELFTEST-OK [56/56]`）。有 Edge 时用 --selftest 现场核一遍。
-SELFTEST_ITEMS = 62
+SELFTEST_ITEMS = 87
 
 SUM_RE = re.compile(r'总计\s*(\d+)\s*项：通过\s*(\d+)，失败\s*(\d+)'
                     r'|结果：\s*(\d+)\s*通过\s*/\s*(\d+)\s*失败')

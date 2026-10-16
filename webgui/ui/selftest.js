@@ -308,7 +308,253 @@
     t('重跑结果完全相同', ui.state.result.resultAllCsv === before,
       '两次 result_all.csv 逐字节相同（' + before.length + ' 字节）');
 
-    /* --- 9. 换线性法 --- */
+    /* --- 9. 程序接口（window.DS_API）---
+     *
+     *  这一段的重头是**同源**：接口不是"为了对外好看而另写的一条路"，
+     *  它跟界面"开始计算"走的是同一段代码。验证办法很直接 —— 拿同一批
+     *  文件、同一份界面配置，直接调 DS_API.compute()，再和界面上刚点出来
+     *  那份比，51 列逐位。两边只要有一处分家（参数被二次换算、列取错、
+     *  管线段改了一处忘了另一处），这里就会当场报出是第几行第几列。 */
+    var APIC = window.DS_API;
+    var DEM = window.DS_DEMO_REAL;
+    t('程序接口模块已打包进来（ui/api.js）',
+      !!(APIC && typeof APIC.run === 'function' && typeof APIC.schema === 'function'),
+      APIC ? 'DS_API v' + APIC.version + '，' + Object.keys(APIC).length + ' 个导出'
+        : '没有 window.DS_API');
+    t('程序接口自报就绪，并认出这是在浏览器里、离线、不写本地存储', (function () {
+      var c = APIC.capabilities();
+      return c.ready === true && c.environment === 'browser'
+        && c.offline === true && c.writesStorage === false;
+    })(), 'environment = ' + APIC.capabilities().environment);
+    t('程序接口的默认值与内置示例的推荐参数逐项相同（两处默认值不许分家）',
+      ['inst', 'b0', 'b1', 'multi', 'stdName', 'stdAge', 'fracStd', 'nistStd',
+        'method', 'algo', 'excess'].every(function (k) {
+        return APIC.DEFAULT_PARAMS[k] === DEM.params[k];
+      }),
+      ['inst', 'b0', 'b1', 'multi', 'stdName', 'stdAge', 'fracStd', 'nistStd',
+        'method', 'algo', 'excess'].filter(function (k) {
+        return APIC.DEFAULT_PARAMS[k] !== DEM.params[k];
+      }).join(', ') || '11 个字段全同');
+    t('程序接口的 schema 是完整 JSON Schema，且 default 与默认值一致', (function () {
+      var s = APIC.schema(), keys = Object.keys(s.properties);
+      return s.type === 'object' && keys.length === 14
+        && s.properties.inst.enum.length === 2
+        && s.properties.method.maximum === 4
+        && s.properties.algo.enum.length === 2
+        && keys.every(function (k) {
+          var d = s.properties[k].default;
+          if (d === undefined) return true;
+          return k === 'estimateAge' ? d === APIC.EST_AGE_DEFAULT : d === APIC.DEFAULT_PARAMS[k];
+        });
+    })(), (function () {
+      var s = APIC.schema();
+      return Object.keys(s.properties).length + ' 个参数，'
+        + Object.keys(s.properties).filter(function (k) {
+          return s.properties[k].default !== undefined; }).length + ' 个带默认值';
+    })());
+    t('程序接口的 tool() 是 function-calling 形状（智能体可直接拿去用）', (function () {
+      var tl = APIC.tool();
+      return tl.type === 'function' && tl.function.name === 'isoclock_run'
+        && tl.function.parameters.required.indexOf('files') >= 0
+        && tl.function.parameters.properties.files.items.required.length === 2
+        && tl.function.parameters.properties.params.type === 'object';
+    })(), APIC.tool().function.name);
+    t('程序接口对空输入不抛异常，而是返回错误码（调用方靠一个字段判断）', (function () {
+      try {
+        var r = APIC.run({}, []);
+        return r.ok === false && r.errors[0].code === 'NO_FILES'
+          && typeof r.errors[0].message === 'string';
+      } catch (e) { return false; }
+    })(), '错误码表里共 ' + Object.keys(APIC.errorCodes).length + ' 个码');
+
+    /*  ★ 同源判据 —— 这一条挂了，说明"唯一真源"已经破了 */
+    var RC = null;
+    var sameRes = '';
+    var ua = ui.state.ageResult.rows;
+    try {
+      RC = APIC.compute(ui.state.cfg, files,
+        { probeMap: ui.probeAll(), keepRaw: true });
+      if (!RC.ok) sameRes = '接口没跑通：' + JSON.stringify(RC.errors);
+    } catch (e) {
+      sameRes = 'compute 抛异常：' + String((e && e.stack) || e);
+    }
+    if (sameRes === '') {
+      var iface = RC.ageRes.rows;
+      if (iface.length !== ua.length) {
+        sameRes = '行数不同：接口 ' + iface.length + ' / 界面 ' + ua.length;
+      } else {
+        for (var ri = 0; ri < ua.length && sameRes === ''; ri++) {
+          var wa = ua[ri].length, wb = iface[ri].length;
+          if (wa !== wb) { sameRes = '第 ' + ri + ' 行列数不同：' + wa + ' / ' + wb; break; }
+          for (var ci = 0; ci < wa; ci++) {
+            if (!Object.is(ua[ri][ci], iface[ri][ci])) {
+              sameRes = '第 ' + ri + ' 行第 ' + ci + ' 列：界面=' + ua[ri][ci]
+                + ' 接口=' + iface[ri][ci];
+              break;
+            }
+          }
+        }
+      }
+    }
+    t('★ 程序接口与界面跑出来的是同一份结果（年龄表 51 列逐位）',
+      sameRes === '', sameRes || (ua.length + ' 行 × 51 列逐位相同'));
+    t('程序接口的 result_all.csv 与界面那份逐字节相同',
+      !!RC && RC.ok && RC.out.resultAllCsv === ui.state.result.resultAllCsv,
+      (RC && RC.ok) ? (RC.out.resultAllCsv.length + ' 字节') : sameRes);
+
+    /* --- 9b. 过程量表（中间环节）---
+     *
+     *  这张表把"从积分窗口到年龄"的每一步并成一张，供人核对、也供智能体读。
+     *  它最要紧的性质是**一个新数都没算**：净值、比值、年龄都只是把已有的三份
+     *  结果（meanRows / result_all / 年龄表）搬到一起。所以这里逐格往回追 ——
+     *  追得回去才算"视图"，追不回去就说明悄悄多出了一条平行的算式。
+     *  另一半是**接线**：标签页、面板、导出按钮要真的通，导出要真跑一遍下载
+     *  （把 Blob 截下来看内容），不能只是"看着有那个按钮"。 */
+    var STG = window.DS_STAGES;
+    t('过程量模块已打包进来（src/stages.js）',
+      !!(STG && typeof STG.buildStages === 'function' && typeof STG.stagesCsv === 'function'),
+      STG ? Object.keys(STG).length + ' 个导出' : '没有 window.DS_STAGES');
+
+    var stageTab = document.querySelector('.tabs button[data-tab="stage"]');
+    var stageBtn = $('btn-exp-stage');
+    t('工具条上有「过程量」标签页，面板与导出按钮就绪（算完即启用）',
+      !!stageTab && !!$('pane-stage') && !!stageBtn
+        && stageBtn.disabled === false,
+      stageTab ? ('标签页「' + stageTab.textContent.trim() + '」｜ 导出按钮 '
+        + (stageBtn && !stageBtn.disabled ? '已启用' : '没启用'))
+        : '没找到「过程量」标签页');
+
+    var M = ui.state.stage;
+    var ageRowsS = ui.state.ageResult.rows;
+    var ciS = {};
+    var colsS = (M && M.columns) || [];
+    colsS.forEach(function (c, i) { ciS[c.key] = i; });
+    var byFileS = {};
+    (ui.state.result.resultRows || []).forEach(function (r) { byFileS[r[1]] = r; });
+    var ageByFileS = {};
+    ageRowsS.forEach(function (r) { ageByFileS[r[0]] = r; });
+    var mRows = (M && M.rows) || [];
+    var mBy = (M && M.byFile) || {};
+
+    t('过程量表行数与年龄表一致（一行一个样品）',
+      !!M && mRows.length === ageRowsS.length && mRows.length > 0,
+      M ? (mRows.length + ' 行 × ' + colsS.length + ' 列，年龄表 ' + ageRowsS.length + ' 行')
+        : '没有 ui.state.stage');
+
+    /* ① 净值：7 个通道 × 每个样品，逐格追回原处 */
+    var badNet = [];
+    (STG ? STG.STAGE_CHANNELS : []).forEach(function (c) {
+      mRows.forEach(function (r) {
+        var f = r[ciS.file], v = (mBy[f] || {}).vals;
+        if (!v) { badNet.push(f + ' 没有 vals'); return; }
+        var want, why;
+        if (c.netCol === null) {                       // 表里补出来的两列
+          want = v['s_' + c.key] - v['b_' + c.key];
+          why = '信号均值 − 背景均值';
+        } else {                                       // 五通道取自 result_all
+          want = (byFileS[f] || [])[c.netCol];
+          why = 'result_all 第 ' + c.netCol + ' 列';
+        }
+        if (!Object.is(v['n_' + c.key], want)) {
+          badNet.push(f + ' ' + c.label + '：表里 ' + v['n_' + c.key]
+            + ' ≠ ' + why + ' 的 ' + want);
+        }
+      });
+    });
+    t('★ 净值逐格追得回原处（²⁰²Hg/²⁰⁴Pb 按 s−b，五通道取 result_all）',
+      mRows.length > 0 && badNet.length === 0,
+      badNet.length ? badNet.slice(0, 2).join(' ｜ ')
+        : (STG.STAGE_CHANNELS.length + ' 个通道 × ' + mRows.length + ' 行，共 '
+          + (STG.STAGE_CHANNELS.length * mRows.length) + ' 格全对'));
+
+    /* ② 比值与年龄：直接搬年龄表的列，必须逐位相同 */
+    var badRatio = [];
+    mRows.forEach(function (r) {
+      var f = r[ciS.file], v = (mBy[f] || {}).vals, a = ageByFileS[f];
+      if (!v || !a) { badRatio.push(f + ' 对不上年龄表的行'); return; }
+      (STG ? STG.STAGE_RATIOS : []).forEach(function (rr) {
+        if (!Object.is(v['r' + rr.c], a[rr.c]) || !Object.is(v['r' + rr.c + '_2s'], a[rr.c + 1])) {
+          badRatio.push(f + ' ' + rr.label);
+        }
+      });
+      (STG ? STG.STAGE_AGES : []).forEach(function (aa) {
+        if (!Object.is(v['age' + aa.c], a[aa.c])) badRatio.push(f + ' 年龄' + aa.label);
+      });
+    });
+    t('★ 比值与年龄逐位等于年龄表的同名列（不是重算的）',
+      mRows.length > 0 && badRatio.length === 0,
+      badRatio.length ? badRatio.slice(0, 3).join(' ｜ ')
+        : (STG.STAGE_RATIOS.length + ' 组比值 + ' + STG.STAGE_AGES.length + ' 个年龄逐位相同'));
+
+    /* ③ 导出：行数、表头、BOM、元信息行 —— 与这张表出自同一份数据 */
+    var SC = APIC.stages(ui.state.compute, {
+      csv: true, generatedAt: (ui.state.stageAt || '')
+    });
+    var csvRaw = (SC && SC.csv) || '';
+    var csvLines = csvRaw.replace(/^\ufeff/, '').split('\r\n')
+      .filter(function (l) { return l.length; });
+    /*  数据段的文字列（文件名/样品名）里没有逗号，所以这里可以按逗号直接切；
+     *  真要有逗号，stagesCsv() 会给它加引号，那时这条就会挂 —— 正是想要的哨兵。 */
+    var csvMeta = csvLines.filter(function (l) { return l.charAt(0) === '#'; });
+    var csvData = csvLines.filter(function (l) { return l.charAt(0) !== '#'; });
+    t('导出的「过程量.csv」行数/列数与表一致，且开头是 UTF-8 BOM',
+      !!SC && SC.ok && csvRaw.charAt(0) === '\ufeff'
+        && csvData.length === mRows.length + 1
+        && csvData[0].split(',').length === colsS.length,
+      SC && SC.ok ? (csvData.length + ' 行（含表头）× ' + csvData[0].split(',').length
+        + ' 列，' + csvRaw.length + ' 字节') : 'stages(csv) 没成功');
+    t('导出的元信息行里有这次计算的口径（含分馏因子与样品数）',
+      csvMeta.length >= 10
+        && csvRaw.indexOf('# 分馏因子 f(206/238) =') >= 0
+        && csvRaw.indexOf('# 行数 = ' + mRows.length + ' 个样品') >= 0,
+      csvMeta.length + ' 行 # 元信息');
+    var RPFS = window.DS_REPORT.pyFloatRepr;
+    var spot = ['r4', 'age17'];                     // 206Pb/238U 的比值与年龄
+    var mismatch = spot.filter(function (k) {
+      var cellTxt = String(RPFS(mRows[0][ciS[k]]));
+      return csvData[1].split(',').indexOf(cellTxt) < 0;
+    });
+    t('导出里的数与表里的数用同一套排版（Python repr，可无损往返）',
+      mRows.length > 0 && mismatch.length === 0,
+      mismatch.length ? ('这几格对不上：' + mismatch.join(', '))
+        : (spot.map(function (k) { return RPFS(mRows[0][ciS[k]]); }).join(' ｜ ')));
+
+    /* ④ 真点一下按钮：把 Blob 换掉再点，看下载内容是不是这张表 */
+    var cap = null, RealBlob = window.Blob;
+    var realCO = URL.createObjectURL, realRO = URL.revokeObjectURL;
+    window.Blob = function (parts, opt) {
+      cap = { parts: parts, type: (opt && opt.type) || '' };
+    };
+    URL.createObjectURL = function () { return 'blob:selftest'; };
+    URL.revokeObjectURL = function () {};
+    var clickErr = '';
+    try { stageBtn.click(); } catch (e) { clickErr = String(e); }
+    window.Blob = RealBlob;
+    URL.createObjectURL = realCO;
+    URL.revokeObjectURL = realRO;
+    var dlText = (cap && cap.parts && cap.parts[0]) || '';
+    t('点「过程量.csv」真的走了一遍下载（换掉 Blob 截下来的就是这张表）',
+      !clickErr && !!cap && cap.type.indexOf('text/csv') === 0
+        && dlText.charAt(0) === '\ufeff'
+        && dlText.slice(1).indexOf('# Isoclock 网页版 · 过程量') === 0
+        && dlText === csvRaw,
+      clickErr || (cap ? (cap.type + '，' + dlText.length + ' 字节')
+        : '点了按钮但没产生 Blob'));
+
+    /* ⑤ 明细：点表格里的一行，展开那个样品从窗口到年龄的每一步 */
+    var rowEl = document.querySelector('#stage-body tr.pick');
+    var detailHost = $('stage-detail');
+    var beforeTxt = detailHost ? detailHost.textContent : '';
+    if (rowEl) rowEl.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    var afterTxt = detailHost ? detailHost.textContent : '';
+    var f0 = mRows.length ? mRows[0][ciS.file] : '';
+    t('点表格里的一行，明细区展开这个样品的流水账（真的点了一下）',
+      !!rowEl && !!detailHost && afterTxt !== beforeTxt
+        && afterTxt.indexOf(f0) >= 0,
+      rowEl ? ('第 1 行 ' + f0 + ' → 明细 ' + afterTxt.length + ' 字')
+        : '没找到 #stage-body 里的行');
+
+    /* --- 10. 换线性法 --- */
     $('p-algo').value = 'lin';
     ui.run();
     var arL = ui.state.ageResult;
@@ -671,6 +917,55 @@
         var own = ui.isoOwnMean(ui.state.cfg ? ui.state.cfg.stdName : null);
         return own ? (own.key + ' = ' + own.mean.toFixed(3) + ' Ma，' + own.n + ' 点') : '取不到';
       })());
+
+    /* --- 10. 启动界面（开屏，ui/splash.js） ---
+       开屏只在"正常打开"时出现，#selftest 下**连 DOM 都不建** —— 所以这里
+       第一件事就是验"它确实被跳过了"（无头自检与截图都靠这一条不被它挡住），
+       然后再手工造一份、验内容与退场。标语是用户看到的第一句话，写死在
+       splash.js 里，这里跟它逐字对一遍，免得哪天被改歪了没人发现。 */
+    var SP = window.DS_SPLASH;
+    t('开屏模块已打包进来（ui/splash.js）', !!SP,
+      SP ? 'window.DS_SPLASH，三条承诺 ' + SP.chips.length + ' 条' : '没有 window.DS_SPLASH');
+    t('开屏标语与 splash.js 里写的一致（中英各一句）',
+      !!SP && SP.zh === '每一个计数，都算数。' && SP.en === 'Every count counts.',
+      SP ? '「' + SP.zh + '」/ ' + SP.en : '');
+    t('#selftest 下开屏被跳过（否则自检与截图都会被它挡住）',
+      !!SP && SP.skipped === true && document.querySelectorAll('#splash').length === 0,
+      SP ? 'skipped=' + SP.skipped + '，DOM 里 ' + document.querySelectorAll('#splash').length
+        + ' 个 #splash' : '');
+
+    var spEl = null;
+    try { spEl = SP && SP.build(); } catch (e) { spEl = null; }
+    var spTxt = spEl ? spEl.textContent : '';
+    t('开屏含标志、名字、标语与三条承诺',
+      !!spEl && spEl.querySelectorAll('svg').length === 1
+        && spEl.querySelectorAll('img').length === 0
+        && spTxt.indexOf('Isoclock') >= 0
+        && spTxt.indexOf('每一个计数，都算数。') >= 0
+        && spTxt.indexOf('Every count counts.') >= 0
+        && spEl.querySelectorAll('.sp-chips li').length === 3,
+      spEl ? 'svg ' + spEl.querySelectorAll('svg').length + ' 个 / img '
+        + spEl.querySelectorAll('img').length + ' 个 / 承诺 '
+        + spEl.querySelectorAll('.sp-chips li').length + ' 条' : '构建失败');
+    t('标志是内联 SVG 画的（没有外链图片，单文件离线这条不破）',
+      !!spEl && spEl.querySelectorAll('svg path').length === 1
+        && spEl.querySelectorAll('svg circle').length === 4,
+      spEl ? '曲线 ' + spEl.querySelectorAll('svg path').length + ' 条 / 圆 '
+        + spEl.querySelectorAll('svg circle').length + ' 个（1 表盘 + 3 数据点）' : '');
+    t('开屏的样式真的打进来了（position 读到 fixed）', (function () {
+      if (!spEl) return false;
+      document.body.appendChild(spEl);
+      return window.getComputedStyle(spEl).position === 'fixed';
+    })(), spEl ? 'position = ' + window.getComputedStyle(spEl).position : '');
+    t('跳过机制生效：退场后不再挡点击，并从 DOM 移除', (function () {
+      if (!spEl || !spEl.parentNode) return false;
+      SP.dismiss();
+      var ok = spEl.classList.contains('out')
+        && spEl.style.pointerEvents === 'none'
+        && spEl.getAttribute('aria-hidden') === 'true';
+      spEl.parentNode.removeChild(spEl);      // 不等那 380 ms 的淡出，免得影响后面的扫描
+      return ok;
+    })(), spEl ? 'class="' + spEl.className + '", pointer-events=' + spEl.style.pointerEvents : '');
 
     /*  这条查的是"页面上有没有没换掉的模板标记"。两个坑都踩过：
         ① 待查串若写成字面量，查的就是本文件自己（自指）⇒ 按字符拼出来；

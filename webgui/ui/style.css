@@ -43,14 +43,28 @@ header.top {
   background: #fff;
   border-bottom: 1px solid var(--line);
 }
-header.top h1 { margin: 0; font-size: 16px; font-weight: 600; letter-spacing: .2px; }
+header.top h1 { margin: 0; font-size: 16px; font-weight: 600; letter-spacing: .2px; white-space: nowrap; }
+header.top h1 .tag { font-size: 13px; font-weight: 500; color: var(--ink-3); letter-spacing: 0; }
 header.top .sub { color: var(--ink-3); font-size: 12.5px; }
 header.top .grow { flex: 1 1 auto; }
 header.top button.plain {
   background: none; border: 1px solid var(--line); border-radius: 6px;
   color: var(--ink-2); padding: 4px 10px; cursor: pointer; font-size: 12.5px;
+  flex: 0 0 auto;
 }
 header.top button.plain:hover { border-color: var(--line-strong); color: var(--ink); }
+
+/*  页头那句标语（开屏上印的就是它，见 ui/splash.js）。
+ *  开屏一淡出就看不见了，留一句在页头上，才不至于"开机那 1.4 s 才想得起
+ *  这是个什么东西"。窄窗口下按 英文标语 → 中文标语 → 技术说明 的顺序让位：
+ *  技术说明（LA-ICP-MS 锆石 U-Pb 定年 · 单文件离线 · 与桌面版逐位一致）
+ *  是这一版对外最要紧的承诺，留到最后。实测 1008px（截图 4 那个窄窗口）
+ *  一行放得下全部四段，所以这几个断点只在更窄时才轮到。 */
+header.top .motto { color: var(--accent); font-size: 13px; font-weight: 600; letter-spacing: .02em; white-space: nowrap; }
+header.top .motto .en { color: var(--ink-3); font-weight: 400; font-size: 11.5px; letter-spacing: .06em; margin-left: 7px; }
+@media (max-width: 1180px) { header.top .motto .en { display: none; } }
+@media (max-width: 980px)  { header.top .motto { display: none; } }
+@media (max-width: 700px)  { header.top .sub { display: none; } }
 
 /* ---------- 布局 ---------- */
 main {
@@ -204,6 +218,27 @@ details.qcgates[open] > summary { color: var(--ink-2); }
 details.qcgates .row { margin-top: 5px; }
 #qcdoc .hint { margin-top: 4px; }
 
+/* 「默认只留一行要点」用的折叠块。
+   长解释（来历、口径、为什么这么算）全搬进这里，界面上只留一句摘要 ——
+   判据与坑一个字不少，只是不占版面。与 details.qcgates 同一套外观。 */
+details.more { margin: 6px 0 0; }
+details.more > summary {
+  cursor: pointer; font-size: 12px; color: var(--ink-3); padding: 3px 0;
+  list-style: none; outline: none;
+}
+details.more > summary::-webkit-details-marker { display: none; }
+details.more > summary:before { content: "▸ "; }
+details.more[open] > summary:before { content: "▾ "; }
+details.more[open] > summary { color: var(--ink-2); }
+details.more p {
+  margin: 6px 0 0; font-size: 12.5px; line-height: 1.62; color: var(--ink-2);
+}
+details.more p:first-of-type { margin-top: 4px; }
+details.more code { font-size: 12px; }
+details.more > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* 右栏（IsoplotR 那一页）里的同一套折叠块，底色跟着面板走 */
+details.iso-help { margin: 0 0 10px; padding: 0 2px; }
+
 .panes { flex: 1 1 auto; min-height: 0; position: relative; }
 .pane {
   position: absolute; inset: 0; overflow: auto; padding: 10px 2px 24px;
@@ -233,6 +268,68 @@ table.data tbody tr:hover td { background: #f6faff; }
 table.data td.sep { color: var(--ink-3); text-align: center; }
 table.data td.na { color: var(--ink-3); }
 .colgroup-note { color: var(--ink-3); font-size: 12px; margin: 6px 0 0; }
+
+/* ---------- 过程量（中间环节）---------- */
+.stagewrap { display: flex; flex-direction: column; gap: 10px; }
+
+.stagemeta {
+  border: 1px solid var(--line); border-radius: 8px; background: #f7f9fb;
+  padding: 8px 12px 10px;
+}
+.stagemeta h4 { margin: 0 0 6px; font-size: 12.5px; color: var(--ink-2); font-weight: 600; }
+/* 全局量两列铺开 —— 一列会拉出很长一竖条，比表格还高 */
+.stagemeta .kv.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); }
+.stagemeta .kv.grid > div { display: flex; gap: 8px; padding: 1px 0; }
+.stagemeta .kv span.k { flex: 0 0 132px; }
+.stagemeta .kv span.v { min-width: 0; overflow-wrap: anywhere; }
+
+.stagebar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.stagebar .lbl { color: var(--ink-3); font-size: 12px; }
+.stagebar label.chk {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 12px; color: var(--ink-2); cursor: pointer;
+}
+/* 这一小排按钮不在 header.top / .tabs 里，得自己把外观写全（本表没设全局 button 样式） */
+.stagebar button {
+  background: #fff; border: 1px solid var(--line); border-radius: 6px;
+  color: var(--ink-2); padding: 2px 9px; cursor: pointer; font-size: 12px;
+}
+.stagebar button:hover { border-color: var(--line-strong); color: var(--ink); }
+
+/* 过程量自己不用内层滚动条：让整个面板滚，明细才跟得上表格 */
+.stage-tablewrap { max-height: none; }
+table.data.stage { font-size: 11.5px; }
+/* 分组表头第一行钉在表头第二行之上（sticky 的 top 要错开） */
+table.data.stage thead tr.grow th {
+  top: 0; height: 20px; font-size: 11px; color: var(--ink-3);
+  background: #eef3f8; text-align: left;
+}
+table.data.stage thead tr:nth-child(2) th { top: 20px; }
+table.data.stage tbody tr.pick { cursor: pointer; }
+table.data.stage tbody tr.sel td { background: var(--accent-2); }
+/* 分组开关：把没勾的分组整列藏起来 */
+table.data.stage[data-hide~="id"] .g-id,
+table.data.stage[data-hide~="win"] .g-win,
+table.data.stage[data-hide~="cnt"] .g-cnt,
+table.data.stage[data-hide~="net"] .g-net,
+table.data.stage[data-hide~="ratio"] .g-ratio,
+table.data.stage[data-hide~="age"] .g-age,
+table.data.stage[data-hide~="trace"] .g-trace { display: none; }
+
+.stagedetail { border-top: 1px solid var(--line); padding-top: 8px; }
+.stagedetail .sdhead {
+  font-size: 12.5px; font-weight: 600; color: var(--ink);
+  margin-bottom: 6px; overflow-wrap: anywhere;
+}
+.stagedetail .sdsec {
+  border: 1px solid var(--line); border-radius: 8px; background: #fff;
+  padding: 8px 12px; margin-bottom: 8px;
+}
+.stagedetail .sdsec h5 {
+  margin: 0 0 4px; font-size: 12.5px; color: var(--accent); font-weight: 600;
+}
+.stagedetail .sdsec .kv div { padding: 1px 0; }
+.stagedetail .sdsec .hint { margin-top: 8px; padding-top: 6px; border-top: 1px dashed var(--line); }
 
 /* ---------- 日志 ---------- */
 #log {
@@ -288,23 +385,23 @@ footer.foot .grow { flex: 1 1 auto; }
 @media (max-width: 860px) { footer.foot .grow + span { display: none; } }
 
 /* ---------- 窄窗口：工具栏换行 ----------
-   实测"六个标签 + 修正列名笔误 + 五个导出按钮（含质量报告）"这一行的自然宽度是
-   **991px**（2026-10-02 加重量的：五个标签时是 876px，第六个「IsoplotR 谐和图」
-   是个长文案，多出 115px）。量法用 G:/_isohtml/mkinject.py 的 measure 用例
+   实测"七个标签 + 修正列名笔误 + 六个导出/动作按钮"这一行的自然宽度是
+   **1141px**（2026-10-16 重量的：五个标签时 876px，第六个「IsoplotR 谐和图」
+   991px，第七个「过程量」＋ 第五个导出「过程量.csv」再涨到 1141px）。
+   量法用 G:/_isohtml/mkinject.py 的 measure 用例
    （把 .tabs 设成 width:max-content 再读宽度，与视口无关），
    脚本 G:/_isohtml/measure_tabrow.py 顺带把"每个视口下是否溢出"也打出来。
 
    非工具栏占掉的宽度实测恒为 **372px**（视口 1600/1440/1366 三点一致：
-   avail = 视口 - 372）。所以不换行需要 视口 ≥ 991 + 372 = 1363px。
+   avail = 视口 - 372）。所以不换行需要 视口 ≥ 1141 + 372 = 1513px。
 
-   ★ 为什么断点必须是 1420 而不是原来的 1300：基础样式是
-   `flex-wrap: nowrap` + `overflow-x: auto`，**不换行时超出就横向裁掉**
-   （1301–1362 这一段会正好切掉最右边的「质量报告」29px —— 那是这一版的主按钮）。
-   五个标签时 876+372=1248 < 1300，恰好没有这个坏带；加上第六个标签后
-   1363 > 1300，坏带就出现了。取 1420 留约 57px 余量（与上一版 1300 对 1248
-   留 52px 的松紧相当），同时 1440 宽的窗口仍是单行（余 77px）。
+   ★ 为什么断点必须 ≥ 1513 而不是沿用 1420：基础样式是
+   `flex-wrap: nowrap` + `overflow-x: auto`，**不换行时超出就横向裁掉** ——
+   1420–1512 这一段会正好切掉最右边的「质量报告」（这一版的主按钮）。
+   取 1570 留约 57px 余量（与历版 50–57px 的松紧一致）；
+   1600 宽的窗口仍是单行（实测余 87px）。
    改按钮文案或增删按钮后，务必用那两个脚本重量一次并更新这里。 */
-@media (max-width: 1420px) {
+@media (max-width: 1570px) {
   .tabs { flex-wrap: wrap; overflow: auto; row-gap: 0; }
   .tabs .spacer { flex: 1 1 100%; height: 0; }
   .tabs button { padding: 6px 10px; }
@@ -403,4 +500,104 @@ table.iso-sum tr.head td { font-weight: 600; color: var(--ink-2); border-bottom-
 .iso-notes p.iso-args code {
   font-family: var(--mono); font-size: 11.5px;
   background: #eef2f6; padding: 1px 5px; border-radius: 4px; color: var(--ink-2);
+}
+
+/* ==========================================================================
+ *  启动界面（开屏）—— DOM 与行为在 ui/splash.js，这里只管长什么样。
+ *
+ *  配色刻意**不跟随**页面的浅色主题：开屏是"开机"那一刻，与后面的工作台分开，
+ *  深蓝底 + 蓝曲线 + 青点（青点 = 真数据点的颜色，与站点首页那张谐和图同色）。
+ *  正文颜色全部写死在这里，所以它不依赖系统深浅色，也不会在深色系统上糊掉。
+ *
+ *  三个时长与 splash.js 里的常量是对应的，改一处要改两处：
+ *      .34s 淡入  ← 无对应常量（纯入场）
+ *      .38s 淡出  ← splash.js:FADE = 380
+ *      进度条     ← splash.js:DWELL = 1400，由 JS 写进 --sp-dwell
+ * ========================================================================== */
+#splash {
+  position: fixed; inset: 0; z-index: 300;
+  display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(1100px 620px at 50% 15%, #17344f 0%, #0c1b2d 56%, #070f1a 100%);
+  color: #eaf2fb; cursor: pointer;
+  transition: opacity .38s ease, transform .38s ease;
+  animation: sp-in .34s ease both;
+}
+#splash.out { opacity: 0; transform: scale(1.012); }
+
+.sp-box { text-align: center; padding: 24px; max-width: 660px; }
+
+/* ---------- 标志 ---------- */
+.sp-logo { line-height: 0; }
+.sp-mark { display: block; margin: 0 auto 6px; overflow: visible; }
+.sp-ring { transform-origin: 48px 48px; animation: sp-spin 26s linear infinite; }
+.sp-ticks { animation: sp-in .5s .1s ease both; }
+/*  弧长实测 72.6334（见 splash.js 文件头），取 76 让"画完"正好落在动画末尾 */
+.sp-curve {
+  stroke-dasharray: 76; stroke-dashoffset: 76;
+  animation: sp-draw .9s .16s ease-out forwards;
+}
+.sp-dot { opacity: 0; transform-box: fill-box; transform-origin: center;
+  animation: sp-pop .42s ease-out forwards; }
+.sp-dot.d1 { animation-delay: .46s; }
+.sp-dot.d2 { animation-delay: .62s; }
+.sp-dot.d3 { animation-delay: .78s; }
+
+/* ---------- 文字 ---------- */
+.sp-name {
+  font-size: 40px; font-weight: 600; letter-spacing: .16em;
+  margin-left: .16em;                 /* 抵消末字母那一点字距，视觉才是居中 */
+  color: #f5f9fe; line-height: 1.15;
+}
+.sp-sub { margin-top: 7px; font-size: 13px; color: #86a4c6; letter-spacing: .04em; }
+.sp-rule { width: 46px; height: 1px; background: rgba(255, 255, 255, .22); margin: 19px auto 17px; }
+.sp-slogan { margin: 0; font-size: 27px; font-weight: 600; letter-spacing: .06em; color: #fff; }
+.sp-slogan-en {
+  margin: 8px 0 0; font-size: 12.5px; letter-spacing: .24em; text-transform: uppercase;
+  color: #7fa0c4;
+}
+.sp-chips { list-style: none; margin: 22px 0 0; padding: 0;
+  display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.sp-chips li {
+  font-size: 11.5px; color: #a9c2dc; padding: 3px 10px; border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, .16); background: rgba(255, 255, 255, .045);
+}
+
+/* ---------- 进度条 + 提示 ---------- */
+.sp-bar {
+  width: 148px; height: 2px; margin: 26px auto 0; border-radius: 2px;
+  background: rgba(255, 255, 255, .13); overflow: hidden;
+}
+.sp-bar i {
+  display: block; height: 100%; width: 0; border-radius: 2px;
+  background: linear-gradient(90deg, #1f6feb, #34d399);
+  animation: sp-fill var(--sp-dwell, 1400ms) linear forwards;
+}
+.sp-hint { margin-top: 12px; font-size: 11.5px; color: #6d89a8; letter-spacing: .06em; }
+
+@keyframes sp-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sp-draw { to { stroke-dashoffset: 0; } }
+@keyframes sp-pop { from { opacity: 0; transform: scale(.35); } to { opacity: 1; transform: scale(1); } }
+@keyframes sp-spin { to { transform: rotate(360deg); } }
+@keyframes sp-fill { to { width: 100%; } }
+
+/*  系统设了"减少动态效果"（splash.js 会给 #splash 加 .reduced）：一律不动，
+ *  元素直接停在动画的终态上，进度条干脆不画 —— 它本来就是"还要等多久"的
+ *  意思，既然不打算让人等，就别摆这个暗示。 */
+#splash.reduced, #splash.reduced * { animation: none !important; }
+#splash.reduced .sp-curve { stroke-dashoffset: 0; }
+#splash.reduced .sp-dot { opacity: 1; }
+#splash.reduced .sp-bar { display: none; }
+
+@media (max-width: 640px) {
+  .sp-name { font-size: 31px; }
+  .sp-slogan { font-size: 21px; }
+  .sp-sub { font-size: 12px; }
+  .sp-slogan-en { letter-spacing: .16em; }
+}
+/*  矮窗口（比如把浏览器拉成一条）：把上下留白收紧，别让"进入"提示掉出屏幕 */
+@media (max-height: 560px) {
+  .sp-rule { margin: 12px auto 10px; }
+  .sp-chips { margin-top: 14px; }
+  .sp-bar { margin-top: 16px; }
+  .sp-mark { width: 72px; height: 72px; }
 }

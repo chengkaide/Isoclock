@@ -184,19 +184,35 @@ function loadThermoFiles(files, opt) {
 }
 
 /**
- * 第二步：按窗口切出背景段 / 信号段（对应 dataprocess 的 _load_channels）。
+ * 第二步之一：算出窗口在数组里的**切片下标**（对应 dataprocess 里的 pyInt(x/ti)）。
+ *
+ * 单独抽出来只为一件事：过程量表（src/stages.js）要把"取了几点做背景、几点的
+ * 信号"如实印出来。**算式必须与切片时用的那一份完全一致**，否则表里的下标
+ * 会跟真正切出来的数组对不上 —— 所以 sliceChannels() 也走这里，不另抄一遍。
  *
  * tiOverride 传入的是**全局** Timeinternal —— 原实现里 Timeinternal 是模块级全局，
  * instructure0 每个文件都会覆盖它，于是 dataprocess 里所有样品都用**最后一个文件**
  * 的值。同一批数据驻留时间通常相同，所以看不出来；但行为确实如此，这里照抄。
+ *
+ * @returns {{ti:number, sb:number, eb:number, ss:number, es:number}}
+ *          sb/eb 是背景段的 [起, 止) 下标，ss/es 是信号段的。
  */
-function sliceChannels(perFile, file, tiOverride) {
+function windowIndex(perFile, file, tiOverride) {
   const e = perFile[file];
   const ti = (tiOverride === undefined) ? e.timeinternal : tiOverride;
   // num = [Numbers, b0, b1, s0, s1]
   const b0 = e.num[1], b1 = e.num[2], s0 = e.num[3], s1 = e.num[4];
-  const sb = pyInt(b0 / ti), eb = pyInt(b1 / ti);
-  const ss = pyInt(s0 / ti), es = pyInt(s1 / ti);
+  return {
+    ti: ti,
+    sb: pyInt(b0 / ti), eb: pyInt(b1 / ti),
+    ss: pyInt(s0 / ti), es: pyInt(s1 / ti),
+  };
+}
+
+/** 第二步：按窗口切出背景段 / 信号段（对应 dataprocess 的 _load_channels）。 */
+function sliceChannels(perFile, file, tiOverride) {
+  const e = perFile[file];
+  const { sb, eb, ss, es } = windowIndex(perFile, file, tiOverride);
   const out = {};
   for (const [key, suffix] of CHANNEL_SUFFIX) {
     const v = e.ch[suffix];
@@ -285,6 +301,16 @@ function run(cfg) {
     sampleslist,
     sampleFrom: loaded.sampleFrom,
     num: (() => { const m = {}; for (const f of order) m[f] = perFile[f].num; return m; })(),
+    //  窗口切片下标与 Timeinternal：只为"过程量表"留档（src/stages.js），
+    //  数值链一个字节都没用到它们。切片时用的是**全局** Timeinternal（见上），
+    //  所以这里同时给出实际参与切片的那一份（tiGlobal）与各文件自己的那一份。
+    idx: (() => {
+      const m = {};
+      for (const f of order) m[f] = windowIndex(perFile, f, tiGlobal);
+      return m;
+    })(),
+    ti: (() => { const m = {}; for (const f of order) m[f] = perFile[f].timeinternal; return m; })(),
+    tiGlobal,
     meanCpsCsv: P.buildMeanCpsCsv(meanRows),
     resultAllCsv: P.buildResultAllCsv(all),
     meanRows, resultRows: all,
@@ -292,7 +318,7 @@ function run(cfg) {
 }
 
 const DS_PIPELINE = { attach, pySlice, pyInt, CHANNEL_SUFFIX, loadThermoFiles,
-  sliceChannels, meanCpsRow, run,
+  sliceChannels, windowIndex, meanCpsRow, run,
   listKey, parseSampleList, sampleNameFor };
 if (typeof window !== 'undefined') {
   window.DS_PIPELINE = DS_PIPELINE;

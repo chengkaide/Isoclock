@@ -13,7 +13,8 @@ Agilent and Element instruments, and can be extended with further export formats
 > [sndjgm/Isoclock](https://github.com/sndjgm/Isoclock). The software and the scientific
 > method are by **Guoqi Liu** (East China University of Technology, sndjgm@foxmail.com).
 > The numerical pipeline is unchanged. This fork adds packaging, documentation and a
-> browser-based distribution.
+> browser-based distribution. **Development is now web-first** — see
+> [Project status](#project-status) for what that means for the desktop program.
 > See [Notes on this fork](#notes-on-this-fork).
 
 ---
@@ -23,15 +24,19 @@ Agilent and Element instruments, and can be extended with further export formats
 There is a **single-file, zero-dependency web version** of the whole reduction chain
 under [`webgui/`](webgui/) — no install, no server, works offline. Same numbers as the
 desktop program, verified **bit-for-bit** with the 207Pb/206Pb switch set to match
-(439 automated comparisons in 14 suites + 62 in-page checks) — see [Notes for users](#notes-for-users).
+(553 automated comparisons in 16 suites + 87 in-page checks) — see [Notes for users](#notes-for-users).
 Open it online at <https://chengkaide.github.io/Isoclock/app/isoclock.html>,
 download [`webgui/isoclock.html`](webgui/isoclock.html) and double-click it, or read
 [`webgui/README.md`](webgui/README.md) for how it was verified and what it does **not** do.
 
-It adds two things the desktop program does not have: a **batch quality report**
+It adds three things the desktop program does not have: a **batch quality report**
 (standard QC / sample summary / anomaly list / documented thresholds, exported as one
-HTML file) and a **compatibility reader** for real-world Thermo exports whose headers
-differ from the manual.
+HTML file), a **compatibility reader** for real-world Thermo exports whose headers
+differ from the manual, and a **process-inventory table** (`过程量` tab / `过程量.csv`)
+that lays every intermediate quantity of a run — integration windows, background and
+signal means, net counts, ratios and their 2s, fractionation factors, ages, trace-element
+ppm — side by side, one row per sample. That table recomputes nothing: every cell is
+traceable to the pipeline output it came from.
 
 📖 **中文项目站点：<https://chengkaide.github.io/Isoclock/>** — 包括一份 8 章 56 图的
 《原理与代码解读》图解教程，用中文把 U–Pb 定年、普通铅校正和这套软件每一步讲清楚。
@@ -152,6 +157,21 @@ in both.
 
 Questions about this fork are welcome in the issue tracker.
 
+## Project status
+
+**New features go into the browser version only.** From October 2026 on, the
+single-file web app under [`webgui/`](webgui/) is where development happens: new
+tabs, new exports, new readers. The desktop program (`Isoclock2.0.py`, `packaging/`)
+is in **maintenance-only mode** — it stays in the repository, keeps working, and its
+numerical output is still the reference the browser version is checked against, but
+it will not gain new features.
+
+The numerical pipeline itself is frozen and shared: anything that changes a number
+changes it in both, and the web version is verified bit-for-bit against the desktop
+output in CI. Bug reports about the numbers are welcome and are fixed in both.
+
+---
+
 ## Notes on this fork
 
 The numerical pipeline is unchanged, and the scientific method is entirely the original
@@ -168,6 +188,7 @@ version of the whole chain.
 | Errors reported with tracebacks, including from packaged builds | Failures are visible while running |
 | Unused imports removed | Fewer transitive dependencies |
 | **Single-file, zero-dependency browser version added** (`webgui/`) | No install, no server, works offline; same numbers as the desktop program |
+| **Process-inventory table and CSV added in the browser version** | Every intermediate quantity of a run in one table, one row per sample; recomputes nothing, each cell traceable to the pipeline output |
 
 ## References
 

@@ -78,6 +78,7 @@ MODULES = [
     'pipeline.js',  # 把上面几步串成一条链
     'age.js',       # 标样校正 + 年龄层
     'qc.js',        # 批次质量统计（加权平均 / MSWD / 分组 / 异常），供出报告用
+    'stages.js',    # 过程量：把窗口 / 计数 / 净计数 / 比值 / 年龄并成一张表
 ]
 
 # 内置**数据**（不是"与桌面版逐位比对过的模块"，所以单列一类，让 banner 说实话）。
@@ -94,11 +95,19 @@ DATASET_NOTE = '内置示例数据（生成的，见 webgui/make_real_demo.py）
 #  顺序即加载顺序：report.js 必须在 app.js 之前（app.js 要用 window.DS_QCREPORT）
 SCRIPTS_TAIL = [
     ('report.js', os.path.join(UI, 'report.js')),
+    #  api.js 是**给程序用的门面**（window.DS_API）：参数归一化、模块接线、
+    #  管线编排都在这里，界面（app.js）与外部调用者跑的是同一段代码。
+    #  它不碰 DOM，所以这一层不依赖 report.js；排在它后面只是因为报告组装
+    #  （DS_QCREPORT）在同一个"界面侧"分组里，读起来顺。
+    ('api.js', os.path.join(UI, 'api.js')),
     #  isoplotr.js 是**可选**模块：它自己不下载任何东西，只是提供
     #  "按需去 CDN 取 webR + IsoplotR" 的能力与几个纯函数。
     #  打进来只占 20 KB 左右，不打进来那个标签页就会白屏。
     ('isoplotr.js', os.path.join(UI, 'isoplotr.js')),
     ('selftest.js', os.path.join(UI, 'selftest.js')),
+    #  启动界面（开屏）。放在**最后、界面之前**：它要在页面一开始就把那一层
+    #  盖上去，晚一步就会先闪一下工作台。见 ui/splash.js 的文件头。
+    ('splash.js', os.path.join(UI, 'splash.js')),
     ('app.js', os.path.join(UI, 'app.js')),
 ]
 
@@ -139,10 +148,15 @@ TOP_LEVEL_DUP_OK = {
 REQUIRED_GLOBALS = [
     'window.DS_FP', 'window.DS', 'window.DS_THERMO', 'window.DS_WINDOW',
     'window.DS_REPORT', 'window.DS_PIPELINE', 'window.DS_AGE', 'window.DS_QC',
+    'window.DS_STAGES',
     'window.DS_QCREPORT', 'window.DS_DEMO_REAL', 'window.DS_ISOPLOTR',
+    'window.DS_SPLASH',
+    #  程序接口门面。界面（app.js）就建在它上面 —— 少一个就白屏。
+    'window.DS_API',
 ]
 
-PLACEHOLDERS = ['@STYLE@', '@LIBS@', '@ISOPLOTR@', '@QCREPORT@', '@SELFTEST@', '@APP@']
+PLACEHOLDERS = ['@STYLE@', '@LIBS@', '@ISOPLOTR@', '@QCREPORT@', '@API@',
+                '@SELFTEST@', '@SPLASH@', '@APP@']
 
 
 def read(path):
@@ -418,8 +432,12 @@ def assemble(tpl, payloads, manifest):
                       [t for n, t in payloads['tail'] if n == 'isoplotr.js'][0].rstrip('\n'))
     out = out.replace('<!--@QCREPORT@-->',
                       [t for n, t in payloads['tail'] if n == 'report.js'][0].rstrip('\n'))
+    out = out.replace('<!--@API@-->',
+                      [t for n, t in payloads['tail'] if n == 'api.js'][0].rstrip('\n'))
     out = out.replace('<!--@SELFTEST@-->',
                       [t for n, t in payloads['tail'] if n == 'selftest.js'][0].rstrip('\n'))
+    out = out.replace('<!--@SPLASH@-->',
+                      [t for n, t in payloads['tail'] if n == 'splash.js'][0].rstrip('\n'))
     out = out.replace('<!--@APP@-->',
                       [t for n, t in payloads['tail'] if n == 'app.js'][0].rstrip('\n'))
     return out, built, src_id

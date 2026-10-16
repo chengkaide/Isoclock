@@ -87,6 +87,8 @@ pre code{background:none;padding:0;font-size:inherit}
 .hero{padding:60px 0 8px}
 .hero h1{font-size:clamp(26px,4.2vw,40px);line-height:1.25;font-weight:700;letter-spacing:-.02em;margin:0 0 14px}
 .hero h1 em{font-style:normal;color:var(--pur)}
+.hero .motto{font-size:15px;font-weight:650;color:var(--pur);margin:0 0 16px;letter-spacing:.01em}
+.hero .motto .en{font-weight:400;font-size:12.5px;color:var(--ink3);letter-spacing:.1em;text-transform:uppercase;margin-left:9px}
 .hero .lede{font-size:17px;color:var(--ink2);max-width:62ch;margin:0 0 6px}
 .hero .lede-en{font-size:13.5px;color:var(--ink3);max-width:70ch;margin:0 0 22px;line-height:1.7}
 .badges{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 26px}
@@ -130,6 +132,8 @@ small,.muted{color:var(--ink3)}
 .card h4{margin:0 0 6px}
 .card p{margin:6px 0;font-size:13.5px;color:var(--ink2)}
 .card .tag{font-size:11.5px;color:var(--ink3);font-family:var(--mono)}
+.card h4 i{font-style:normal;font-size:11px;font-weight:600;color:var(--ink3);
+  border:1px solid var(--line);border-radius:999px;padding:1px 7px;vertical-align:2px}
 
 table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13.5px;
   border:1px solid var(--line2);border-radius:10px;overflow:hidden}
@@ -207,6 +211,7 @@ footer .wrap{display:flex;gap:22px;flex-wrap:wrap;align-items:baseline}
 <!-- ==================== HERO ==================== -->
 <section class="hero">
   <h1>不做锆石的<em>那一半</em> U–Pb 定年，<br>现在可以在浏览器里跑</h1>
+  <p class="motto">每一个计数，都算数。<span class="en" lang="en">Every count counts.</span></p>
   <p class="lede">
     Isoclock 是一个离线的 LA-ICP-MS U–Th–Pb 数据归算程序，专为
     <b>含可变普通铅</b>的矿物（磷灰石、榍石、白钨矿、独居石等热液与副矿物）设计。
@@ -223,15 +228,14 @@ footer .wrap{display:flex;gap:22px;flex-wrap:wrap;align-items:baseline}
 
   <div class="badges">
     <!-- BADGES:BEGIN 由 docs/make_badges.py 生成；改数字请改源头并重跑 -->
-    <span class="b ok" title="14 套 webgui/test_*.js，与桌面版逐位对照；本行由脚本实跑得出">439 项数值比对全绿</span>
-    <span class="b ok" title="在产物页面里点真按钮跑（#selftest）；每次由脚本核这个数">62 项页面内自检</span>
+    <span class="b ok" title="16 套 webgui/test_*.js，与桌面版逐位对照；本行由脚本实跑得出">553 项数值比对全绿</span>
+    <span class="b ok" title="在产物页面里点真按钮跑（#selftest）；每次由脚本核这个数">87 项页面内自检</span>
     <span class="b ok" title="含浮点最后一位；由上面那批比对保证">与桌面版逐位相同</span>
-    <span class="b pu" title="isoclock.html = 876215 字节；零外链、零依赖，双击即用">单文件 856 KB · 离线</span>
+    <span class="b pu" title="isoclock.html = 994879 字节；零外链、零依赖，双击即用">单文件 972 KB · 离线</span>
     <span class="b pu" title="guide.html = 482008 字节，56 张内联图">图解教程 471 KB</span>
     <span class="b" title="同一个页面装进系统自带的 WebView；Windows 出 exe，macOS 出 app">Windows / macOS 桌面程序</span>
     <span class="b" title="两种仪器导出都能读（Element 的 .fin 请用桌面版转换）">Thermo + Agilent</span>
     <span class="b" title="沿用上游 sndjgm/Isoclock 的许可证">Apache-2.0</span>
-    <span class="b" title="dist/IsoclockWeb.exe = 10271507 字节">exe 单文件 9.8 MB</span>
     <!-- BADGES:END -->
   </div>
 
@@ -349,6 +353,13 @@ footer .wrap{display:flex;gap:22px;flex-wrap:wrap;align-items:baseline}
       <p>四个体系的年龄与 2σ，分校正前/校正后。可在界面里直接看、导出 CSV。</p>
       <p class="tag">ages, uncorrected &amp; corrected</p>
     </div>
+    <div class="card">
+      <h4>过程量.csv　<i>新增</i></h4>
+      <p><b>一段一段给你看中间数</b>：积分窗口的下标、背景与信号均值、净计数（信号−背景）、
+      各比值与 2σ、分馏因子与校正系数、校正前/后的年龄。界面里也有对应的「过程量」标签页，
+      点任意一行能展开这一个样品的完整流水账。</p>
+      <p class="tag">per-stage intermediates</p>
+    </div>
   </div>
 
   <figure>
@@ -408,6 +419,16 @@ footer .wrap{display:flex;gap:22px;flex-wrap:wrap;align-items:baseline}
     </tbody>
   </table>
   <p><small><code>Isoclock2.0.py</code> 从 4099 行降到 <b>3676 行</b>（−10.3%）。</small></p>
+
+  <div class="callout">
+    <p class="t">桌面版的维护状态</p>
+    <p><b>以后主要更新网页版。</b>Python 桌面程序（<code>Isoclock2.0.py</code> 与
+    <code>packaging/</code>）转入<b>只维护、不加新功能</b>：它留在仓库里、照常能用、照常出
+    Windows / macOS 安装包，数值输出仍然是网页版<b>逐位比对</b>的基准；但新的标签页、
+    新的导出、新的读取器一律只做在网页版这边。<br>
+    两侧共用同一条数值链 —— 凡是会改动数字的改动，两边一起改，对不上就构建不过。
+    本页徽章里"与桌面版逐位相同"这句话，就是这条约定的产物。</p>
+  </div>
 
   <h3>B. 新增：一个纯浏览器的单文件网页版</h3>
   <p>把数值内核移植成 JavaScript，打包成一个 HTML 文件。没有后端、没有依赖、
@@ -690,6 +711,9 @@ footer .wrap{display:flex;gap:22px;flex-wrap:wrap;align-items:baseline}
       macOS 上能进「应用程序」。<b>它算的还是同一份网页版</b> ——
       壳里没有一行数值代码，只是把 <code>isoclock.html</code> 装进系统自带的
       WebView（Windows 用 WebView2，macOS 用 WKWebView）。</p>
+    <p><b>但桌面版已经进入只维护状态</b>：它照常能用、照常出安装包，数值仍是网页版
+      逐位比对的基准；新标签页、新导出、新读取器一律只做在网页版
+      （见<a href="#fork">这个分支改了什么</a>）。</p>
   </div>
 
   <div class="callout warn">
@@ -709,6 +733,17 @@ footer .wrap{display:flex;gap:22px;flex-wrap:wrap;align-items:baseline}
 
   <p class="lead">不需要安装任何东西。打开页面，左边填参数，右边看结果。</p>
 
+  <figure>
+    <a href="assets/ui-splash.png" target="_blank" rel="noopener" title="点开看原图">
+      <img src="assets/ui-splash.png" alt="Isoclock 网页版的启动界面：表盘样式的标志（一条谐和线与三个数据点）、标语「每一个计数，都算数。」与三条承诺">
+    </a>
+    <figcaption>打开先看到的这一屏。标志是内联 SVG 画的：一只表盘（虚线圆环 + 四个刻度）
+      里画一条谐和线与三个落在线上的数据点 —— <code>Isoclock</code> 这个名字就是
+      isochron + clock。约 1.4 s 自动淡出，<b>点一下、按任意键、滚一下滚轮</b>都立刻进入；
+      它<b>不写任何本地存储、不联网</b>，所以每次打开的行为都一样。
+      不想要它：给地址加 <code>#nosplash</code> 即可完全跳过。</figcaption>
+  </figure>
+
   <div class="cta" style="margin:18px 0 8px">
     <a class="btn primary" href="app/isoclock.html">打开网页版 <span class="en">Open the app</span></a>
   </div>
@@ -720,10 +755,12 @@ footer .wrap{display:flex;gap:22px;flex-wrap:wrap;align-items:baseline}
     <li><b>左侧 ③ 仪器与积分窗口</b>选 Thermo 或 Agilent。窗口可以自动识别，也可以手填。</li>
     <li><b>左侧 ④ 普通铅校正</b>选校正方式。想要看校正前的原始比值就选"不校正"。</li>
     <li><b>左侧 ⑤ 年龄层</b>选年龄计算方法、外挂误差 Ɛ、算法（平均法/线性法）。</li>
-    <li><b>右侧点「开始计算」</b>。之后在六个标签页里看信号图 / Mean_Cps / result_all /
-      年龄表 / IsoplotR 谐和图 / 日志，或者点工具栏的<b>质量报告</b>导出那份 HTML。
+    <li><b>右侧点「开始计算」</b>。之后在七个标签页里看信号图 / Mean_Cps / result_all /
+      年龄表 / <b>过程量</b> / IsoplotR 谐和图 / 日志，或者点工具栏的<b>质量报告</b>导出那份 HTML。
+      拿不准某个年龄是怎么从计数变出来的，就翻<b>过程量</b>那一页 —— 它把
+      积分窗口、净计数、比值、分馏因子、校正系数逐段摊开，每行点开是单样品的流水账。
       IsoplotR 那一页是<b>可选</b>的：要用到谐和年龄或 discordia 交点才需要打开它，
-      而且它要联网（其余五个标签页全离线）。</li>
+      而且它要联网（其余六个标签页全离线）。</li>
   </ol>
 
   <div class="callout">
